@@ -118,31 +118,40 @@ public final class SettingsRepositoryImpl: SettingsRepository, @unchecked Sendab
     public func settings() -> AsyncStream<AppSettings> {
         AsyncStream { continuation in
             let id = UUID()
-            lock.lock()
-            subscribers[id] = continuation
-            lock.unlock()
+
+            lock.withLock {
+                subscribers[id] = continuation
+            }
+
             continuation.yield(read())
+
             continuation.onTermination = { [weak self] _ in
-                guard let self else { return }
-                self.lock.lock()
-                self.subscribers[id] = nil
-                self.lock.unlock()
+                self?.lock.withLock {
+                    self?.subscribers[id] = nil
+                }
             }
         }
     }
 
     public func current() async -> AppSettings { read() }
 
-    public func update(_ transform: @Sendable (inout AppSettings) -> Void) async {
+    public func update(
+        _ transform: @Sendable (inout AppSettings) -> Void
+    ) async {
         var settings = read()
         transform(&settings)
+
         if let data = try? JSONEncoder().encode(settings) {
             defaults.set(data, forKey: key)
         }
-        lock.lock()
-        let listeners = Array(subscribers.values)
-        lock.unlock()
-        for continuation in listeners { continuation.yield(settings) }
+
+        let listeners = lock.withLock {
+            Array(subscribers.values)
+        }
+
+        for continuation in listeners {
+            continuation.yield(settings)
+        }
     }
 
     private func read() -> AppSettings {

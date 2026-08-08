@@ -62,25 +62,41 @@ public actor SyncEngine {
 
     // MARK: - Status
 
-    public func connectionStatus() -> AsyncStream<ConnectionStatus> {
-        AsyncStream { continuation in
-            let id = UUID()
-            statusSubscribers[id] = continuation
-            continuation.yield(status)
-            continuation.onTermination = { [weak self] _ in
-                Task { await self?.dropStatusSubscriber(id) }
+   public func connectionStatus() -> AsyncStream<ConnectionStatus> {
+        let id = UUID()
+        let (stream, continuation) =
+            AsyncStream<ConnectionStatus>.makeStream()
+
+        statusSubscribers[id] = continuation
+        continuation.yield(status)
+
+        let engine = self
+
+        continuation.onTermination = { [weak engine, id] _ in
+            Task { [weak engine, id] in
+                await engine?.dropStatusSubscriber(id)
             }
         }
+
+        return stream
     }
 
     public func sessionExpirations() -> AsyncStream<Void> {
-        AsyncStream { continuation in
-            let id = UUID()
-            expirySubscribers[id] = continuation
-            continuation.onTermination = { [weak self] _ in
-                Task { await self?.dropExpirySubscriber(id) }
+        let id = UUID()
+        let (stream, continuation) =
+            AsyncStream<Void>.makeStream()
+
+        expirySubscribers[id] = continuation
+
+        let engine = self
+
+        continuation.onTermination = { [weak engine, id] _ in
+            Task { [weak engine, id] in
+                await engine?.dropExpirySubscriber(id)
             }
         }
+
+        return stream
     }
 
     private func dropStatusSubscriber(_ id: UUID) { statusSubscribers[id] = nil }
