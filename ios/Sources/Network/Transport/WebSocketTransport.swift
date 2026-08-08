@@ -28,9 +28,17 @@ public actor WebSocketTransport: Transport {
     public func connect() async throws {
         let task = session.webSocketTask(with: url)
         self.task = task
-        let opened = openDelegate.expectOpen(for: task)
-        task.resume()
-        try await opened
+
+        try await withCheckedThrowingContinuation { (
+            continuation: CheckedContinuation<Void, Error>
+        ) in
+            openDelegate.expectOpen(
+                for: task,
+                continuation: continuation
+            )
+
+            task.resume()
+        }
     }
 
     public func send(payload: Data) async throws {
