@@ -46,18 +46,25 @@ public final class ChatRepositoryImpl: ChatRepository, @unchecked Sendable {
     /// so the list can render a name instead of a snowflake.
     public func openDirectChat(username: String) async throws -> Chat {
         let handle = OpenDirectChatUseCase.normalize(username)
+
         let chatID = try await ErrorMapping.mapped {
             try await client.resolveDirectChat(username: handle)
         }
 
-        if let existing = try? await store.chat(id: chatID), let existing {
+        if let existing = try? await store.chat(id: chatID) {
             return existing
         }
 
-        // We know the chat and the handle but not the peer's user id: the
-        // protocol never returns one for a handle. It gets filled in by the
-        // first message the peer sends (see `SyncEngine.ingest`).
-        let chat = Chat(id: chatID, kind: .direct, title: "@" + handle, username: handle)
+        // We know the chat and the handle but not the peer's user id:
+        // the protocol never returns one for a handle. It gets filled in
+        // by the first message the peer sends.
+        let chat = Chat(
+            id: chatID,
+            kind: .direct,
+            title: "@" + handle,
+            username: handle
+        )
+
         try await store.upsertChat(chat)
         return chat
     }

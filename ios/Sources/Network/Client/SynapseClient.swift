@@ -514,7 +514,7 @@ public actor SynapseClient {
                 do {
                     try await write(type, body: body, requestID: requestID)
                 } catch {
-                    await self.finish(requestID, with: .failure(error))
+                    self.finish(requestID, with: .failure(error))
                 }
             }
         }
