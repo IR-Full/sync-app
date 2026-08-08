@@ -1,0 +1,26 @@
+name: All CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server CI
+    uses: ./.github/workflows/server-ci.yml
+
+  ios:
+    name: iOS CI
+    uses: ./.github/workflows/ios-ci.yml

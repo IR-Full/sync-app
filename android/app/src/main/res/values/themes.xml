@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      A bare shell theme: colours, typography and dark mode all come from the Compose
+      MaterialTheme (see presentation/theme/Theme.kt), so duplicating them in XML would
+      only create a second source of truth that drifts.
+    -->
+    <style name="Theme.Synapse" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

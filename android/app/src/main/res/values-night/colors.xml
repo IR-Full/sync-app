@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only the pre-Compose window background: it is what shows for the frame before
+         the first composition, so a light flash in dark mode is avoided here. -->
+    <color name="window_background">#FF111318</color>
+</resources>

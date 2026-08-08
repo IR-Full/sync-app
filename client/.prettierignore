@@ -1,0 +1,5 @@
+.next
+node_modules
+src/shared/api/protocol/generated
+bun.lock
+package-lock.json

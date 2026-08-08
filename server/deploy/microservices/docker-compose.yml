@@ -1,0 +1,132 @@
+# Full microservice fleet: infra + the five gRPC domain services, the async
+# workers, and the gateway edge — all sharing one Postgres/Redis/NATS data plane
+# (services are stateless; state lives in the shared backends). Bring it up with:
+#
+#   docker compose -f deploy/microservices/docker-compose.yml up --build
+#
+# then connect a client to localhost:7000 (raw TCP) or ws://localhost:8080/ws.
+#
+# The image is built once (gateway service) and reused by every daemon; each
+# service just selects its binary via `command:`.
+
+x-fleet-image: &fleet-image
+  image: synapse-fleet:latest
+  restart: unless-stopped
+
+x-backends: &backends
+  # Shared data plane. Services are stateless; all state is here.
+  SYNAPSE_PG_DSN: postgres://synapse:synapse@postgres:5432/synapse?sslmode=disable
+  SYNAPSE_REDIS_ADDR: redis:6379
+  SYNAPSE_NATS_URL: nats://nats:4222
+  # Peer service addresses (gateway/messaged/fanoutd/searchd dial these).
+  SYNAPSE_AUTHD_ADDR: authd:9001
+  SYNAPSE_CHATD_ADDR: chatd:9002
+  SYNAPSE_MESSAGED_ADDR: messaged:9003
+  SYNAPSE_PRESENCED_ADDR: presenced:9004
+  SYNAPSE_KEYDIRD_ADDR: keydird:9005
+
+x-depends-infra: &depends-infra
+  postgres: {condition: service_healthy}
+  redis: {condition: service_healthy}
+  nats: {condition: service_started}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: {POSTGRES_USER: synapse, POSTGRES_PASSWORD: synapse, POSTGRES_DB: synapse}
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U synapse"], interval: 5s, timeout: 3s, retries: 10}
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10}
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js"]
+
+  # ---- gRPC domain services ----
+  authd:
+    <<: *fleet-image
+    build: {context: ../.., dockerfile: deploy/microservices/Dockerfile}
+    command: ["/usr/local/bin/authd"]
+    environment: *backends
+    depends_on: *depends-infra
+  chatd:
+    <<: *fleet-image
+    command: ["/usr/local/bin/chatd"]
+    environment: *backends
+    depends_on: *depends-infra
+  messaged:
+    <<: *fleet-image
+    command: ["/usr/local/bin/messaged"]
+    environment: *backends
+    depends_on:
+      <<: *depends-infra
+      chatd: {condition: service_started}
+  presenced:
+    <<: *fleet-image
+    command: ["/usr/local/bin/presenced"]
+    environment: *backends
+    depends_on: *depends-infra
+  keydird:
+    <<: *fleet-image
+    command: ["/usr/local/bin/keydird"]
+    environment: *backends
+    depends_on: *depends-infra
+
+  # ---- async workers (bus consumers) ----
+  fanoutd:
+    <<: *fleet-image
+    command: ["/usr/local/bin/fanoutd"]
+    environment: *backends
+    depends_on:
+      <<: *depends-infra
+      chatd: {condition: service_started}
+  notifyd:
+    <<: *fleet-image
+    command: ["/usr/local/bin/notifyd"]
+    environment: *backends
+    depends_on: *depends-infra
+  moderationd:
+    <<: *fleet-image
+    command: ["/usr/local/bin/moderationd"]
+    environment: *backends
+    depends_on: *depends-infra
+  searchd:
+    <<: *fleet-image
+    command: ["/usr/local/bin/searchd"]
+    environment: *backends
+    depends_on:
+      <<: *depends-infra
+      chatd: {condition: service_started}
+
+  # ---- edge (horizontally scaled) ----
+  # gatewayd runs as N interchangeable replicas. Each leases a unique snowflake
+  # node id from Redis and registers its connections in the router, so any replica
+  # can deliver to a user connected to any other. Scale with:
+  #   docker compose -f deploy/microservices/docker-compose.yml up -d --scale gatewayd=4
+  # Replicas do NOT publish host ports — the load balancer fronts them.
+  gatewayd:
+    <<: *fleet-image
+    command: ["/usr/local/bin/gatewayd"]
+    environment: *backends
+    deploy:
+      replicas: 2
+    depends_on:
+      authd: {condition: service_started}
+      chatd: {condition: service_started}
+      messaged: {condition: service_started}
+      presenced: {condition: service_started}
+      keydird: {condition: service_started}
+
+  # ---- load balancer ----
+  # Spreads client connections across the gateway replicas (discovered via Docker
+  # DNS). This is the single public entrypoint.
+  lb:
+    image: haproxy:2.9-alpine
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "7000:7000" # raw-TCP binary protocol
+      - "8080:8080" # WebSocket + /healthz + /metrics
+    depends_on:
+      gatewayd: {condition: service_started}

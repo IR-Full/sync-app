@@ -1,0 +1,120 @@
+@import 'tailwindcss';
+
+/*
+ * Dark mode is driven by a class on <html>, not by the media query alone, so the
+ * in-app theme switch can override the OS preference. The `system` setting works
+ * by writing/removing that class from the media query.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Palette tokens are named for their ROLE (surface / ink / accent / line), never
+ * for a size or a scale step. A token called `--color-base` would generate a
+ * `text-base` colour utility that silently overrides Tailwind's `text-base` font
+ * size — the kind of collision that is very hard to spot in a diff.
+ */
+:root {
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f4f5f7;
+  --color-surface-raised: #ffffff;
+  --color-surface-hover: #eceef1;
+  --color-ink: #12141a;
+  --color-ink-muted: #646b7a;
+  --color-ink-faint: #9aa1ae;
+  --color-line: #e2e5ea;
+  --color-accent: #3b6ef5;
+  --color-accent-hover: #2f5ad4;
+  --color-accent-ink: #ffffff;
+  --color-bubble-own: #3b6ef5;
+  --color-bubble-own-ink: #ffffff;
+  --color-bubble-peer: #eef0f4;
+  --color-bubble-peer-ink: #12141a;
+  --color-danger: #d93b48;
+  --color-warning: #c9821c;
+  --color-success: #1f9d5b;
+}
+
+.dark {
+  --color-surface: #14161b;
+  --color-surface-sunken: #0d0f13;
+  --color-surface-raised: #1c1f26;
+  --color-surface-hover: #252932;
+  --color-ink: #e9ecf1;
+  --color-ink-muted: #98a0b0;
+  --color-ink-faint: #6b7383;
+  --color-line: #2a2e37;
+  --color-accent: #4d7dff;
+  --color-accent-hover: #6690ff;
+  --color-accent-ink: #ffffff;
+  --color-bubble-own: #2f5ad4;
+  --color-bubble-own-ink: #ffffff;
+  --color-bubble-peer: #252932;
+  --color-bubble-peer-ink: #e9ecf1;
+  --color-danger: #f0616d;
+  --color-warning: #e0a244;
+  --color-success: #43c07f;
+}
+
+@theme inline {
+  --color-surface: var(--color-surface);
+  --color-surface-sunken: var(--color-surface-sunken);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-line: var(--color-line);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-bubble-own: var(--color-bubble-own);
+  --color-bubble-own-ink: var(--color-bubble-own-ink);
+  --color-bubble-peer: var(--color-bubble-peer);
+  --color-bubble-peer-ink: var(--color-bubble-peer-ink);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
+  --color-success: var(--color-success);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Slim scrollbars that follow the theme instead of punching a white hole in dark mode. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-line);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

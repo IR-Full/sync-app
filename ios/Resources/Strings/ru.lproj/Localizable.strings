@@ -1,0 +1,129 @@
+/* Общее */
+"app.name" = "Synapse";
+"common.ok" = "ОК";
+"common.cancel" = "Отмена";
+"common.done" = "Готово";
+"common.retry" = "Повторить";
+"common.error" = "Что-то пошло не так";
+
+/* Соединение */
+"connection.online" = "На связи";
+"connection.connecting" = "Подключение…";
+"connection.offline" = "Нет соединения";
+
+/* Авторизация */
+"auth.subtitle" = "Мессенджер на собственном бинарном протоколе";
+"auth.login" = "Войти";
+"auth.register" = "Регистрация";
+"auth.username" = "Имя пользователя";
+"auth.password" = "Пароль";
+"auth.error.empty" = "Введите имя пользователя и пароль";
+"auth.error.credentials" = "Неверное имя пользователя или пароль";
+"auth.error.taken" = "Это имя уже занято";
+"auth.error.throttled" = "Слишком много попыток. Попробуйте чуть позже";
+"auth.error.invalid" = "Некорректные данные";
+"auth.error.network" = "Не удаётся связаться с сервером";
+"auth.error.generic" = "Не удалось войти";
+"auth.session.expired" = "Сессия завершена. Войдите заново";
+
+/* Список чатов */
+"chats.title" = "Чаты";
+"chats.new" = "Новый чат";
+"chats.search" = "Поиск по сообщениям";
+"chats.untitled" = "Чат";
+"chats.no.messages" = "Пока нет сообщений";
+"chats.empty.title" = "Чатов пока нет";
+"chats.empty.message" = "Начните диалог по @username, создайте группу или войдите по ссылке-приглашению.";
+"chats.hide" = "Скрыть";
+"chats.mute" = "Без звука";
+"chats.unmute" = "Со звуком";
+
+/* Поиск */
+"search.empty.title" = "Ничего не найдено";
+"search.empty.message" = "Поиск идёт по тексту сообщений в ваших чатах.";
+
+/* Чат */
+"chat.placeholder" = "Сообщение";
+"chat.send" = "Отправить";
+"chat.typing" = "печатает…";
+"chat.you" = "Вы";
+"chat.reply" = "Ответить";
+"chat.edit" = "Изменить";
+"chat.delete" = "Удалить";
+"chat.retry" = "Отправить снова";
+"chat.attach" = "Вложение";
+"chat.attach.photo" = "Фото";
+"chat.attach.file" = "Файл";
+"chat.edited" = "изменено";
+"chat.deleted" = "Сообщение удалено";
+"chat.forwarded" = "Переслано от %@";
+"chat.error.empty" = "Нечего отправлять";
+"chat.error.too.long" = "Слишком длинное — предел %d байт";
+"chat.error.blocked" = "Вы не можете написать этому человеку";
+"chat.error.forbidden" = "Нет доступа к этому чату";
+"chat.error.not.found" = "Такого чата больше нет";
+"chat.error.rate.limited" = "Слишком часто, притормозите";
+"chat.error.attachment" = "Не удалось прикрепить файл";
+"chat.error.media.too.large" = "Файл слишком большой — предел %@";
+
+/* Присутствие */
+"presence.online" = "в сети";
+"presence.last.seen" = "был(а) %@";
+
+/* Вложения */
+"attachment.image" = "Фото";
+"attachment.video" = "Видео";
+"attachment.video.note" = "Видеосообщение";
+"attachment.voice" = "Голосовое сообщение";
+"attachment.file" = "Файл";
+"attachment.open" = "Нажмите, чтобы открыть";
+"attachment.tap.to.load" = "Нажмите, чтобы скачать";
+
+/* Новый чат */
+"new.title" = "Новый чат";
+"new.direct.title" = "Личный чат";
+"new.direct.action" = "Открыть чат";
+"new.direct.footer" = "Введите точное имя пользователя — каталога пользователей на сервере нет.";
+"new.handle.placeholder" = "username";
+"new.contacts.title" = "Контакты";
+"new.group.title" = "Группа или канал";
+"new.group.name" = "Название";
+"new.group.member" = "Добавить @username";
+"new.group.add" = "Добавить";
+"new.group.create" = "Создать группу";
+"new.channel.create" = "Создать канал";
+"new.join.title" = "Присоединиться";
+"new.join.action" = "Войти";
+"new.join.placeholder" = "Код приглашения или @handle";
+"new.join.footer" = "Вставьте ссылку-приглашение, её код или публичный @handle чата.";
+"new.error.handle" = "Введите имя пользователя";
+"new.error.not.found" = "Пользователь или чат не найден";
+"new.error.blocked" = "Этот человек недоступен";
+"new.error.throttled" = "Слишком много новых чатов. Попробуйте позже";
+"new.error.title" = "Придумайте название";
+"new.error.title.long" = "Название — не длиннее %d символов";
+"new.error.members" = "Не больше %d участников при создании";
+
+/* Профиль */
+"profile.title" = "Профиль";
+"profile.section.identity" = "Аккаунт";
+"profile.section.appearance" = "Оформление";
+"profile.section.notifications" = "Уведомления";
+"profile.section.connection" = "Соединение";
+"profile.display.name" = "Отображаемое имя";
+"profile.user.id" = "ID пользователя";
+"profile.device.id" = "Устройство";
+"profile.local.only.footer" = "Имя и символ хранятся только на этом устройстве: на сервере нет API профиля, поэтому другие видят ваш username.";
+"profile.theme" = "Тема";
+"profile.theme.system" = "Как в системе";
+"profile.theme.light" = "Светлая";
+"profile.theme.dark" = "Тёмная";
+"profile.language" = "Язык";
+"profile.language.system" = "Как в системе";
+"profile.push" = "Push-уведомления";
+"profile.push.footer" = "Выключение стирает токен на сервере — уведомления не будут отправляться вовсе.";
+"profile.typing" = "Показывать, что я печатаю";
+"profile.status" = "Статус";
+"profile.sign.out" = "Выйти";
+"profile.sign.out.confirm" = "Выйти из аккаунта?";
+"profile.sign.out.message" = "Кэш чатов и сообщений на этом устройстве будет удалён.";

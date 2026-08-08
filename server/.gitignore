@@ -1,0 +1,23 @@
+# Binaries
+/bin/
+*.exe
+*.exe~
+synapse-server
+synapse-client
+
+# Go
+/vendor/
+*.test
+*.out
+
+# Env / secrets
+.env
+*.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local media object store
+/data/

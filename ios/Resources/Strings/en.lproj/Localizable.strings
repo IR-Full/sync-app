@@ -1,0 +1,129 @@
+/* Common */
+"app.name" = "Synapse";
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+"common.done" = "Done";
+"common.retry" = "Retry";
+"common.error" = "Something went wrong";
+
+/* Connection */
+"connection.online" = "Connected";
+"connection.connecting" = "Connecting…";
+"connection.offline" = "No connection";
+
+/* Auth */
+"auth.subtitle" = "A messenger on a custom binary protocol";
+"auth.login" = "Sign in";
+"auth.register" = "Create account";
+"auth.username" = "Username";
+"auth.password" = "Password";
+"auth.error.empty" = "Enter a username and a password";
+"auth.error.credentials" = "Wrong username or password";
+"auth.error.taken" = "That username is already taken";
+"auth.error.throttled" = "Too many attempts. Try again in a moment";
+"auth.error.invalid" = "Those details are not valid";
+"auth.error.network" = "Cannot reach the server";
+"auth.error.generic" = "Sign-in failed";
+"auth.session.expired" = "Your session ended. Please sign in again";
+
+/* Chat list */
+"chats.title" = "Chats";
+"chats.new" = "New chat";
+"chats.search" = "Search messages";
+"chats.untitled" = "Chat";
+"chats.no.messages" = "No messages yet";
+"chats.empty.title" = "No chats yet";
+"chats.empty.message" = "Start one with an @username, create a group, or join with an invite link.";
+"chats.hide" = "Hide";
+"chats.mute" = "Mute";
+"chats.unmute" = "Unmute";
+
+/* Search */
+"search.empty.title" = "Nothing found";
+"search.empty.message" = "Search looks inside the messages of chats you are in.";
+
+/* Chat */
+"chat.placeholder" = "Message";
+"chat.send" = "Send";
+"chat.typing" = "typing…";
+"chat.you" = "You";
+"chat.reply" = "Reply";
+"chat.edit" = "Edit";
+"chat.delete" = "Delete";
+"chat.retry" = "Send again";
+"chat.attach" = "Attach";
+"chat.attach.photo" = "Photo";
+"chat.attach.file" = "File";
+"chat.edited" = "edited";
+"chat.deleted" = "Message deleted";
+"chat.forwarded" = "Forwarded from %@";
+"chat.error.empty" = "Nothing to send";
+"chat.error.too.long" = "Too long — the limit is %d bytes";
+"chat.error.blocked" = "You cannot message this person";
+"chat.error.forbidden" = "You do not have access to this chat";
+"chat.error.not.found" = "This chat no longer exists";
+"chat.error.rate.limited" = "Slow down a little";
+"chat.error.attachment" = "Could not attach that file";
+"chat.error.media.too.large" = "The file is too large — the limit is %@";
+
+/* Presence */
+"presence.online" = "online";
+"presence.last.seen" = "last seen %@";
+
+/* Attachments */
+"attachment.image" = "Photo";
+"attachment.video" = "Video";
+"attachment.video.note" = "Video message";
+"attachment.voice" = "Voice message";
+"attachment.file" = "File";
+"attachment.open" = "Tap to open";
+"attachment.tap.to.load" = "Tap to download";
+
+/* New chat */
+"new.title" = "New chat";
+"new.direct.title" = "Direct message";
+"new.direct.action" = "Open chat";
+"new.direct.footer" = "Enter an exact username. There is no user directory to browse.";
+"new.handle.placeholder" = "username";
+"new.contacts.title" = "Contacts";
+"new.group.title" = "Group or channel";
+"new.group.name" = "Name";
+"new.group.member" = "Add @username";
+"new.group.add" = "Add";
+"new.group.create" = "Create group";
+"new.channel.create" = "Create channel";
+"new.join.title" = "Join";
+"new.join.action" = "Join";
+"new.join.placeholder" = "Invite code or @handle";
+"new.join.footer" = "Paste an invite link, its code, or a chat's public @handle.";
+"new.error.handle" = "Enter a username";
+"new.error.not.found" = "No such user or chat";
+"new.error.blocked" = "This person is unavailable";
+"new.error.throttled" = "Too many new chats. Try again in a moment";
+"new.error.title" = "Give the chat a name";
+"new.error.title.long" = "The name can be at most %d characters";
+"new.error.members" = "At most %d members to start with";
+
+/* Profile */
+"profile.title" = "Profile";
+"profile.section.identity" = "Account";
+"profile.section.appearance" = "Appearance";
+"profile.section.notifications" = "Notifications";
+"profile.section.connection" = "Connection";
+"profile.display.name" = "Display name";
+"profile.user.id" = "User ID";
+"profile.device.id" = "Device";
+"profile.local.only.footer" = "Your name and symbol are stored on this device only — the server has no profile API, so other people see your username.";
+"profile.theme" = "Theme";
+"profile.theme.system" = "System";
+"profile.theme.light" = "Light";
+"profile.theme.dark" = "Dark";
+"profile.language" = "Language";
+"profile.language.system" = "System";
+"profile.push" = "Push notifications";
+"profile.push.footer" = "Turning this off clears the token on the server, so nothing is sent at all.";
+"profile.typing" = "Send typing indicators";
+"profile.status" = "Status";
+"profile.sign.out" = "Sign out";
+"profile.sign.out.confirm" = "Sign out?";
+"profile.sign.out.message" = "Cached chats and messages on this device will be deleted.";

@@ -1,0 +1,42 @@
+# Local infra for the Synapse MVP: Postgres (durable metadata + message log),
+# Redis (ephemeral presence), NATS (event bus). Bring it up, then run the server
+# pointed at these via the env vars in Makefile's `run-server-infra` target.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: synapse
+      POSTGRES_DB: synapse
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # No initdb script: the server applies versioned migrations (golang-migrate,
+      # internal/store/postgres/migrations) itself on boot.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synapse"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js"] # enable JetStream for the durable-event upgrade path
+    ports:
+      - "4222:4222"
+      - "8222:8222" # monitoring
+
+volumes:
+  pgdata:

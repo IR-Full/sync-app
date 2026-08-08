@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS drafts;
+DROP TABLE IF EXISTS pinned_messages;

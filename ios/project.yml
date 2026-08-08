@@ -1,0 +1,78 @@
+# XcodeGen spec. `xcodegen generate` turns this into Synapse.xcodeproj.
+#
+# The project file is generated rather than committed on purpose: a .pbxproj is
+# not reviewable and not mergeable, and everything that actually matters here —
+# the three configurations, the local package, the resources — is legible above.
+
+name: Synapse
+options:
+  bundleIdPrefix: chat.synapse
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+configs:
+  Dev: debug
+  Stage: release
+  Prod: release
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+packages:
+  Synapse:
+    path: .
+
+targets:
+  Synapse:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Resources
+        buildPhase: resources
+    info:
+      path: App/Info.plist
+    configFiles:
+      Dev: Config/Dev.xcconfig
+      Stage: Config/Stage.xcconfig
+      Prod: Config/Prod.xcconfig
+    dependencies:
+      - package: Synapse
+        product: SynapseDI
+      - package: Synapse
+        product: SynapsePresentation
+    settings:
+      base:
+        # Localizations live in Resources/Strings/*.lproj and are resolved from
+        # Bundle.main, which is this target — see L10n.
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+
+schemes:
+  Synapse Dev:
+    build:
+      targets:
+        Synapse: all
+    run:
+      config: Dev
+    test:
+      config: Dev
+  Synapse Stage:
+    build:
+      targets:
+        Synapse: all
+    run:
+      config: Stage
+  Synapse Prod:
+    build:
+      targets:
+        Synapse: all
+    run:
+      config: Prod

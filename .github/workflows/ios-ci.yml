@@ -1,0 +1,115 @@
+name: iOS CI
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and test iOS app
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+          xcrun simctl list devicetypes | grep -i iphone | tail -5
+
+      - name: Run unit tests
+        working-directory: ios
+        run: |
+          set -o pipefail
+
+          xcodebuild test \
+            -scheme Synapse-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build the app
+        working-directory: ios
+        run: |
+          set -o pipefail
+
+          xcodebuild build \
+            -project Synapse.xcodeproj \
+            -scheme 'Synapse Dev' \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            -quiet
+
+      - name: Launch app and create screenshot
+        working-directory: ios
+        run: |
+          set -euo pipefail
+
+          UDID=$(
+            xcrun simctl list devices available -j |
+              python3 -c "
+          import json
+          import sys
+
+          devices = json.load(sys.stdin)['devices']
+
+          iphones = [
+              device['udid']
+              for device_list in devices.values()
+              for device in device_list
+              if 'iPhone 15' in device['name']
+          ]
+
+          if not iphones:
+              raise SystemExit('iPhone 15 simulator not found')
+
+          print(iphones[0])
+          "
+          )
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+          APP=$(
+            find "$HOME/Library/Developer/Xcode/DerivedData" \
+              -name '*.app' \
+              -type d \
+              -path '*Debug-iphonesimulator*' |
+              head -1
+          )
+
+          if [ -z "$APP" ]; then
+            echo "::error::Application bundle was not found"
+            exit 1
+          fi
+
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" chat.synapse.ios.dev
+
+          sleep 8
+
+          xcrun simctl io "$UDID" screenshot launch.png
+
+      - name: Upload simulator screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-screenshot
+          path: ios/launch.png
+          if-no-files-found: warn

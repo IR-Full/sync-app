@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name comes from the product flavor (Synapse / Synapse Dev / Synapse Staging). -->
+    <string name="app_title">Synapse</string>
+    <string name="auth_subtitle">Sign in to the Synapse gateway</string>
+
+    <!-- Auth -->
+    <string name="auth_login">Sign in</string>
+    <string name="auth_register">Create account</string>
+    <string name="auth_login_action">Sign in</string>
+    <string name="auth_register_action">Create account</string>
+    <string name="auth_username">Username</string>
+    <string name="auth_password">Password</string>
+
+    <!-- Chat list -->
+    <string name="chats_title">Chats</string>
+    <string name="chats_empty_title">No conversations yet</string>
+    <string name="chats_empty_subtitle">Start one with @username, create a group, or join by invite link.</string>
+    <string name="chat_untitled">Chat %1$s</string>
+    <string name="chat_preview_attachment">Attachment</string>
+    <string name="chat_preview_empty">No messages</string>
+
+    <!-- Chat -->
+    <string name="chat_input_hint">Message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_attach">Attach image</string>
+    <string name="chat_typing">typing…</string>
+    <string name="chat_edited">edited</string>
+    <string name="chat_forwarded">Forwarded</string>
+    <string name="chat_message_deleted">Message deleted</string>
+    <string name="chat_empty_title">No messages here</string>
+    <string name="chat_empty_subtitle">Send the first one.</string>
+
+    <!-- Message status -->
+    <string name="status_pending">Sending</string>
+    <string name="status_sent">Sent</string>
+    <string name="status_read">Read</string>
+    <string name="status_failed">Not sent</string>
+
+    <!-- New chat -->
+    <string name="new_chat_title">New chat</string>
+    <string name="new_chat_tab_direct">Person</string>
+    <string name="new_chat_tab_group">Group</string>
+    <string name="new_chat_tab_join">Join</string>
+    <string name="new_chat_username_label">Username</string>
+    <string name="new_chat_username_hint">Exact handle. The gateway resolves a username to a user; there is no fuzzy user search.</string>
+    <string name="new_chat_find">Find and open</string>
+    <string name="new_chat_group_title">Title</string>
+    <string name="new_chat_group_members">Members</string>
+    <string name="new_chat_group_members_hint">@handles or user ids, separated by spaces or commas</string>
+    <string name="new_chat_as_channel">Create as channel</string>
+    <string name="new_chat_as_channel_hint">A channel broadcasts: few writers, many readers.</string>
+    <string name="new_chat_create">Create</string>
+    <string name="new_chat_invite_label">Invite code or @handle</string>
+    <string name="new_chat_invite_hint">An invite link code, or a chat\'s public handle.</string>
+    <string name="new_chat_join">Join</string>
+    <string name="new_chat_known_people">People you know</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_user_id">ID %1$s</string>
+    <string name="settings_display_name">Display name</string>
+    <string name="settings_change_avatar">Change photo</string>
+    <string name="settings_profile_local_note">Name and photo are stored on this device only: the protocol has no profile or avatar to publish them to.</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_ru">Russian</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_notifications_hint">Turning this off clears the push token on the server, so nothing is sent to this device.</string>
+    <string name="settings_gateway">Gateway</string>
+    <string name="settings_gateway_url">WebSocket URL</string>
+    <string name="settings_gateway_hint">Takes effect on the next connection, e.g. ws://10.0.2.2:8080/ws</string>
+    <string name="settings_logout">Sign out</string>
+    <string name="settings_logout_confirm">This clears the local cache on this device. Your messages stay on the server.</string>
+
+    <!-- Connection -->
+    <string name="connection_offline">Offline — messages will be sent when the connection returns</string>
+    <string name="connection_connecting">Connecting…</string>
+
+    <!-- Actions -->
+    <string name="action_retry">Retry</string>
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_dismiss">Dismiss</string>
+
+    <!-- Errors -->
+    <string name="error_offline">No connection to the gateway</string>
+    <string name="error_timeout">The gateway did not answer in time</string>
+    <string name="error_auth">Session expired — sign in again</string>
+    <string name="error_not_found">Not found</string>
+    <string name="error_forbidden">Not allowed</string>
+    <string name="error_rate_limited">Too many requests — try again shortly</string>
+    <string name="error_generic">Something went wrong</string>
+    <string name="error_username_short">Username must be at least 3 characters</string>
+    <string name="error_username_chars">Use lowercase letters, digits, and . _ -</string>
+    <string name="error_password_short">Password must be at least 6 characters</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_messages">Messages</string>
+    <string name="notification_channel_messages_description">New message notifications</string>
+    <string name="notification_default_title">New message</string>
+</resources>

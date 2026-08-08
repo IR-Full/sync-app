@@ -1,0 +1,10 @@
+-- Reverse of 000001_init.up.sql.
+DROP TABLE IF EXISTS outbox;
+DROP TABLE IF EXISTS read_state;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS chat_members;
+DROP TABLE IF EXISTS direct_index;
+DROP TABLE IF EXISTS chats;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS users;

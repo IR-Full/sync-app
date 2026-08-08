@@ -1,0 +1,18 @@
+// Dev — the server as `go run ./cmd/server` starts it: WebSocket on :8080,
+// raw TCP on :7000, no TLS.
+//
+// `//` inside a value would be read as a comment, so the scheme separator is
+// spelled `$()//` — an empty variable expansion between the colon and the
+// slashes. This is the standard xcconfig workaround, not a typo.
+
+SYNAPSE_ENVIRONMENT = dev
+SYNAPSE_GATEWAY_URL = ws:$()//localhost:8080/ws
+SYNAPSE_TCP_HOST = localhost
+SYNAPSE_TCP_PORT = 7000
+SYNAPSE_TRANSPORT = webSocket
+SYNAPSE_MEDIA_BASE_URL = http:$()//localhost:8080
+SYNAPSE_ALLOWS_INSECURE_TLS = YES
+
+PRODUCT_BUNDLE_IDENTIFIER = chat.synapse.ios.dev
+PRODUCT_NAME = Synapse Dev
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG

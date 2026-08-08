@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>Synapse</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- Server configuration. Every value comes from the .xcconfig of the
+         selected build configuration, so dev / stage / prod is a scheme choice
+         and never a code change. See Config/*.xcconfig. -->
+    <key>SynapseEnvironment</key>
+    <string>$(SYNAPSE_ENVIRONMENT)</string>
+    <key>SynapseGatewayURL</key>
+    <string>$(SYNAPSE_GATEWAY_URL)</string>
+    <key>SynapseTCPHost</key>
+    <string>$(SYNAPSE_TCP_HOST)</string>
+    <key>SynapseTCPPort</key>
+    <string>$(SYNAPSE_TCP_PORT)</string>
+    <key>SynapseTransport</key>
+    <string>$(SYNAPSE_TRANSPORT)</string>
+    <key>SynapseMediaBaseURL</key>
+    <string>$(SYNAPSE_MEDIA_BASE_URL)</string>
+    <key>SynapseAllowsInsecureTLS</key>
+    <string>$(SYNAPSE_ALLOWS_INSECURE_TLS)</string>
+
+    <!-- Cleartext is permitted for localhost only, and only so `go run
+         ./cmd/server` works out of the box over ws://. Stage and prod use wss://
+         and are not covered by this exception. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>localhost</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>

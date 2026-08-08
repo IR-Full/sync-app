@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Session tokens and the message cache are never backed up: a restored
+         backup would carry a bearer token and someone's chat history onto another
+         device. -->
+    <exclude domain="file" path="datastore/" />
+    <exclude domain="database" path="synapse.db" />
+</full-backup-content>

@@ -1,0 +1,607 @@
+// Protobuf definitions for Synapse envelope bodies. The framing and envelope
+// (pkg/wire) are unchanged binary; only the BODY encoding is protobuf. Generated
+// Go lands in internal/wirepb and is driven by the protoCodec (pkg/wire).
+//
+// Regenerate with:  make proto   (or: protoc --go_out=. --go_opt=module=... ...)
+syntax = "proto3";
+
+package synapse.v1;
+
+option go_package = "github.com/synapse-chat/synapse/internal/wirepb;wirepb";
+
+message Hello {
+  string client_version = 1;
+  string device_id = 2;
+  string platform = 3;
+  uint32 caps = 4;
+  string resume_token = 5;
+}
+
+message Welcome {
+  string server_version = 1;
+  string session_id = 2;
+  uint32 caps = 3;
+  int32 heartbeat_ms = 4;
+  int32 max_inflight = 5;
+  bool resume_supported = 6;
+}
+
+message Auth {
+  string token = 1;
+  string username = 2;
+  string password = 3;
+  bool register = 4;
+  // display_name is honoured on registration only; afterwards it is changed
+  // through ProfileSet, which is the only writer of the field.
+  string display_name = 5;
+}
+
+message AuthOK {
+  string user_id = 1;
+  string device_id = 2;
+  string session_id = 3;
+  string token = 4;
+  string resume_token = 5;
+  // The identity behind the session. Without these a client that authenticated
+  // by TOKEN knows its user id and nothing else about itself — there was no
+  // other message that would tell it.
+  string username = 6;
+  string display_name = 7;
+  string avatar_ref = 8;
+}
+
+message Send {
+  string chat_id = 1;
+  string dedup_key = 2;
+  string text = 3;
+  string media_ref = 4;
+  string reply_to = 5;
+  Attachment attachment = 6;
+  int32 ttl_seconds = 7;
+}
+
+// Attachment describes media attached to a message (voice, video note, file).
+message Attachment {
+  string kind = 1;
+  string media_ref = 2;
+  string filename = 3;
+  string mime = 4;
+  int64 size = 5;
+  int64 duration_ms = 6;
+  repeated int32 waveform = 7;
+  int32 width = 8;
+  int32 height = 9;
+  string thumb_ref = 10;
+}
+
+message SendAck {
+  string dedup_key = 1;
+  string message_id = 2;
+  string chat_id = 3;
+  uint64 chat_seq = 4;
+  int64 timestamp = 5;
+  bool duplicate = 6;
+}
+
+message NewMessage {
+  string message_id = 1;
+  string chat_id = 2;
+  string sender_id = 3;
+  uint64 chat_seq = 4;
+  string text = 5;
+  string media_ref = 6;
+  string reply_to = 7;
+  bool edited = 8;
+  bool deleted = 9;
+  int64 timestamp = 10;
+  Attachment attachment = 11;
+  string thread_root = 12;
+  int32 reply_count = 13;
+  ForwardOrigin forward = 14;
+  int64 expires_at = 15;
+}
+
+// Thread requests the replies under a thread root (oldest first, forward paging).
+message Thread {
+  string chat_id = 1;
+  string root_id = 2;
+  uint64 after_seq = 3;
+  int32 limit = 4;
+}
+
+// ThreadOK terminates a streamed thread page.
+message ThreadOK {
+  string chat_id = 1;
+  string root_id = 2;
+  uint64 next_after = 3;
+  bool done = 4;
+}
+
+message Read {
+  string chat_id = 1;
+  string up_to_message_id = 2;
+  uint64 up_to_chat_seq = 3;
+}
+
+message ReadUpdate {
+  string chat_id = 1;
+  string user_id = 2;
+  uint64 up_to_chat_seq = 3;
+}
+
+message Typing {
+  string chat_id = 1;
+  string user_id = 2;
+  bool active = 3;
+}
+
+// React toggles an emoji reaction on a message (C→S).
+message React {
+  string chat_id = 1;
+  string message_id = 2;
+  string emoji = 3;
+}
+
+// ReactUpdate announces a reaction change to a chat's members (S→C).
+message ReactUpdate {
+  string chat_id = 1;
+  string message_id = 2;
+  string user_id = 3;
+  string emoji = 4;
+  bool added = 5;
+  map<string, int32> counts = 6;
+}
+
+message Presence {
+  string user_id = 1;
+  bool online = 2;
+  int64 last_seen_ms = 3;
+}
+
+message Edit {
+  string chat_id = 1;
+  string message_id = 2;
+  string text = 3;
+}
+
+message Delete {
+  string chat_id = 1;
+  string message_id = 2;
+  bool for_all = 3;
+}
+
+message History {
+  string chat_id = 1;
+  uint64 before_seq = 2;
+  int32 limit = 3;
+}
+
+message HistoryOK {
+  string chat_id = 1;
+  uint64 next_before = 2;
+  bool done = 3;
+}
+
+message Resume {
+  string resume_token = 1;
+  uint64 last_ack_seq = 2;
+}
+
+message ResumeOK {
+  string session_id = 1;
+  uint64 from_seq = 2;
+}
+
+message Error {
+  uint32 code = 1;
+  string message = 2;
+  int32 retry_after_ms = 3;
+}
+
+message MediaInit {
+  string filename = 1;
+  string content_type = 2;
+  int64 size = 3;
+}
+
+message MediaTicket {
+  string media_ref = 1;
+  string upload_url = 2;
+  int64 expires_at = 3;
+}
+
+message MediaFetch {
+  string media_ref = 1;
+}
+
+message MediaURL {
+  string media_ref = 1;
+  string download_url = 2;
+  int64 expires_at = 3;
+}
+
+message Search {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SearchHit {
+  string message_id = 1;
+  string chat_id = 2;
+  string sender_id = 3;
+  uint64 seq = 4;
+  string text = 5;
+}
+
+message SearchResults {
+  string query = 1;
+  repeated SearchHit hits = 2;
+}
+
+message KeyPublish {
+  string identity_key = 1;
+  string signing_key = 2;
+  string signed_prekey = 3;
+  string signed_prekey_sig = 4;
+  repeated string prekeys = 5;
+}
+
+message KeyFetch {
+  string user_id = 1;
+  string device_id = 2;
+}
+
+message KeyBundle {
+  string user_id = 1;
+  string device_id = 2;
+  string identity_key = 3;
+  string signing_key = 4;
+  string signed_prekey = 5;
+  string signed_prekey_sig = 6;
+  string one_time_prekey = 7;
+}
+
+// KeyBundles carries every device's bundle for a user (multi-device secret sync).
+message KeyBundles {
+  string user_id = 1;
+  repeated KeyBundle bundles = 2;
+}
+
+message SecretMsg {
+  string to_user_id = 1;
+  string to_device_id = 2;
+  string from_user_id = 3;
+  string from_device_id = 4;
+  string ratchet_header = 5;
+  string ciphertext = 6;
+}
+
+// ChatExport is an owner/admin dump of a cloud chat.
+message ChatExport {
+  string chat_id = 1;
+}
+
+message ChatMember {
+  string user_id = 1;
+  string role = 2;
+  int64 joined_at = 3;
+}
+
+message ChatExportResult {
+  string chat_id = 1;
+  string type = 2;
+  string title = 3;
+  string owner_id = 4;
+  repeated ChatMember members = 5;
+  repeated NewMessage messages = 6;
+  bool done = 7; // true on the final page of a streamed export
+}
+
+// ---- Calls & conferences (signaling only; media never traverses the server) ----
+
+message CallInvite {
+  string chat_id = 1;
+  string kind = 2;
+}
+
+message CallAction {
+  string call_id = 1;
+}
+
+message CallParticipant {
+  string user_id = 1;
+  string device_id = 2;
+  string state = 3;
+}
+
+message CallState {
+  string call_id = 1;
+  string chat_id = 2;
+  string initiator_id = 3;
+  string kind = 4;
+  string state = 5;
+  repeated CallParticipant participants = 6;
+}
+
+message CallSignal {
+  string call_id = 1;
+  string to_user_id = 2;
+  string to_device_id = 3;
+  string from_user_id = 4;
+  string from_device_id = 5;
+  string signal_type = 6;
+  string payload = 7;
+}
+
+// ---- Polls ----
+
+message PollCreate {
+  string chat_id = 1;
+  string question = 2;
+  repeated string options = 3;
+  bool multi_choice = 4;
+  bool anonymous = 5;
+}
+
+message PollVote {
+  string poll_id = 1;
+  int32 option = 2;
+}
+
+message PollClose {
+  string poll_id = 1;
+}
+
+message PollOption {
+  int32 index = 1;
+  string text = 2;
+  int32 votes = 3;
+}
+
+message PollState {
+  string poll_id = 1;
+  string chat_id = 2;
+  string message_id = 3;
+  string question = 4;
+  repeated PollOption options = 5;
+  int32 total_votes = 6;
+  bool multi_choice = 7;
+  bool anonymous = 8;
+  bool closed = 9;
+  repeated int32 my_votes = 10;
+}
+
+// ---- Contacts ----
+
+message ContactAdd {
+  string target = 1;
+  string name = 2;
+}
+
+message ContactRemove {
+  string target = 1;
+}
+
+message ContactSync {
+  int64 since = 1;
+}
+
+message Contact {
+  string user_id = 1;
+  string name = 2;
+  bool blocked = 3;
+  int64 updated_at = 4;
+}
+
+message ContactList {
+  repeated Contact contacts = 1;
+  int64 cursor = 2;
+}
+
+message Block {
+  string target = 1;
+  bool blocked = 2;
+}
+
+// ---- Forwarding, scheduling, self-destruct ----
+
+message ForwardOrigin {
+  string chat_id = 1;
+  string message_id = 2;
+  string sender_id = 3;
+}
+
+message Forward {
+  string from_chat_id = 1;
+  string message_id = 2;
+  string to_chat_id = 3;
+  string dedup_key = 4;
+}
+
+message Schedule {
+  string chat_id = 1;
+  string text = 2;
+  string media_ref = 3;
+  Attachment attachment = 4;
+  string reply_to = 5;
+  int32 ttl_seconds = 6;
+  int64 send_at = 7;
+}
+
+message ScheduleList { string chat_id = 1; }
+message ScheduleCancel { string id = 1; }
+
+message ScheduledItem {
+  string id = 1;
+  string chat_id = 2;
+  string text = 3;
+  int64 send_at = 4;
+}
+
+message Scheduled { repeated ScheduledItem items = 1; }
+
+// ---- Pins & drafts ----
+
+message Pin {
+  string message_id = 1;
+  string pinned_by = 2;
+  int64 pinned_at = 3;
+}
+
+message PinAction {
+  string chat_id = 1;
+  string message_id = 2;
+}
+
+message Pinned {
+  string chat_id = 1;
+  repeated Pin pins = 2;
+}
+
+message Draft {
+  string chat_id = 1;
+  string text = 2;
+  string reply_to = 3;
+}
+
+message DraftSync { int64 since = 1; }
+
+message DraftItem {
+  string chat_id = 1;
+  string text = 2;
+  string reply_to = 3;
+  int64 updated_at = 4;
+}
+
+message Drafts {
+  repeated DraftItem drafts = 1;
+  int64 cursor = 2;
+}
+
+// ---- Public handles, invite links, admin rights ----
+
+message SetUsername {
+  string chat_id = 1;
+  string username = 2;
+}
+
+message InviteCreate {
+  string chat_id = 1;
+  int64 expires_at = 2;
+  int32 max_uses = 3;
+}
+
+message InviteRevoke {
+  string chat_id = 1;
+  string code = 2;
+}
+
+message InviteList { string chat_id = 1; }
+
+message Join {
+  string code = 1;
+  string handle = 2;
+}
+
+message SetRole {
+  string chat_id = 1;
+  string user_id = 2;
+  string role = 3;
+}
+
+message InviteLink {
+  string code = 1;
+  string chat_id = 2;
+  int64 expires_at = 3;
+  int32 max_uses = 4;
+  int32 uses = 5;
+}
+
+message Invites {
+  repeated InviteLink links = 1;
+  string joined_chat = 2;
+}
+
+// FanoutShard is an INTERNAL bus payload, not an envelope body: one chunk of a
+// hot chat's recipients plus the message to deliver to them. It lives here so
+// everything crossing the bus is protobuf — the shard job used to be the one
+// exception, encoded as JSON, which meant the heaviest payload in the system
+// (a full message body per chunk) travelled in the least efficient encoding.
+message FanoutShard {
+  NewMessage body = 1;
+  repeated string members = 2;
+}
+
+message ChatCreate {
+  string type = 1;
+  string title = 2;
+  repeated string members = 3;
+}
+
+message ChatInfo {
+  string chat_id = 1;
+  string type = 2;
+  string title = 3;
+  string owner_id = 4;
+}
+
+message PushToken {
+  string token = 1;
+}
+
+// ChatList asks for the chats the caller belongs to. It pages by keyset over the
+// chat id (`after` = the last id of the previous page, empty = from the start):
+// a client with more chats than fit in one frame must be able to resume where it
+// stopped, and a chat id is the only cursor that is stable while the list is
+// being read.
+message ChatList {
+  string after = 1;
+  int32 limit = 2;
+}
+
+// ChatSummary is one row of the chat list: enough to render an entry without a
+// follow-up round trip per chat.
+message ChatSummary {
+  string chat_id = 1;
+  string type = 2;
+  string title = 3;
+  string owner_id = 4;
+  string username = 5;
+  // last_seq is the chat's newest position, so a client knows what to backfill.
+  uint64 last_seq = 6;
+  // my_role is the caller's role in this chat (member | admin | owner).
+  string my_role = 7;
+  // peer_id is filled for DIRECT chats only: the other participant. A 1:1 chat
+  // has no title, so without this the entry has nothing to be named after.
+  string peer_id = 8;
+}
+
+message Chats {
+  repeated ChatSummary chats = 1;
+  // next_after is the cursor for the following page; done marks the last one.
+  string next_after = 2;
+  bool done = 3;
+}
+
+// ProfileGet reads a user's public profile. Target is a user id or "@username" —
+// which also makes it the handle→user lookup, so resolving a handle no longer
+// has to be smuggled through an unrelated read-only message.
+message ProfileGet {
+  string target = 1;
+}
+
+// ProfileSet updates the CALLER's own profile. Empty fields mean "leave as is"
+// (proto3 cannot tell absent from empty), so clearing the avatar is an explicit
+// flag rather than an empty string.
+message ProfileSet {
+  string display_name = 1;
+  string avatar_ref = 2;
+  bool clear_avatar = 3;
+}
+
+message Profile {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_ref = 4;
+}

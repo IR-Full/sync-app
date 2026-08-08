@@ -1,0 +1,314 @@
+// gRPC service contracts for the Synapse microservice split. Each domain service
+// (auth, chat, message, presence, key directory) is exposed here so it can run as
+// a standalone process; the gateway calls them as gRPC clients that satisfy the
+// same Go interfaces the in-process services do (internal/gateway/services.go).
+//
+// Generated Go lands in internal/rpc/pb. Regenerate with:  make proto
+syntax = "proto3";
+
+// Distinct proto package from body.proto (synapse.v1): both are linked into the
+// same binaries (the gateway/daemons use the wire bodies AND these RPCs), and a
+// shared proto package + duplicate message names (e.g. KeyBundle) would collide
+// in the global protobuf registry at init.
+package synapse.rpc.v1;
+
+option go_package = "github.com/synapse-chat/synapse/internal/rpc/pb;rpcpb";
+
+// ---- domain messages (mirror internal/model) ----
+
+message User {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  int64 created_at = 4;
+  string avatar_ref = 5;
+}
+
+message Session {
+  string id = 1;
+  string user_id = 2;
+  string device_id = 3;
+  string token = 4;
+  string resume_token = 5;
+  int64 created_at = 6;
+  int64 expires_at = 7;
+  int64 revoked_at = 8;
+}
+
+message Chat {
+  string id = 1;
+  string type = 2;
+  string title = 3;
+  string owner_id = 4;
+  int64 created_at = 5;
+  uint64 last_seq = 6;
+  string username = 7;
+}
+
+message ChatMember {
+  string chat_id = 1;
+  string user_id = 2;
+  string role = 3;
+  int64 joined_at = 4;
+  bool muted = 5;
+}
+
+// Attachment and ForwardOrigin mirror their body.proto twins field for field.
+// They are redeclared rather than imported because the two files are deliberately
+// separate proto packages (see the note at the top): the shapes are the same
+// domain types crossing a different boundary — service-to-service, not
+// client-to-server.
+message Attachment {
+  string kind = 1;
+  string media_ref = 2;
+  string filename = 3;
+  string mime = 4;
+  int64 size = 5;
+  int64 duration_ms = 6;
+  repeated int32 waveform = 7;
+  int32 width = 8;
+  int32 height = 9;
+  string thumb_ref = 10;
+}
+
+message ForwardOrigin {
+  string chat_id = 1;
+  string message_id = 2;
+  string sender_id = 3;
+}
+
+// Message must carry EVERY field a client can observe: the gateway renders its
+// wire body straight from this, so a field missing here is a field no client on
+// the split deployment can ever see — even though the monolith shows it.
+message Message {
+  string id = 1;
+  string chat_id = 2;
+  string sender_id = 3;
+  uint64 seq = 4;
+  string text = 5;
+  string media_ref = 6;
+  string reply_to = 7;
+  bool edited = 8;
+  bool deleted = 9;
+  int64 created_at = 10;
+  int64 edited_at = 11;
+  Attachment attachment = 12;
+  string thread_root = 13;
+  int32 reply_count = 14;
+  ForwardOrigin forward = 15;
+  int64 expires_at = 16;
+}
+
+// ---- Auth service ----
+
+message RegisterRequest {
+  string username = 1;
+  string password = 2;
+  string display_name = 3;
+  string device_id = 4;
+  string platform = 5;
+}
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  string device_id = 3;
+  string platform = 4;
+}
+// SessionUser is the (session, user) pair returned by register/login.
+message SessionUser {
+  Session session = 1;
+  User user = 2;
+}
+message TokenRequest { string token = 1; }
+message ResumeRequest { string resume_token = 1; }
+// Identity is the resolved (session, user) behind a token/resume.
+message Identity {
+  Session session = 1;
+  User user = 2;
+}
+
+service AuthService {
+  rpc Register(RegisterRequest) returns (SessionUser);
+  rpc Login(LoginRequest) returns (SessionUser);
+  rpc Authenticate(TokenRequest) returns (Identity);
+  rpc Resume(ResumeRequest) returns (Identity);
+}
+
+// ---- Chat service ----
+
+message DirectRequest {
+  string user_a = 1;
+  string user_b = 2;
+}
+message ChatIDRequest { string chat_id = 1; }
+message CreateGroupRequest {
+  string owner_id = 1;
+  string title = 2;
+  string type = 3;
+  repeated string member_ids = 4;
+}
+message MembersReply { repeated ChatMember members = 1; }
+message MemberIDsReply { repeated string user_ids = 1; }
+// MemberPageRequest walks membership by keyset: ids after `after_user_id`,
+// ordered, at most `limit`. Fanout needs this to stream a million-member channel
+// instead of materializing it.
+message MemberPageRequest {
+  string chat_id = 1;
+  string after_user_id = 2;
+  int32 limit = 3;
+}
+// ChatUserRequest authorizes a user against a chat (CanPost / IsMember).
+message ChatUserRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+message BoolReply { bool ok = 1; }
+
+// UserChatsRequest pages a user's chat list by keyset over the chat id. The
+// whole summary is built inside the chat service: assembling it at the gateway
+// would cost one Get (plus one Members for every direct chat) per row, turning
+// one screen of chats into a burst of round trips.
+message UserChatsRequest {
+  string user_id = 1;
+  string after = 2;
+  int32 limit = 3;
+}
+message ChatSummary {
+  Chat chat = 1;
+  string my_role = 2;
+  string peer_id = 3;
+}
+// ChatSummariesReply is one page of summaries. The cursor is not repeated here:
+// it is the id of the last row, so the gateway derives it from the page itself
+// and the monolith and the split deployment cannot disagree about it.
+message ChatSummariesReply { repeated ChatSummary chats = 1; }
+
+service ChatService {
+  rpc EnsureDirect(DirectRequest) returns (Chat);
+  rpc FindDirect(DirectRequest) returns (Chat);
+  rpc Get(ChatIDRequest) returns (Chat);
+  rpc CreateGroup(CreateGroupRequest) returns (Chat);
+  rpc Members(ChatIDRequest) returns (MembersReply);
+  rpc UserChats(UserChatsRequest) returns (ChatSummariesReply);
+  rpc MemberIDs(ChatIDRequest) returns (MemberIDsReply);
+  rpc MemberIDsPage(MemberPageRequest) returns (MemberIDsReply);
+  // CanPost/IsMember are used by the message service (messaged is a client of
+  // chatd) to authorize writes and reads.
+  rpc CanPost(ChatUserRequest) returns (BoolReply);
+  rpc IsMember(ChatUserRequest) returns (BoolReply);
+}
+
+// ---- Message service (broker write path + read path) ----
+
+enum Op {
+  OP_UNSPECIFIED = 0;
+  OP_CREATE = 1;
+  OP_EDIT = 2;
+  OP_DELETE = 3;
+}
+message SubmitRequest {
+  Op op = 1;
+  string actor_id = 2;
+  string chat_id = 3;
+  string message_id = 4;
+  string dedup_key = 5;
+  string text = 6;
+  string media_ref = 7;
+  string reply_to = 8;
+  Attachment attachment = 9;
+  // ttl_seconds self-destructs the created message that many seconds after it
+  // lands (0 = never). The deadline is computed at the write path, not here, so
+  // both deployments date a message from the same clock.
+  int32 ttl_seconds = 10;
+}
+message SubmitReply {
+  Message message = 1;
+  bool duplicate = 2;
+}
+message HistoryRequest {
+  string user_id = 1;
+  string chat_id = 2;
+  uint64 before_seq = 3;
+  int32 limit = 4;
+}
+message HistoryReply { repeated Message messages = 1; }
+message ThreadRequest {
+  string user_id = 1;
+  string chat_id = 2;
+  string root_id = 3;
+  uint64 after_seq = 4;
+  int32 limit = 5;
+}
+message ForwardRequest {
+  string user_id = 1;
+  string src_chat_id = 2;
+  string src_msg_id = 3;
+  string dst_chat_id = 4;
+  string dedup_key = 5;
+}
+message MarkReadRequest {
+  string user_id = 1;
+  string chat_id = 2;
+  uint64 up_to_seq = 3;
+}
+message Empty {}
+
+service MessageService {
+  rpc Submit(SubmitRequest) returns (SubmitReply);
+  rpc History(HistoryRequest) returns (HistoryReply);
+  rpc Thread(ThreadRequest) returns (HistoryReply);
+  rpc Forward(ForwardRequest) returns (SubmitReply);
+  rpc MarkRead(MarkReadRequest) returns (Empty);
+}
+
+// ---- Presence service ----
+
+message UserRequest { string user_id = 1; }
+message TypingRequest {
+  string chat_id = 1;
+  string user_id = 2;
+  bool active = 3;
+}
+
+service PresenceService {
+  rpc Online(UserRequest) returns (Empty);
+  rpc Heartbeat(UserRequest) returns (Empty);
+  rpc Offline(UserRequest) returns (Empty);
+  rpc Typing(TypingRequest) returns (Empty);
+}
+
+// ---- Key directory service (E2E prekeys) ----
+
+message PublishRequest {
+  string user_id = 1;
+  string device_id = 2;
+  string identity_key = 3;
+  string signing_key = 4;
+  string signed_prekey = 5;
+  string signed_prekey_sig = 6;
+  repeated string prekeys = 7;
+}
+message FetchRequest {
+  string user_id = 1;
+  string device_id = 2;
+}
+message KeyBundle {
+  string user_id = 1;
+  string device_id = 2;
+  string identity_key = 3;
+  string signing_key = 4;
+  string signed_prekey = 5;
+  string signed_prekey_sig = 6;
+  string one_time_prekey = 7;
+}
+message FetchReply {
+  KeyBundle bundle = 1;
+  bool found = 2;
+}
+message FetchAllReply { repeated KeyBundle bundles = 1; }
+
+service KeyDirService {
+  rpc Publish(PublishRequest) returns (Empty);
+  rpc Fetch(FetchRequest) returns (FetchReply);
+  rpc FetchAll(UserRequest) returns (FetchAllReply);
+}
