@@ -32,7 +32,7 @@ jobs:
           xcrun simctl list runtimes
           xcrun simctl list devicetypes | grep -i iphone | tail -5
 
-      - name: Run unit tests
+      - name: Run Swift package tests
         working-directory: ios
         run: |
           xcodebuild test \
@@ -47,7 +47,18 @@ jobs:
 
       - name: Generate Xcode project
         working-directory: ios
-        run: xcodegen generate
+        run: |
+          rm -rf Synapse.xcodeproj
+          xcodegen generate
+
+      - name: Resolve Swift package dependencies
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project Synapse.xcodeproj \
+            -scheme 'Synapse Dev' \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/source-packages"
 
       - name: Build the app
         working-directory: ios
@@ -62,6 +73,7 @@ jobs:
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             -derivedDataPath "$RUNNER_TEMP/synapse-derived-data" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/source-packages" \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
 
