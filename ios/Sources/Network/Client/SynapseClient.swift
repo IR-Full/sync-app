@@ -158,11 +158,17 @@ public actor SynapseClient {
     /// A fresh stream of pushes. Multiple callers each get their own; a dropped
     /// consumer unsubscribes itself.
     public func events() -> AsyncStream<Event> {
-        AsyncStream { continuation in
+        let client = self
+
+        return AsyncStream { continuation in
             let id = UUID()
-            subscribers[id] = continuation
-            continuation.onTermination = { [weak self] _ in
-                Task { await self?.removeSubscriber(id) }
+
+            client.subscribers[id] = continuation
+
+            continuation.onTermination = { [weak client] _ in
+                Task { [weak client, id] in
+                    await client?.removeSubscriber(id)
+                }
             }
         }
     }
