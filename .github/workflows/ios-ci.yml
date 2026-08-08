@@ -51,10 +51,15 @@ jobs:
       - name: Build the app
         working-directory: ios
         run: |
+          set -euo pipefail
+
+          rm -rf "$RUNNER_TEMP/synapse-derived-data"
+
           xcodebuild build \
             -project Synapse.xcodeproj \
             -scheme 'Synapse Dev' \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
+            -derivedDataPath "$RUNNER_TEMP/synapse-derived-data" \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
 
@@ -63,46 +68,67 @@ jobs:
         run: |
           set -euo pipefail
 
-          UDID=$(
-            xcrun simctl list devices available -j |
-              python3 -c "
+          UDID="$(
+            python3 - <<'PY'
           import json
-          import sys
+          import subprocess
 
-          devices = json.load(sys.stdin)['devices']
+          devices = json.loads(
+              subprocess.check_output(
+                  [
+                      "xcrun",
+                      "simctl",
+                      "list",
+                      "devices",
+                      "available",
+                      "-j",
+                  ],
+                  text=True,
+              )
+          )["devices"]
 
           iphones = [
-              device['udid']
+              device["udid"]
               for runtime, device_list in devices.items()
               for device in device_list
-              if runtime.endswith('iOS-17-5')
-              and device['name'] == 'iPhone 15'
+              if runtime.endswith("iOS-17-5")
+              and device["name"] == "iPhone 15"
           ]
 
           if not iphones:
               raise SystemExit(
-                  'iPhone 15 with iOS 17.5 simulator not found'
+                  "iPhone 15 with iOS 17.5 simulator not found"
               )
 
           print(iphones[0])
-          "
-          )
+          PY
+          )"
 
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
 
-          APP=$(
-            find "$HOME/Library/Developer/Xcode/DerivedData" \
+          APP="$(
+            find "$RUNNER_TEMP/synapse-derived-data/Build/Products/Debug-iphonesimulator" \
+              -maxdepth 1 \
               -name '*.app' \
               -type d \
-              -path '*Debug-iphonesimulator*' \
-              | head -1
-          )
+              -print \
+              -quit
+          )"
 
           if [ -z "$APP" ]; then
             echo "::error::Application bundle was not found"
+
+            echo "::group::Build directory contents"
+            find "$RUNNER_TEMP/synapse-derived-data" \
+              -maxdepth 6 \
+              -print || true
+            echo "::endgroup::"
+
             exit 1
           fi
+
+          echo "Installing app: $APP"
 
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" chat.synapse.ios.dev
