@@ -16,7 +16,7 @@ import com.synapse.messenger.domain.model.MessageAttachment
 import com.synapse.messenger.domain.model.MessageStatus
 import com.synapse.messenger.domain.model.UserSummary
 import com.synapse.messenger.network.protocol.Attachment as WireAttachment
-import com.synapse.messenger.network.protocol.Contact as WireContact
+import com.synapse.messenger.network.protocol.Profile as WireProfile
 import com.synapse.messenger.network.protocol.NewMessage
 
 /**
@@ -128,26 +128,29 @@ fun StoredAttachment.toDomain(): MessageAttachment = MessageAttachment(
 
 fun statusToDomain(raw: String): MessageStatus = when (raw) {
     MessageStatuses.PENDING -> MessageStatus.PENDING
+    MessageStatuses.DELIVERED -> MessageStatus.DELIVERED
     MessageStatuses.READ -> MessageStatus.READ
     MessageStatuses.FAILED -> MessageStatus.FAILED
     else -> MessageStatus.SENT
 }
 
 /**
- * [resolveLabel] turns a user id into something readable, from the local user
- * directory. It is passed in rather than looked up here because a list of chats
- * needs one directory read, not one per row.
+ * [resolveUser] looks a person up in the local directory. Passed in rather than
+ * queried here because a list of chats needs one directory read, not one per row.
  */
-fun ChatListRow.toDomain(resolveLabel: (String) -> String?): Chat {
-    // A chat we only know from incoming messages has no title and no declared
-    // peer — the protocol carries neither. When exactly one other person has
-    // written in it, that person IS the conversation.
+fun ChatListRow.toDomain(resolveUser: (String) -> UserSummary?): Chat {
+    // A chat-list row from the server names a direct chat's peer outright. The
+    // fallback is for chats learned from an incoming message before the first list
+    // sync: a NEW frame carries no type, title or membership, so when exactly one
+    // other person has written in it, that person IS the conversation.
     val inferredPeer = otherSenderId?.takeIf { otherSenderCount <= 1 }
     val peerId = chat.peerUserId ?: inferredPeer
+    val peer = peerId?.let(resolveUser)
     val base = chat.toDomain(unreadCount)
     return base.copy(
-        title = chat.title.ifEmpty { peerId?.let(resolveLabel).orEmpty() },
+        title = chat.title.ifEmpty { peer?.displayLabel.orEmpty() },
         peerUserId = peerId,
+        peerAvatarRef = peer?.avatarRef,
     )
 }
 
@@ -189,14 +192,15 @@ fun UserEntity.toDomain(): UserSummary = UserSummary(
     userId = userId,
     username = username,
     name = name,
+    displayName = displayName,
+    avatarRef = avatarRef,
     isContact = isContact,
     blocked = blocked,
 )
 
-fun WireContact.toDomain(username: String? = null): UserSummary = UserSummary(
+fun WireProfile.toDomain(): UserSummary = UserSummary(
     userId = userId,
-    username = username,
-    name = name.takeIf { it.isNotEmpty() },
-    isContact = true,
-    blocked = blocked,
+    username = username.takeIf { it.isNotEmpty() },
+    displayName = displayName.takeIf { it.isNotEmpty() },
+    avatarRef = avatarRef.takeIf { it.isNotEmpty() },
 )

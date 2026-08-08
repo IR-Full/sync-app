@@ -7,6 +7,11 @@ const (
 	RoleModerator Role = "moderator"
 )
 
+// deliveredQueueDepth bounds the delivery-receipt backlog per node. Deep enough
+// that a normal burst is absorbed, shallow enough that a node which cannot keep
+// up drops decorations instead of growing a queue nobody is draining.
+const deliveredQueueDepth = 4096
+
 // DefaultConfig returns sensible defaults.
 func DefaultConfig() Config {
 	return Config{

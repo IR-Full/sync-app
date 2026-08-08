@@ -1,13 +1,14 @@
 package com.synapse.messenger.data.repository
 
-import com.synapse.messenger.core.AppError
 import com.synapse.messenger.core.Outcome
 import com.synapse.messenger.core.runOutcome
 import com.synapse.messenger.data.SessionHolder
 import com.synapse.messenger.data.mapper.toDomain
 import com.synapse.messenger.data.mapper.toWire
+import com.synapse.messenger.data.sync.ChatListSyncer
 import com.synapse.messenger.data.sync.HistoryFetcher
 import com.synapse.messenger.data.sync.MessageIngestor
+import com.synapse.messenger.data.sync.ProfileFetcher
 import com.synapse.messenger.database.SynapseDatabase
 import com.synapse.messenger.domain.model.Chat
 import com.synapse.messenger.domain.model.ChatKind
@@ -30,7 +31,9 @@ class ChatRepositoryImpl @Inject constructor(
     private val gateway: SynapseGateway,
     private val database: SynapseDatabase,
     private val history: HistoryFetcher,
+    private val chatListSyncer: ChatListSyncer,
     private val ingestor: MessageIngestor,
+    private val profiles: ProfileFetcher,
     private val sessionHolder: SessionHolder,
 ) : ChatRepository {
 
@@ -39,11 +42,11 @@ class ChatRepositoryImpl @Inject constructor(
 
     override fun observeChats(): Flow<List<Chat>> = sessionHolder.userId.flatMapLatest { selfId ->
         // The local user directory is joined in memory rather than in SQL: it is
-        // small, and a chat's label may come from a user learned through an entirely
-        // different path (a contact add, a username we typed once).
+        // small, and a chat's label may come from a person learned through an
+        // entirely different path (a profile lookup, a contact sync).
         combine(chats.observeChatList(selfId), users.observeAll()) { rows, knownUsers ->
-            val labels = knownUsers.associateBy({ it.userId }, { it.toDomain().displayLabel })
-            rows.map { row -> row.toDomain { userId -> labels[userId] } }
+            val directory = knownUsers.associateBy({ it.userId }, { it.toDomain() })
+            rows.map { row -> row.toDomain { userId -> directory[userId] } }
         }
     }
 
@@ -51,29 +54,25 @@ class ChatRepositoryImpl @Inject constructor(
         combine(chats.observeChat(chatId), users.observeAll()) { entity, knownUsers ->
             if (entity == null) return@combine null
             val chat = entity.toDomain()
-            val peerLabel = chat.peerUserId?.let { peer ->
-                knownUsers.firstOrNull { it.userId == peer }?.toDomain()?.displayLabel
-            } ?: chat.peerUsername?.let { "@$it" }
-            chat.copy(title = chat.title.ifEmpty { peerLabel.orEmpty() })
+            val peer = chat.peerUserId?.let { id -> knownUsers.firstOrNull { it.userId == id } }?.toDomain()
+            chat.copy(
+                title = chat.title.ifEmpty {
+                    peer?.displayLabel ?: chat.peerUsername?.let { "@$it" }.orEmpty()
+                },
+                peerAvatarRef = peer?.avatarRef,
+            )
         }
 
     /**
-     * Pull-to-refresh.
+     * Pull-to-refresh: the authoritative chat list, then whatever moved in it.
      *
-     * There is no "sync my chats" request in this protocol, so a refresh is one
-     * newest-page fetch per chat this device knows. Placeholder chats
-     * (`"@username"`, not yet resolved server-side) are skipped deliberately: asking
-     * for their history would make the gateway create a direct chat as a side effect
-     * of a pull gesture.
+     * CHAT_LIST is what makes a fresh install work — before it existed a client
+     * could only learn about a chat by receiving traffic in it, so a reinstall
+     * started blank and stayed blank. See [ChatListSyncer] for how a page turns into
+     * rows and which chats are worth backfilling.
      */
     override suspend fun refreshAll(): Outcome<Unit> = runOutcome {
-        val ids = chats.allChatIds().filterNot { it.startsWith(PLACEHOLDER_PREFIX) }
-        for (chatId in ids) {
-            when (val outcome = refresh(chatId)) {
-                is Outcome.Failure -> if (outcome.error is AppError.Offline) return@runOutcome Unit
-                is Outcome.Success -> Unit
-            }
-        }
+        chatListSyncer.sync()
     }
 
     override suspend fun refresh(chatId: String): Outcome<Unit> = runOutcome {
@@ -128,17 +127,16 @@ class ChatRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Opens a conversation with `@username`. Three cases, in order of cost:
+     * Opens a conversation with `@username`, resolving it without side effects.
      *
-     *  1. We already hold the chat locally — nothing to ask anyone.
-     *  2. We do not, so we probe for its newest message. This is the only way to
-     *     learn a direct chat's id without sending something: HISTORY resolves
-     *     `"@username"` server-side and the NEW frames it streams carry the real id.
-     *     The resolution *creates* the chat if absent, which is why this only ever
-     *     runs on an explicit user action.
-     *  3. The chat resolved but is empty, so no frame carried an id. The conversation
-     *     is then addressed by peer until the first send's ack names it — which is
-     *     also what makes composing to a stranger work offline.
+     *  1. A chat we already hold for that handle — nothing to ask anyone.
+     *  2. Otherwise the handle is resolved to a user through their profile, and the
+     *     chat list tells us whether a direct chat with them exists. Neither request
+     *     creates anything, which matters: addressing HISTORY to `"@username"` would
+     *     have the gateway create the direct chat as a side effect of merely looking.
+     *  3. No such chat yet, so the conversation is addressed by peer until the first
+     *     send's ack names it — which is also what lets composing to a stranger work
+     *     with no network at all.
      */
     override suspend fun openDirectChat(username: String): Outcome<ChatTarget> = runOutcome {
         val handle = username.trim().removePrefix("@").lowercase()
@@ -146,21 +144,22 @@ class ChatRepositoryImpl @Inject constructor(
 
         chats.findDirectByUsername(handle)?.let { return@runOutcome ChatTarget.Existing(it.chatId) }
 
-        val probe = history.page("$PLACEHOLDER_PREFIX$handle", beforeSeq = 0, limit = 1)
-        val resolvedId = probe.messages.firstOrNull()?.chatId
-        if (resolvedId == null) {
-            ChatTarget.DirectPeer(handle)
-        } else {
-            ingestor.ingestAll(probe.messages)
-            chats.upsertKnown(
-                chatId = resolvedId,
-                type = MessageIngestor.TYPE_DIRECT,
-                peerUsername = handle,
-            )
-            // Anything composed offline under the placeholder belongs here now.
-            ingestor.promotePlaceholder("$PLACEHOLDER_PREFIX$handle", resolvedId, handle)
-            ChatTarget.Existing(resolvedId)
+        // Resolves the handle AND records the profile, so the chat has a name and an
+        // avatar the moment it appears.
+        val profile = profiles.fetch("$PLACEHOLDER_PREFIX$handle")
+        // The peer id may already appear in a chat-list row we hold.
+        chats.findDirectByPeer(profile.userId)?.let {
+            ingestor.promotePlaceholder("$PLACEHOLDER_PREFIX$handle", it.chatId, handle)
+            return@runOutcome ChatTarget.Existing(it.chatId)
         }
+        // Not in our list: it may still exist server-side (created from another
+        // device), and only a fresh list page can say so.
+        runCatching { chatListSyncer.sync() }
+        chats.findDirectByPeer(profile.userId)?.let {
+            ingestor.promotePlaceholder("$PLACEHOLDER_PREFIX$handle", it.chatId, handle)
+            return@runOutcome ChatTarget.Existing(it.chatId)
+        }
+        ChatTarget.DirectPeer(handle)
     }
 
     override fun observeResolvedDirectChatId(username: String): Flow<String?> =

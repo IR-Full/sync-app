@@ -52,6 +52,27 @@ object MsgType {
     const val CHAT_INFO = 121
     const val PUSH_TOKEN = 122
 
+    /** Paged list of the chats the caller belongs to — the chat list's real source. */
+    const val CHAT_LIST = 123
+    const val CHATS = 124
+
+    /** PROFILE_GET also takes `"@handle"`, which makes it the user lookup. */
+    const val PROFILE_GET = 125
+    const val PROFILE_SET = 126
+    const val PROFILE = 127
+
+    /**
+     * A message of ours reached a recipient's device.
+     *
+     * Raised by the gateway that actually wrote the frame to their socket, so it
+     * means the bytes left the server — not merely that a node was notified. The
+     * body is a [ReadUpdate]: `(chat_id, user_id, up_to_chat_seq)` is exactly a
+     * delivery cursor, and reusing a body under a distinct type is this protocol's
+     * own convention (KEY_FETCH_ALL reuses KeyFetch, PIN/UNPIN/PIN_LIST reuse
+     * PinAction).
+     */
+    const val DELIVERED = 128
+
     fun name(type: Int): String = when (type) {
         HELLO -> "HELLO"
         WELCOME -> "WELCOME"
@@ -91,6 +112,12 @@ object MsgType {
         CHAT_CREATE -> "CHAT_CREATE"
         CHAT_INFO -> "CHAT_INFO"
         PUSH_TOKEN -> "PUSH_TOKEN"
+        CHAT_LIST -> "CHAT_LIST"
+        CHATS -> "CHATS"
+        PROFILE_GET -> "PROFILE_GET"
+        PROFILE_SET -> "PROFILE_SET"
+        PROFILE -> "PROFILE"
+        DELIVERED -> "DELIVERED"
         else -> "UNKNOWN($type)"
     }
 }

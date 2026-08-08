@@ -50,6 +50,7 @@ import com.synapse.messenger.R
 import com.synapse.messenger.datastore.LanguageMode
 import com.synapse.messenger.datastore.ThemeMode
 import com.synapse.messenger.presentation.components.Avatar
+import com.synapse.messenger.presentation.components.localized
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,10 +60,14 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
+    val profile by viewModel.profile.collectAsStateWithLifecycle()
+    val avatarUrls by viewModel.avatarUrls.collectAsStateWithLifecycle()
+    val editState by viewModel.editState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var nameDraft by rememberSaveable(settings.displayName) {
-        mutableStateOf(settings.displayName ?: session?.username.orEmpty())
+    val profileName = profile?.displayName.orEmpty()
+    var nameDraft by rememberSaveable(profileName) {
+        mutableStateOf(profileName.ifEmpty { session?.username.orEmpty() })
     }
     var endpointDraft by rememberSaveable(settings.gatewayUrlOverride) {
         mutableStateOf(settings.gatewayUrlOverride ?: BuildConfig.GATEWAY_URL)
@@ -76,7 +81,9 @@ fun SettingsScreen(
         val bytes = runCatching {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
         }.getOrNull()
-        if (bytes != null) viewModel.setAvatar(bytes)
+        if (bytes != null) {
+            viewModel.setAvatar(bytes, context.contentResolver.getType(uri) ?: "image/jpeg")
+        }
     }
 
     Scaffold(
@@ -104,9 +111,9 @@ fun SettingsScreen(
             // --- Profile
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Avatar(
-                    label = settings.displayName ?: session?.username.orEmpty(),
+                    label = profile?.displayLabel ?: session?.username.orEmpty(),
                     size = 64.dp,
-                    imagePath = settings.avatarPath,
+                    imageUrl = avatarUrls[profile?.avatarRef],
                 )
                 Column(modifier = Modifier.padding(start = 16.dp)) {
                     Text(
@@ -118,14 +125,25 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OutlinedButton(
-                        onClick = {
-                            pickAvatar.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                            )
-                        },
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(top = 8.dp),
-                    ) { Text(stringResource(R.string.settings_change_avatar)) }
+                    ) {
+                        OutlinedButton(
+                            enabled = !editState.saving,
+                            onClick = {
+                                pickAvatar.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        ) { Text(stringResource(R.string.settings_change_avatar)) }
+                        if (profile?.avatarRef != null) {
+                            TextButton(
+                                onClick = viewModel::clearAvatar,
+                                enabled = !editState.saving,
+                            ) { Text(stringResource(R.string.settings_remove_avatar)) }
+                        }
+                    }
                 }
             }
 
@@ -140,19 +158,18 @@ fun SettingsScreen(
             )
             Button(
                 onClick = { viewModel.setDisplayName(nameDraft) },
+                enabled = !editState.saving && nameDraft.isNotBlank() && nameDraft != profileName,
                 modifier = Modifier.padding(top = 8.dp),
             ) { Text(stringResource(R.string.action_save)) }
 
-            // The protocol has no profile write: `User.DisplayName` exists in the
-            // server's model but nothing reads or writes it over the wire, and there is
-            // no avatar concept at all. Saying so beats letting the user believe they
-            // just changed how others see them.
-            Text(
-                text = stringResource(R.string.settings_profile_local_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            editState.error?.let { error ->
+                Text(
+                    text = error.localized(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
 
             SectionDivider()
 

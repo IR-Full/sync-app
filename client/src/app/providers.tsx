@@ -8,9 +8,11 @@ import { useSessionStore } from '@/entities/session'
 import { useSettingsStore } from '@/entities/settings'
 import { useOutboxStore } from '@/features/send-message'
 import { useRestoreSession, useSessionExpiryWatcher } from '@/features/auth'
+import { CallOverlay, useCallEngine } from '@/features/calls'
 import { useDraftSync } from '@/features/drafts'
 import { useMessageNotifications } from '@/features/notifications'
 import { useRealtimeSync } from '@/features/realtime-sync'
+import { useSecretChatEngine, useSecretKeyPublisher } from '@/features/secret-chats'
 import { useOutboxFlush } from '@/features/send-message'
 import { ProtocolError, SynapseProvider, useIsConnected } from '@/shared/api'
 import { useLocaleStore } from '@/shared/i18n'
@@ -69,12 +71,21 @@ function AppBootstrap({ children }: { children: ReactNode }) {
   useRestoreSession()
   useSessionExpiryWatcher()
   useRealtimeSync()
+  useCallEngine()
+  useSecretKeyPublisher()
+  useSecretChatEngine()
   useDraftSync()
   useOutboxFlush()
   useMessageNotifications()
   useReceiptReset(connected)
 
-  return children
+  return (
+    <>
+      {children}
+      {/* A call outlives navigation, so its surface lives above the routes. */}
+      <CallOverlay />
+    </>
+  )
 }
 
 export function Providers({ children }: { children: ReactNode }) {

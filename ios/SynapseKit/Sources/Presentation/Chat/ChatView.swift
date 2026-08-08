@@ -31,9 +31,7 @@ final class ChatViewModel: ObservableObject {
     private let sendMessage: SendMessageUseCase
     private let markRead: MarkChatReadUseCase
 
-    private var observers: [Task<Void, Never>] = []
-    private var typingSignalTask: Task<Void, Never>?
-    private var draftSaveTask: Task<Void, Never>?
+    private let tasks = TaskBag()
     private var lastTypingSentAt: Date?
     private var names: [String: String] = [:]
     private var inFlightDownloads: Set<String> = []
@@ -56,7 +54,7 @@ final class ChatViewModel: ObservableObject {
         chat = await chatRepository.chat(id: chatID)
         await refreshPeer()
 
-        observers.append(Task { [weak self] in
+        tasks.add(Task { [weak self] in
             guard let self else { return }
             for await messages in self.messageRepository.observeMessages(chatID: self.chatID) {
                 self.messages = messages
@@ -65,13 +63,13 @@ final class ChatViewModel: ObservableObject {
                 await self.markLatestRead()
             }
         })
-        observers.append(Task { [weak self] in
+        tasks.add(Task { [weak self] in
             guard let self else { return }
             for await typists in self.messageRepository.observeTyping(chatID: self.chatID) {
                 self.typingUserIDs = typists
             }
         })
-        observers.append(Task { [weak self] in
+        tasks.add(Task { [weak self] in
             guard let self else { return }
             for await text in self.messageRepository.observeDraft(chatID: self.chatID) {
                 // Only adopt a draft from elsewhere while this composer is idle:
@@ -285,14 +283,13 @@ final class ChatViewModel: ObservableObject {
     /// keystroke — the mirror goes to their other devices over the same
     /// flood-limited connection the messages use.
     private func scheduleDraftSave() {
-        draftSaveTask?.cancel()
         let text = draft
         let reply = replyTo?.id
-        draftSaveTask = Task { [weak self] in
+        tasks.replace("draft", with: Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(800))
             guard !Task.isCancelled, let self else { return }
             await self.messageRepository.saveDraft(chatID: self.chatID, text: text, replyTo: reply)
-        }
+        })
     }
 
     // MARK: - Titles & presence
@@ -324,11 +321,10 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Private
 
     private func sendTyping(active: Bool) {
-        typingSignalTask?.cancel()
-        typingSignalTask = Task { [weak self] in
+        tasks.replace("typing", with: Task { [weak self] in
             guard let self else { return }
             await self.messageRepository.setTyping(chatID: self.chatID, active: active)
-        }
+        })
     }
 
     private func markLatestRead() async {
@@ -414,11 +410,7 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    deinit {
-        for observer in observers { observer.cancel() }
-        typingSignalTask?.cancel()
-        draftSaveTask?.cancel()
-    }
+    // No `deinit`: the bag cancels its tasks when it is released with us.
 }
 
 struct ChatView: View {

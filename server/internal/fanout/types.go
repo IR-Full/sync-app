@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/synapse-chat/synapse/internal/model"
 	"github.com/synapse-chat/synapse/internal/router"
 	"github.com/synapse-chat/synapse/pkg/eventbus"
 )
@@ -17,6 +18,10 @@ type Chats interface {
 	// MemberIDsPage walks membership by keyset so a hot chat can be streamed
 	// rather than materialized.
 	MemberIDsPage(ctx context.Context, chatID, afterUserID string, limit int) ([]string, error)
+	// UserChats is how presence finds its audience: a summary names the peer of a
+	// direct chat, which is exactly the set of people entitled to a user's
+	// online state. Already implemented by both the service and its gRPC client.
+	UserChats(ctx context.Context, userID, after string, limit int) ([]model.ChatSummary, error)
 }
 
 // Service consumes domain events and routes deliveries to the owning nodes.

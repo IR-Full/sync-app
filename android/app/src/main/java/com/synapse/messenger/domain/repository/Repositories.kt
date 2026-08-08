@@ -7,6 +7,7 @@ import com.synapse.messenger.domain.model.ChatTarget
 import com.synapse.messenger.domain.model.Message
 import com.synapse.messenger.domain.model.MessageAttachment
 import com.synapse.messenger.domain.model.Session
+import com.synapse.messenger.domain.model.UserPresence
 import com.synapse.messenger.domain.model.UserSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,8 +77,11 @@ interface ChatRepository {
 interface MessageRepository {
     fun observeMessages(chatId: String): Flow<List<Message>>
 
-    /** How far the other members have read — the second tick on our own messages. */
+    /** How far the other members have read — the read tick on our own messages. */
     fun observeOthersReadSeq(chatId: String): Flow<Long>
+
+    /** How far their devices have received — the tick between sent and read. */
+    fun observeOthersDeliveredSeq(chatId: String): Flow<Long>
 
     fun observeTyping(chatId: String): Flow<Set<String>>
 
@@ -117,18 +121,31 @@ interface MessageRepository {
 interface UserRepository {
     fun observeKnownUsers(): Flow<List<UserSummary>>
 
+    fun observeUser(userId: String): Flow<UserSummary?>
+
     /**
-     * Resolves `@username` to a user and records them as a contact.
-     *
-     * This doubles as the only user lookup the protocol offers: CONTACT_ADD is the
-     * one request that takes a username and answers with a user id, so "find a
-     * person" and "add a contact" are the same call.
+     * Someone's online state, or null while nothing is known about it. Ephemeral and
+     * never cached across launches — a stale "online" is worse than no answer.
      */
-    suspend fun addContact(username: String, name: String? = null): Outcome<UserSummary>
+    fun observePresence(userId: String): Flow<UserPresence?>
+
+    /**
+     * Reads a public profile. [target] is a user id or `"@username"`, which makes
+     * this the user lookup as well — there is no directory and no prefix search, so
+     * an exact handle is the only thing a client can know about a stranger.
+     */
+    suspend fun fetchProfile(target: String): Outcome<UserSummary>
+
+    /** Publishes our own name and avatar. Null fields are left untouched. */
+    suspend fun updateMyProfile(
+        displayName: String? = null,
+        avatarRef: String? = null,
+        clearAvatar: Boolean = false,
+    ): Outcome<UserSummary>
+
+    suspend fun refreshMyProfile(): Outcome<UserSummary>
 
     suspend fun syncContacts(): Outcome<Unit>
-
-    suspend fun setBlocked(userIdOrUsername: String, blocked: Boolean): Outcome<Unit>
 }
 
 interface MediaRepository {

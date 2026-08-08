@@ -6,6 +6,7 @@ import com.synapse.messenger.database.entity.MessageStatuses
 import com.synapse.messenger.domain.model.AttachmentKind
 import com.synapse.messenger.domain.model.ChatKind
 import com.synapse.messenger.domain.model.MessageStatus
+import com.synapse.messenger.domain.model.UserSummary
 import com.synapse.messenger.network.protocol.Attachment
 import com.synapse.messenger.network.protocol.NewMessage
 import org.junit.Assert.assertEquals
@@ -51,6 +52,19 @@ class MapperTest {
         assertFalse(theirs.isOutgoing)
     }
 
+
+    @Test
+    fun `every stored status maps to its domain state`() {
+        // The three-tick ladder is only honest if each rung has a distinct source:
+        // pending is local, sent is SEND_ACK, delivered is DELIVERED, read is READ_UPD.
+        assertEquals(MessageStatus.PENDING, statusToDomain(MessageStatuses.PENDING))
+        assertEquals(MessageStatus.SENT, statusToDomain(MessageStatuses.SENT))
+        assertEquals(MessageStatus.DELIVERED, statusToDomain(MessageStatuses.DELIVERED))
+        assertEquals(MessageStatus.READ, statusToDomain(MessageStatuses.READ))
+        assertEquals(MessageStatus.FAILED, statusToDomain(MessageStatuses.FAILED))
+        // An unknown value from a future version must not crash a transcript.
+        assertEquals(MessageStatus.SENT, statusToDomain("teleported"))
+    }
     @Test
     fun `attachment kind survives the round trip`() {
         val stored = Attachment(kind = "video_note", mediaRef = "m2", width = 240, height = 240).toStored()
@@ -78,7 +92,9 @@ class MapperTest {
             otherSenderCount = 1,
         )
 
-        val chat = row.toDomain { userId -> if (userId == "u1") "@alice" else null }
+        val chat = row.toDomain { userId ->
+            if (userId == "u1") UserSummary(userId = "u1", username = "alice") else null
+        }
 
         assertEquals("@alice", chat.title)
         assertEquals("u1", chat.peerUserId)
@@ -94,7 +110,7 @@ class MapperTest {
             otherSenderCount = 3,
         )
 
-        val chat = row.toDomain { "@alice" }
+        val chat = row.toDomain { UserSummary(userId = it, username = "alice") }
 
         assertEquals("", chat.title)
         assertNull(chat.peerUserId)
@@ -109,7 +125,7 @@ class MapperTest {
             otherSenderCount = 1,
         )
 
-        val chat = row.toDomain { "@alice" }
+        val chat = row.toDomain { UserSummary(userId = it, username = "alice") }
 
         assertEquals("Release crew", chat.title)
         assertEquals(ChatKind.GROUP, chat.kind)

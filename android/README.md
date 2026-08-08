@@ -77,23 +77,46 @@ foundation of "never lose a message, never duplicate one".
 
 ---
 
-## Protocol gaps
+## What the protocol provides, and what it still cannot
 
-Found by reading `server/`, and worked around rather than papered over. Each is
-documented at the point in the code where it bites.
+Everything here was read out of `server/`, not assumed. Two of these features did not
+exist server-side and were added as part of this work — marked **(added)**; the rest
+were already there.
 
-| Feature | What the server has | What this client does |
+| Feature | Message types | How it works |
 |---|---|---|
-| **List my chats** | `store.ListUserChats` exists but **no message type exposes it** | The Room `chats` table **is** the chat list, not a cache of one. Rows appear when a chat announces itself: a `NEW` frame, a `SEND_ACK` resolving `"@username"`, `CHAT_INFO` from a create, `INVITES` from a join. Pull-to-refresh = one newest-page `HISTORY` per known chat. **A fresh install cannot enumerate existing conversations** until something arrives in them. One `MsgChatList` type on the server would close this. |
-| **Profile: name, avatar** | `User.DisplayName` in the model; **no read or write over the wire**, no avatar concept at all | Name and photo are stored on this device and labelled as such in Settings. Avatars render as coloured initials. |
-| **User search** | Exact `@username` only, resolved implicitly | "Find a person" uses `CONTACT_ADD`, the one request that takes a username and returns a user id (`NOT_FOUND` = no such user). So a lookup necessarily adds a contact. Usernames are recorded locally because the server never sends one back — `CONTACT_SYNC` returns ids and our own private labels. |
-| **Chat type/title of an incoming chat** | A `NEW` frame carries a chat id and nothing else | Recorded as `unknown` and labelled from who writes in it: one other sender renders as a direct chat with that person, several as an untitled group. |
-| **Presence / last seen** | `MsgPresence` is defined and `presence.publish` writes to the bus, but **nothing subscribes** — no PRESENCE frame ever reaches a client | Not shown. `ServerEvent.PresenceUpdate` is handled, so the day fanout subscribes to `user.presence` this client already renders it. |
-| **Unread counts** | Not served | Counted locally from messages against our read cursor (`ChatDao.observeChatList`), so a stored counter cannot drift from the messages it counts. |
-| **"Delivered" status** | `SEND_ACK` = durable persistence; `READ_UPD` = read receipt; fanout to a device is **not** acknowledged | Two states, honestly sourced: one tick (persisted) and two (read). No invented third. |
-| **Per-chat mute** | `ChatMember.Muted` gates push, but no message sets it | Not offered. Notifications are global, and turning them off clears the push token server-side. |
+| **Chat list** | `CHAT_LIST` → `CHATS` | Keyset pagination over chat id. A summary carries type, title, owner, `my_role`, the direct chat's `peer_id`, and the chat's `last_seq` — so a sync costs one history request per chat that actually *moved*, and a fresh install is no longer blank (`ChatListSyncer`). |
+| **Profiles** | `PROFILE_GET` / `PROFILE_SET` / `PROFILE` | Name and avatar are published, not device-local. `avatar_ref` points into the media service, so an avatar rides the ordinary pipeline (MEDIA_INIT → signed PUT → ref) and comes back as a signed URL. Clearing is an explicit flag, because proto3 cannot tell an absent field from an empty one. A `PROFILE_SET` is mirrored to the author's other devices as an unsolicited `PROFILE` frame, which this client applies. |
+| **User lookup** | `PROFILE_GET` with `"@handle"` | Exact handle only — no directory, no prefix search — and with no side effect: finding someone does not add them to your address book. |
+| **Own identity** | `AUTH_OK` fields 6–8 | `username`, `display_name` and `avatar_ref` arrive with the session, so a token login on every launch after the first knows who it is. |
+| **Delivery receipts (added)** | `DELIVERED` (128) | The step between "stored" and "read", which previously had no source at all: fanout pushed a message and told the sender nothing. Raised by the gateway that **actually wrote the frame to a recipient's socket** — `route()` returning a node count would only have meant "a node was notified", which stays true when that node's connection dies with the frame still queued. See `internal/gateway/delivered.go`: `delivery.Delivery.OnWritten` fires from the connection's writer, and one reporter goroutine per node routes the receipt back to the sender (bounded queue, dropped under load rather than blocking a writer). The body reuses `ReadUpdate` — `(chat_id, user_id, up_to_chat_seq)` *is* a delivery cursor, and reusing a body under a distinct type is this protocol's own convention. |
+| **Presence (added)** | `MsgPresence` (14) | `user.presence` was published from day one and **nothing subscribed**, so the frame existed and never travelled. `fanout.onPresence` now delivers it to the peers of the user's **direct** chats. That audience is the design decision: presence flips on every connect and disconnect, so "everyone who shares any chat" would turn one flaky mobile link into a membership-sized multiplication of frames across every group — for a decoration. A 1:1 chat is where "last seen" is shown, and its audience is exactly one person. Rides the droppable QoS lane, and a lost transition is corrected by the next one (or by the TTL behind it). |
+| Registration name | `AUTH.display_name` | Honoured on registration only; afterwards `PROFILE_SET` is the single writer, so a stale client cannot revert a name changed elsewhere. |
 
----
+Still not expressible, and handled honestly:
+
+| Feature | State of the protocol | What this client does |
+|---|---|---|
+| **"Delivered to everyone" in a group** | A receipt names one recipient, and there is no member-list message. | The tick means "at least one member received it" (MAX over the receipts held). A MIN over what we happen to have would read like completeness while only covering the people we have heard from. In a direct chat — where the tick is actually read — the two coincide. |
+| **Unread counts** | Not served. | Counted locally from messages against our read cursor, so a stored counter cannot drift from the messages it claims to count. |
+| **Per-chat mute** | `ChatMember.Muted` gates push server-side, but no message sets it. | Not offered. Notifications are global, and turning them off clears the push token at the source. |
+| Type/title of a chat learned from a `NEW` frame | A `NEW` frame carries a chat id and nothing else. | Recorded as `unknown` and labelled from who writes in it until the next `CHAT_LIST` page corrects it authoritatively. |
+
+### Server-side changes made for the two added features
+
+Small and confined; `go build ./...` and `go test ./...` pass, and `internal/fanout`
+gained tests for the audience rule and for surviving a failed audience lookup.
+
+- `pkg/wire`: `MsgDelivered = 128` (+ its `String()` case). No new protobuf message —
+  hence no `protoc` step and no regenerated file to collide with.
+- `internal/delivery`: `Delivery.OnWritten`, documented as running on the connection's
+  single writer and forbidden from blocking.
+- `internal/gateway`: `conn.writeOne` invokes it after the write succeeds; `delivered.go`
+  holds the reporter; `StartDelivery` attaches the hook to inbound `MsgNew` and starts
+  the drain.
+- `internal/fanout`: subscribes `user.presence`; `onPresence` + `directPeers` (paged);
+  `Chats` gains `UserChats`, which both `chat.Service` and the gRPC `ChatClient`
+  already implemented — so the microservice split needed no new RPC.
 
 ## Architecture
 
@@ -107,8 +130,9 @@ app/src/main/java/com/synapse/messenger/
 ├── datastore/     SessionStore (tokens, device id), SettingsStore (theme/lang/push/endpoint)
 ├── data/          mapper/     wire ↔ storage ↔ domain
 │                  repository/ Auth, Chat, Message, User, Media
-│                  sync/       SyncCoordinator, MessageIngestor, HistoryFetcher,
-│                              TypingTracker, NetworkMonitor
+│                  sync/       SyncCoordinator, ChatListSyncer, MessageIngestor,
+│                              HistoryFetcher, ProfileFetcher, TypingTracker, NetworkMonitor
+│                  media/      MediaUrlCache (ref → signed URL, app-wide)
 ├── domain/        model/ repository/ usecase/   (no Android, no protocol)
 ├── presentation/  auth · chats · chat · newchat · settings · components · theme · navigation
 ├── push/          FCM service, token registrar, notification + deep link
@@ -143,7 +167,9 @@ step, no generated sources to keep in sync, and the schema is reviewable.
 keyed by dedup key and are flushed in composition order when the connection becomes
 usable. A direct chat with someone new has no server id yet, so it lives under an
 `"@username"` placeholder row that the first `SEND_ACK` promotes — which is what
-lets a message to a stranger be composed with no network at all.
+lets a message to a stranger be composed with no network at all. The chat list is
+still cached rather than fetched per screen, so the app opens into real content
+offline; `CHAT_LIST` reconciles it when a connection exists.
 
 ---
 
@@ -224,7 +250,7 @@ opens `synapse://chat/<chat_id>` and lands in the conversation.
 ./gradlew testDevelopmentDebugUnitTest
 ```
 
-30 tests, weighted toward the part where a mistake is invisible: the codec. They
+37 tests, weighted toward the part where a mistake is invisible: the codec. They
 assert against byte layouts read from the server's source rather than round-tripping
 our own encoder, which would pass just as happily if both sides of this client agreed
 on the wrong thing.
@@ -238,11 +264,21 @@ SYNAPSE_TEST_WS=ws://localhost:8080/ws ./gradlew testDevelopmentDebugUnitTest   
 ```
 
 `GatewayInteropTest` then drives a live handshake: HELLO/WELCOME capability
-negotiation, AUTH with registration, `SEND` addressed to `"@username"` (checking the
-gateway resolves and creates the direct chat), a dedup-key retry returning
-`duplicate = true` with the same message id, the streamed `HISTORY` page terminated
-by `HISTORY_OK`, `READ`, and the server's heartbeat PING. It skips without the env
-var, mirroring the server's own convention for infra-dependent tests.
+negotiation, AUTH with registration (and the identity AUTH_OK returns), `SEND`
+addressed to `"@username"` (checking the gateway resolves and creates the direct
+chat), a dedup-key retry returning `duplicate = true` with the same message id, the
+streamed `HISTORY` page terminated by `HISTORY_OK`, `READ`, `CHAT_LIST` (asserting
+the new chat appears with its type, owner, `peer_id`, `last_seq` and `my_role`),
+`PROFILE_GET` by handle and for "me", `PROFILE_SET` for a name and for an avatar
+uploaded through the media pipeline plus the clear flag, `MEDIA_FETCH` on the
+resulting ref, and the server's heartbeat PING.
+
+Two of its cases run **two connected clients**, because the facts they check only
+exist between live sockets: one asserts a `DELIVERED` receipt reaches the sender
+once the recipient's device really has the message, the other that a peer's
+`PRESENCE` transitions (online, then offline on disconnect) reach the other side of
+their direct chat. All of it skips without the env var, mirroring the server's own
+convention for infra-dependent tests.
 
 ---
 
@@ -256,7 +292,9 @@ are stubbed or faked:
 - **Calls** (`CALL_*` signaling; media is peer-to-peer and never touches the server).
 - Reactions, threads, polls, pins, cross-device drafts, forwarding, scheduled sends,
   self-destruct composition (received TTL messages *are* honoured and purged),
-  message edit/delete, full-text search, invite-link management, roles, chat export.
+  message edit/delete, full-text search, invite-link management (joining by code or
+  handle *is* implemented), roles, chat export, contacts management beyond the sync
+  that supplies private labels.
 - **QUIC** and raw TCP transports.
 
 Session tokens live in a DataStore file in app-private storage, excluded from backup

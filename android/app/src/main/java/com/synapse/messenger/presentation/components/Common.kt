@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -141,11 +142,10 @@ fun ConnectionBanner(status: ConnectionStatus, modifier: Modifier = Modifier) {
 }
 
 /**
- * Delivery ticks.
- *
- * Two states, not three: the gateway acknowledges durable persistence and relays
- * read receipts, but fanout to a device is not acknowledged at all — so there is no
- * honest "delivered" to draw between them.
+ * Delivery ticks, each sourced from a distinct server fact rather than inferred:
+ * one tick when the write is durable (SEND_ACK), two grey when the gateway holding
+ * the recipient's socket wrote the frame to it (DELIVERED), two coloured when their
+ * read cursor passed it (READ_UPD).
  */
 @Composable
 fun MessageStatusIcon(status: MessageStatus, modifier: Modifier = Modifier) {
@@ -157,13 +157,14 @@ fun MessageStatusIcon(status: MessageStatus, modifier: Modifier = Modifier) {
     val icon = when (status) {
         MessageStatus.PENDING -> Icons.Default.Schedule
         MessageStatus.SENT -> Icons.Default.Done
-        MessageStatus.READ -> Icons.Default.DoneAll
+        MessageStatus.DELIVERED, MessageStatus.READ -> Icons.Default.DoneAll
         MessageStatus.FAILED -> Icons.Default.ErrorOutline
     }
     val description = stringResource(
         when (status) {
             MessageStatus.PENDING -> R.string.status_pending
             MessageStatus.SENT -> R.string.status_sent
+            MessageStatus.DELIVERED -> R.string.status_delivered
             MessageStatus.READ -> R.string.status_read
             MessageStatus.FAILED -> R.string.status_failed
         },
@@ -172,18 +173,19 @@ fun MessageStatusIcon(status: MessageStatus, modifier: Modifier = Modifier) {
 }
 
 /**
- * An avatar.
+ * An avatar: the person's picture, or their initials until one is available.
  *
- * Initials are the primary rendering, not a fallback: the protocol has no avatar
- * concept at all, so the only image that can ever appear here is one this device
- * chose for itself (see the profile screen).
+ * [imageUrl] is a signed, expiring URL resolved from the profile's `avatar_ref`
+ * (see MediaUrlCache) — never a raw reference, which Coil could not fetch.
+ * Initials are not merely a fallback: a fresh profile has no picture, and a colour
+ * derived from the label keeps people distinguishable anyway.
  */
 @Composable
 fun Avatar(
     label: String,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
-    imagePath: String? = null,
+    imageUrl: String? = null,
 ) {
     val palette = listOf(
         Color(0xFF1F6FEB), Color(0xFF00796B), Color(0xFF8E24AA),
@@ -194,10 +196,11 @@ fun Avatar(
         modifier = modifier.size(size).clip(CircleShape).background(background),
         contentAlignment = Alignment.Center,
     ) {
-        if (imagePath != null) {
+        if (imageUrl != null) {
             AsyncImage(
-                model = imagePath,
+                model = imageUrl,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {

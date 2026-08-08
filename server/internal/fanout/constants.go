@@ -24,3 +24,12 @@ const (
 	fanoutShardSize      = 500            // members per shard job above the threshold
 	subjFanoutShard      = "fanout.shard" // internal fan-out sub-job subject
 )
+
+// Presence audience paging. A user's direct chats are walked in pages so the
+// lookup cannot materialize an unbounded list for someone with a very large
+// address book; the page cap bounds the work one presence transition may cause,
+// and anyone beyond it simply learns the state from the next transition.
+const (
+	presencePageSize = 200
+	maxPresencePages = 10
+)

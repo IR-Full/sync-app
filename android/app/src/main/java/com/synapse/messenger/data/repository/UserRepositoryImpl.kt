@@ -2,16 +2,20 @@ package com.synapse.messenger.data.repository
 
 import com.synapse.messenger.core.Outcome
 import com.synapse.messenger.core.runOutcome
+import com.synapse.messenger.data.SessionHolder
 import com.synapse.messenger.data.mapper.toDomain
+import com.synapse.messenger.data.sync.PresenceTracker
+import com.synapse.messenger.data.sync.ProfileFetcher
 import com.synapse.messenger.database.SynapseDatabase
+import com.synapse.messenger.domain.model.UserPresence
 import com.synapse.messenger.domain.model.UserSummary
 import com.synapse.messenger.domain.repository.UserRepository
 import com.synapse.messenger.network.SynapseGateway
-import com.synapse.messenger.network.protocol.Block
-import com.synapse.messenger.network.protocol.ContactAdd
 import com.synapse.messenger.network.protocol.ContactList
 import com.synapse.messenger.network.protocol.ContactSync
 import com.synapse.messenger.network.protocol.MsgType
+import com.synapse.messenger.network.protocol.Profile
+import com.synapse.messenger.network.protocol.ProfileSet
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +25,9 @@ import kotlinx.coroutines.flow.map
 class UserRepositoryImpl @Inject constructor(
     private val gateway: SynapseGateway,
     private val database: SynapseDatabase,
+    private val profiles: ProfileFetcher,
+    private val presenceTracker: PresenceTracker,
+    private val sessionHolder: SessionHolder,
 ) : UserRepository {
 
     private val users get() = database.userDao()
@@ -28,38 +35,59 @@ class UserRepositoryImpl @Inject constructor(
     override fun observeKnownUsers(): Flow<List<UserSummary>> =
         users.observeAll().map { rows -> rows.map { it.toDomain() } }
 
-    /**
-     * Resolves `@username` to a user id, and records the contact.
-     *
-     * This is the protocol's only user lookup. CONTACT_ADD is the single request
-     * that accepts a username and answers with an id, so "search for a person" and
-     * "add a contact" are necessarily the same call — a username that does not exist
-     * comes back as NOT_FOUND, which is also how this client validates one.
-     *
-     * The username is stored locally because it never comes back: CONTACT_SYNC
-     * returns ids and our own private labels, never a handle.
-     */
-    override suspend fun addContact(username: String, name: String?): Outcome<UserSummary> =
-        runOutcome {
-            val handle = username.trim().removePrefix("@").lowercase()
-            require(handle.isNotEmpty()) { "empty username" }
+    override fun observeUser(userId: String): Flow<UserSummary?> =
+        users.observeById(userId).map { it?.toDomain() }
 
-            val reply: ContactList = gateway.request(
-                MsgType.CONTACT_ADD,
-                ContactAdd(target = "@$handle", name = name?.trim().orEmpty()),
-            )
-            val contact = reply.contacts.firstOrNull()
-                ?: throw IllegalStateException("contact add returned nothing")
-            users.upsert(
-                userId = contact.userId,
-                username = handle,
-                name = contact.name.takeIf { it.isNotEmpty() },
-                isContact = true,
-                blocked = contact.blocked,
-                updatedAt = contact.updatedAt,
-            )
-            contact.toDomain(username = handle)
+    override fun observePresence(userId: String): Flow<UserPresence?> =
+        presenceTracker.observe(userId)
+
+    /**
+     * Looks a person up by handle, or by id.
+     *
+     * `PROFILE_GET` accepts `"@username"`, so this is the lookup *and* the profile
+     * read — and unlike the contact-add it used to be smuggled through, it has no
+     * side effect: finding someone no longer files them in your address book. A
+     * handle nobody holds comes back NOT_FOUND, which is how a typed one is validated.
+     *
+     * A block cuts both ways here: the gateway refuses the lookup in either
+     * direction, so a blocked account cannot be found and yours cannot be inspected
+     * by one you blocked.
+     */
+    override suspend fun fetchProfile(target: String): Outcome<UserSummary> = runOutcome {
+        val trimmed = target.trim()
+        require(trimmed.isNotEmpty()) { "empty profile target" }
+        val normalized = if (trimmed.startsWith("@")) {
+            "@" + trimmed.removePrefix("@").lowercase()
+        } else {
+            trimmed
         }
+        profiles.fetch(normalized).toDomain()
+    }
+
+    /**
+     * Publishes our own profile.
+     *
+     * Empty fields mean "leave as is" server-side — proto3 cannot distinguish absent
+     * from empty — which is why removing the avatar is a flag rather than an empty
+     * ref. The reply is the stored profile, so the local row is written from what the
+     * server accepted rather than from what we asked for.
+     */
+    override suspend fun updateMyProfile(
+        displayName: String?,
+        avatarRef: String?,
+        clearAvatar: Boolean,
+    ): Outcome<UserSummary> = runOutcome {
+        val updated: Profile = gateway.request(
+            MsgType.PROFILE_SET,
+            ProfileSet(
+                displayName = displayName?.trim().orEmpty(),
+                avatarRef = avatarRef.orEmpty(),
+                clearAvatar = clearAvatar,
+            ),
+        )
+        profiles.store(updated)
+        updated.toDomain()
+    }
 
     /**
      * Full contact sync.
@@ -67,14 +95,15 @@ class UserRepositoryImpl @Inject constructor(
      * CONTACT_SYNC supports an incremental cursor, but this client asks for
      * everything: an address book is small, and a stale cursor after a reinstall
      * would silently hide contacts forever — the wrong trade for the bytes saved.
+     *
+     * What it contributes is the *private* label we gave someone; their public name
+     * and avatar come from their profile, and neither writer may overwrite the other.
      */
     override suspend fun syncContacts(): Outcome<Unit> = runOutcome {
         val reply: ContactList = gateway.request(MsgType.CONTACT_SYNC, ContactSync(since = 0))
         for (contact in reply.contacts) {
             users.upsert(
                 userId = contact.userId,
-                // Never null out a username we know: the server has none to give back.
-                username = null,
                 name = contact.name.takeIf { it.isNotEmpty() },
                 isContact = true,
                 blocked = contact.blocked,
@@ -83,22 +112,12 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Blocks or unblocks. A block stops traffic in BOTH directions server-side: the
-     * blocked party cannot message, and cannot read replies by reopening the chat
-     * either, so nothing local needs to enforce it.
-     */
-    override suspend fun setBlocked(userIdOrUsername: String, blocked: Boolean): Outcome<Unit> =
-        runOutcome {
-            val target = userIdOrUsername.trim().let {
-                if (it.startsWith("@")) "@" + it.removePrefix("@").lowercase() else it
-            }
-            gateway.request<ContactList>(MsgType.BLOCK, Block(target = target, blocked = blocked))
-            val userId = target.removePrefix("@").let { handle ->
-                if (target.startsWith("@")) users.findByUsername(handle)?.userId else target
-            }
-            if (userId != null) {
-                users.upsert(userId = userId, blocked = blocked, isContact = false)
-            }
-        }
+    /** Our own profile, for the settings screen. */
+    override suspend fun refreshMyProfile(): Outcome<UserSummary> = runOutcome {
+        val selfId = sessionHolder.currentUserId
+        require(selfId.isNotEmpty()) { "not signed in" }
+        // An empty target means "me" to the gateway, which avoids assuming the id we
+        // hold is still the one the session belongs to.
+        profiles.fetch("").toDomain()
+    }
 }

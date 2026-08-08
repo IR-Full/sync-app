@@ -13,8 +13,8 @@ final class ChatListViewModel: ObservableObject {
     private let chatRepository: any ChatRepository
     private let searchRepository: any SearchRepository
     private let contacts: any ContactRepository
-    private var observer: Task<Void, Never>?
-    private var searchTask: Task<Void, Never>?
+    private let tasks = TaskBag()
+    private var hasStarted = false
     private var names: [String: String] = [:]
 
     init(chats: any ChatRepository, search: any SearchRepository, contacts: any ContactRepository) {
@@ -24,15 +24,16 @@ final class ChatListViewModel: ObservableObject {
     }
 
     func start() {
-        guard observer == nil else { return }
-        observer = Task { [weak self] in
+        guard !hasStarted else { return }
+        hasStarted = true
+        tasks.add(Task { [weak self] in
             guard let self else { return }
             for await summaries in self.chatRepository.observeChats() {
                 self.chats = summaries
                 self.hasLoaded = true
                 await self.resolveNames(for: summaries)
             }
-        }
+        })
     }
 
     /// Search hits are messages, not chats, so this is a *separate* result list
@@ -40,14 +41,16 @@ final class ChatListViewModel: ObservableObject {
     /// fact that the server searched message text across every chat the user is
     /// in, including ones whose titles do not match at all.
     func search() {
-        searchTask?.cancel()
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.count >= 2 else {
+            tasks.cancel("search")
             searchResults = []
             isSearching = false
             return
         }
-        searchTask = Task { [weak self] in
+        // Keyed, so each keystroke supersedes the previous request rather than
+        // racing it.
+        tasks.replace("search", with: Task { [weak self] in
             guard let self else { return }
             // Debounce: the server charges search per user and rate-limits it.
             try? await Task.sleep(for: .milliseconds(300))
@@ -59,7 +62,7 @@ final class ChatListViewModel: ObservableObject {
             } catch {
                 self.searchResults = []
             }
-        }
+        })
     }
 
     func title(for summary: ChatSummary) -> String {
@@ -95,10 +98,7 @@ final class ChatListViewModel: ObservableObject {
         }
     }
 
-    deinit {
-        observer?.cancel()
-        searchTask?.cancel()
-    }
+    // No `deinit`: the bag cancels its tasks when it is released with us.
 }
 
 struct ChatListView: View {
@@ -127,13 +127,15 @@ struct ChatListView: View {
             }
             .navigationTitle(l("chats.title"))
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                // `.navigationBarLeading`, not `.topBarLeading` — the latter is
+                // iOS 17+ and the deployment target is 16.
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button { isPresentingProfile = true } label: {
                         Avatar(title: account.username, seed: account.userID, size: 30)
                     }
                     .accessibilityLabel(l("profile.title"))
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button { isPresentingNewChat = true } label: {
                         Image(systemName: "square.and.pencil")
                     }

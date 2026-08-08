@@ -59,6 +59,7 @@ fun ChatListScreen(
     val chats by viewModel.chats.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val connection by viewModel.connection.collectAsStateWithLifecycle()
+    val avatarUrls by viewModel.avatarUrls.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -100,7 +101,11 @@ fun ChatListScreen(
                     )
                     else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(chats, key = { it.id }) { chat ->
-                            ChatRow(chat = chat, onClick = { onOpenChat(chat.id) })
+                            ChatRow(
+                                chat = chat,
+                                avatarUrl = avatarUrls[chat.peerAvatarRef],
+                                onClick = { onOpenChat(chat.id) },
+                            )
                             HorizontalDivider(modifier = Modifier.padding(start = 80.dp))
                         }
                     }
@@ -111,7 +116,7 @@ fun ChatListScreen(
 }
 
 @Composable
-private fun ChatRow(chat: Chat, onClick: () -> Unit) {
+private fun ChatRow(chat: Chat, avatarUrl: String?, onClick: () -> Unit) {
     val title = chat.title.ifEmpty { stringResource(R.string.chat_untitled, chat.id) }
     Row(
         modifier = Modifier
@@ -120,7 +125,7 @@ private fun ChatRow(chat: Chat, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Avatar(label = title)
+        Avatar(label = title, imageUrl = avatarUrl)
         Column(
             modifier = Modifier
                 .weight(1f)

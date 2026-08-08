@@ -9,6 +9,7 @@ import com.synapse.messenger.network.ConnectionState
 import com.synapse.messenger.network.Credentials
 import com.synapse.messenger.network.ServerEvent
 import com.synapse.messenger.network.SynapseGateway
+import com.synapse.messenger.network.protocol.Profile
 import com.synapse.messenger.push.PushTokenRegistrar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,7 +34,9 @@ class SyncCoordinator @Inject constructor(
     private val sessionStore: SessionStore,
     private val database: SynapseDatabase,
     private val ingestor: MessageIngestor,
+    private val profiles: ProfileFetcher,
     private val typingTracker: TypingTracker,
+    private val presenceTracker: PresenceTracker,
     private val messageRepository: MessageRepositoryImpl,
     private val userSync: ContactSyncer,
     private val pushTokens: PushTokenRegistrar,
@@ -88,8 +91,10 @@ class SyncCoordinator @Inject constructor(
                 is ServerEvent.Authenticated -> onAuthenticated(event)
                 is ServerEvent.Message -> ingestor.ingest(event.body)
                 is ServerEvent.ReadReceipt -> ingestor.ingestReceipt(event.body)
+                is ServerEvent.DeliveryReceipt -> ingestor.ingestDelivery(event.body)
                 is ServerEvent.TypingSignal ->
                     typingTracker.onTyping(event.body.chatId, event.body.userId, event.body.active)
+                is ServerEvent.ProfileUpdated -> profiles.store(event.body)
                 is ServerEvent.ChatCreated -> database.chatDao().upsertKnown(
                     chatId = event.body.chatId,
                     type = event.body.type,
@@ -100,7 +105,11 @@ class SyncCoordinator @Inject constructor(
                 // handled there; one arriving unsolicited is another device's send, whose
                 // message reaches us as a NEW frame anyway.
                 is ServerEvent.Acked -> Unit
-                is ServerEvent.PresenceUpdate -> Unit
+                is ServerEvent.PresenceUpdate -> presenceTracker.onPresence(
+                    userId = event.body.userId,
+                    online = event.body.online,
+                    lastSeenMs = event.body.lastSeenMs,
+                )
                 is ServerEvent.Failure -> Log.i(TAG, "gateway error: ${event.error}")
                 is ServerEvent.SessionExpired -> onSessionExpired()
             }
@@ -113,8 +122,17 @@ class SyncCoordinator @Inject constructor(
      * from), then push the queue, then reconcile the slower state.
      */
     private suspend fun onAuthenticated(event: ServerEvent.Authenticated) {
-        val username = sessionStore.current()?.username
-        sessionStore.save(event.session, username)
+        // AUTH_OK now carries the identity itself, so a token login knows who it is
+        // without inferring anything from the credentials it did not use.
+        sessionStore.save(event.session, event.session.username.takeIf { it.isNotEmpty() })
+        profiles.store(
+            Profile(
+                userId = event.session.userId,
+                username = event.session.username,
+                displayName = event.session.displayName,
+                avatarRef = event.session.avatarRef,
+            ),
+        )
         scope.launch { messageRepository.flushOutbox() }
         scope.launch { userSync.syncQuietly() }
         scope.launch { pushTokens.sync() }
@@ -132,6 +150,7 @@ class SyncCoordinator @Inject constructor(
     private suspend fun onSessionExpired() {
         Log.i(TAG, "session expired; clearing credentials")
         typingTracker.clear()
+        presenceTracker.clear()
         sessionStore.clear()
     }
 

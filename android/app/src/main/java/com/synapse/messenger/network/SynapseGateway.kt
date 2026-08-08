@@ -14,6 +14,7 @@ import com.synapse.messenger.network.protocol.Hello
 import com.synapse.messenger.network.protocol.MsgType
 import com.synapse.messenger.network.protocol.NewMessage
 import com.synapse.messenger.network.protocol.Presence
+import com.synapse.messenger.network.protocol.Profile
 import com.synapse.messenger.network.protocol.ProtocolError
 import com.synapse.messenger.network.protocol.ProtocolException
 import com.synapse.messenger.network.protocol.ReadUpdate
@@ -305,6 +306,9 @@ class SynapseGateway @Inject constructor(
             sessionId = ok.sessionId,
             token = ok.token,
             resumeToken = ok.resumeToken,
+            username = ok.username,
+            displayName = ok.displayName,
+            avatarRef = ok.avatarRef,
         )
         // The gateway assigns a device id when we sent none; adopt it so the next
         // reconnect presents the same device (multi-device delivery keys on it).
@@ -406,9 +410,11 @@ class SynapseGateway @Inject constructor(
             MsgType.NEW -> (body as? NewMessage)?.let(ServerEvent::Message)
             MsgType.SEND_ACK -> (body as? SendAck)?.let(ServerEvent::Acked)
             MsgType.READ_UPD -> (body as? ReadUpdate)?.let(ServerEvent::ReadReceipt)
+            MsgType.DELIVERED -> (body as? ReadUpdate)?.let(ServerEvent::DeliveryReceipt)
             MsgType.TYPING -> (body as? Typing)?.let(ServerEvent::TypingSignal)
             MsgType.PRESENCE -> (body as? Presence)?.let(ServerEvent::PresenceUpdate)
             MsgType.CHAT_INFO -> (body as? ChatInfo)?.let(ServerEvent::ChatCreated)
+            MsgType.PROFILE -> (body as? Profile)?.let(ServerEvent::ProfileUpdated)
             MsgType.ERROR, MsgType.AUTH_ERR -> {
                 val raw = body as? ProtocolError
                 val error = ProtocolException(

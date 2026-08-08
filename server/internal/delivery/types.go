@@ -14,6 +14,14 @@ type Delivery struct {
 	Type      wire.MsgType
 	RequestID uint64
 	Body      any // marshaled to the envelope body by the connection
+	// OnWritten, if set, runs after this frame has been written to the socket —
+	// not when it was enqueued. That distinction is the whole point for delivery
+	// receipts: everything before the write is a promise, and a queued frame on a
+	// connection that dies is never delivered at all.
+	//
+	// It runs on the connection's single writer goroutine and MUST NOT block:
+	// anything slow (a registry lookup, a publish) belongs off that path.
+	OnWritten func()
 }
 
 // Sink is a live connection able to receive pushes. Send must be non-blocking

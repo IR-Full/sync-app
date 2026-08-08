@@ -53,12 +53,19 @@ func (g *Gateway) StartDelivery() error {
 	if g.svc.Bus == nil || g.cfg.NodeID == "" {
 		return nil // single-process without cross-node bus wiring
 	}
+	// One goroutine per node turns written frames into delivery receipts.
+	go g.runDeliveryReporter()
 	return g.svc.Bus.Subscribe(router.DeliverSubject(g.cfg.NodeID), "", func(_ context.Context, e eventbus.Event) error {
 		nd, err := router.DecodeNodeDelivery(e.Data)
 		if err != nil {
 			return err
 		}
 		d := delivery.Delivery{Type: wire.MsgType(nd.Type), Body: nd.Body}
+		// A message is the one frame whose arrival the sender is entitled to hear
+		// about, and this node is the only place that can witness it.
+		if d.Type == wire.MsgNew {
+			d.OnWritten = g.deliveryReporterFor(nd.UserID, nd.Body)
+		}
 		if nd.DeviceID != "" {
 			g.svc.Hub.RouteDevice(nd.UserID, nd.DeviceID, d)
 		} else {
@@ -127,6 +134,7 @@ func New(svc Services, cfg Config, log *slog.Logger) *Gateway {
 		userLimits: pickUserLimits(svc.UserLimits),
 		roles:      make(map[string]Role),
 		reaperDone: make(chan struct{}),
+		delivered:  make(chan deliveryReport, deliveredQueueDepth),
 	}
 	if cfg.MaxConnsPerIP > 0 || cfg.AcceptRatePerIP > 0 {
 		g.ipg = newIPGuard(cfg.AcceptRatePerIP, cfg.MaxConnsPerIP)

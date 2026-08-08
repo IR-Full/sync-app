@@ -88,6 +88,64 @@ class BodyCodecTest {
     }
 
     @Test
+    fun `chat summaries and profiles round-trip`() {
+        // The two message types a fresh install depends on: without CHAT_LIST it cannot
+        // enumerate its chats, and without PROFILE it can only name people by snowflake.
+        val page = Chats(
+            chats = listOf(
+                ChatSummary(
+                    chatId = "812",
+                    type = "direct",
+                    title = "",
+                    ownerId = "5511",
+                    lastSeq = 42,
+                    myRole = "owner",
+                    peerId = "9001",
+                ),
+                ChatSummary(chatId = "813", type = "group", title = "Release crew", myRole = "member"),
+            ),
+            nextAfter = "813",
+        )
+        assertEquals(page, BodyCodec.decode(MsgType.CHATS, BodyCodec.encode(MsgType.CHATS, page)))
+
+        val profile = Profile(
+            userId = "9001",
+            username = "alice",
+            displayName = "Alice",
+            avatarRef = "m123-abc",
+        )
+        assertEquals(profile, BodyCodec.decode(MsgType.PROFILE, BodyCodec.encode(MsgType.PROFILE, profile)))
+    }
+
+    @Test
+    fun `auth ok carries the identity behind the session`() {
+        // A token login has no username to infer anything from, so these fields are the
+        // only thing that tells the client who it is.
+        val ok = AuthOk(
+            userId = "1",
+            deviceId = "d",
+            sessionId = "s",
+            token = "t",
+            resumeToken = "r",
+            username = "alice",
+            displayName = "Alice",
+            avatarRef = "m1",
+        )
+        assertEquals(ok, BodyCodec.decode(MsgType.AUTH_OK, BodyCodec.encode(MsgType.AUTH_OK, ok)))
+    }
+
+    @Test
+    fun `clearing an avatar is a flag, not an empty ref`() {
+        // proto3 omits empty strings, so an empty avatar_ref is indistinguishable from
+        // an absent one — the server reads "leave as is" from it and needs the flag.
+        val nameOnly = BodyCodec.encode(MsgType.PROFILE_SET, ProfileSet(displayName = "Alice"))
+        assertEquals(ProfileSet(displayName = "Alice"), BodyCodec.decode(MsgType.PROFILE_SET, nameOnly))
+
+        val clear = BodyCodec.encode(MsgType.PROFILE_SET, ProfileSet(clearAvatar = true))
+        assertEquals(ProfileSet(clearAvatar = true), BodyCodec.decode(MsgType.PROFILE_SET, clear))
+    }
+
+    @Test
     fun `bodiless types are known to carry nothing`() {
         assertFalse(BodyCodec.hasBody(MsgType.PING))
         assertFalse(BodyCodec.hasBody(MsgType.PONG))

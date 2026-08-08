@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/synapse-chat/synapse/internal/model"
 	"github.com/synapse-chat/synapse/pkg/eventbus"
 	"github.com/synapse-chat/synapse/pkg/wire"
 )
@@ -53,9 +54,28 @@ func (r *countRouter) Bind(context.Context, string, string, string) error   { re
 func (r *countRouter) Unbind(context.Context, string, string, string) error { return nil }
 func (r *countRouter) Refresh(context.Context, string, string) error        { return nil }
 
-type staticChats struct{ ids []string }
+type staticChats struct {
+	ids   []string
+	chats []model.ChatSummary
+}
 
 func (c staticChats) MemberIDs(context.Context, string) ([]string, error) { return c.ids, nil }
+
+// UserChats answers the presence audience lookup. Empty unless a test sets it:
+// the message-fanout tests must not acquire an accidental presence audience.
+func (c staticChats) UserChats(_ context.Context, _ string, after string, limit int) ([]model.ChatSummary, error) {
+	out := make([]model.ChatSummary, 0, limit)
+	for _, s := range c.chats {
+		if s.Chat == nil || s.Chat.ID <= after {
+			continue
+		}
+		out = append(out, s)
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
 
 // MemberIDsPage serves the ids in sorted order after a cursor, like a real store
 // keyset walk — the fanout coordinator depends on that ordering to page.
@@ -244,6 +264,10 @@ func (c *pagingOnlyChats) MemberIDs(context.Context, string) ([]string, error) {
 	return nil, fmt.Errorf("membership must be paged, not materialized")
 }
 
+func (c *pagingOnlyChats) UserChats(context.Context, string, string, int) ([]model.ChatSummary, error) {
+	return nil, nil
+}
+
 func (c *pagingOnlyChats) MemberIDsPage(_ context.Context, _ string, after string, limit int) ([]string, error) {
 	c.pageCalls++
 	if limit > c.maxPage {
@@ -317,4 +341,94 @@ func TestHotChatSecondaryEventsStream(t *testing.T) {
 	if got := rtr.calls.Load(); got != int64(n) {
 		t.Fatalf("pin reached %d of %d members", got, n)
 	}
+}
+
+// TestPresenceReachesDirectPeersOnly pins down the audience rule.
+//
+// Presence flips on every connect and disconnect, so "everyone who shares any
+// chat" would turn one flaky mobile link into a membership-sized multiplication of
+// frames across every group the user belongs to. The peer of a direct chat is
+// where "last seen" is actually shown, and there is exactly one of them.
+func TestPresenceReachesDirectPeersOnly(t *testing.T) {
+	rtr := &recordRouter{}
+	chats := staticChats{chats: []model.ChatSummary{
+		{Chat: &model.Chat{ID: "1", Type: model.ChatDirect}, PeerID: "peer-a"},
+		{Chat: &model.Chat{ID: "2", Type: model.ChatGroup}, PeerID: ""},
+		{Chat: &model.Chat{ID: "3", Type: model.ChatChannel}, PeerID: ""},
+		{Chat: &model.Chat{ID: "4", Type: model.ChatDirect}, PeerID: "peer-b"},
+		// A duplicate row must not double the fanout.
+		{Chat: &model.Chat{ID: "5", Type: model.ChatDirect}, PeerID: "peer-a"},
+		// Nor may a self-referencing row make a user watch themselves.
+		{Chat: &model.Chat{ID: "6", Type: model.ChatDirect}, PeerID: "u1"},
+	}}
+	s := New(&captureBus{}, chats, rtr, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	body := wire.PresenceBody{UserID: "u1", Online: true, LastSeenMs: 1700000000000}
+	if err := s.onPresence(context.Background(), eventbus.Event{
+		Subject: eventbus.SubjPresence, Key: "u1", Data: wire.Marshal(body),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := rtr.seen()
+	want := map[string]bool{"peer-a": true, "peer-b": true}
+	if len(got) != len(want) {
+		t.Fatalf("presence delivered to %v, want exactly %v", got, want)
+	}
+	for _, uid := range got {
+		if !want[uid] {
+			t.Fatalf("presence delivered to %q, which shares no direct chat with the user", uid)
+		}
+	}
+}
+
+// TestPresenceSurvivesAnAudienceLookupFailure keeps a Redis blip from turning into
+// an endless redelivery loop: presence is ephemeral and the next transition (or the
+// TTL behind it) supersedes a lost one, so the event must be acknowledged.
+func TestPresenceSurvivesAnAudienceLookupFailure(t *testing.T) {
+	s := New(&captureBus{}, failingChats{}, &countRouter{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	err := s.onPresence(context.Background(), eventbus.Event{
+		Data: wire.Marshal(wire.PresenceBody{UserID: "u1", Online: false}),
+	})
+	if err != nil {
+		t.Fatalf("onPresence returned %v — the bus would redeliver this forever", err)
+	}
+}
+
+// recordRouter remembers who was routed to, not just how many times.
+type recordRouter struct {
+	mu    sync.Mutex
+	users []string
+}
+
+func (r *recordRouter) NodesFor(_ context.Context, userID string) ([]string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users = append(r.users, userID)
+	return nil, nil
+}
+func (r *recordRouter) Bind(context.Context, string, string, string) error   { return nil }
+func (r *recordRouter) Unbind(context.Context, string, string, string) error { return nil }
+func (r *recordRouter) Refresh(context.Context, string, string) error        { return nil }
+
+func (r *recordRouter) seen() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.users...)
+}
+
+// failingChats fails the audience lookup the way a registry outage would.
+type failingChats struct{}
+
+func (failingChats) MemberIDs(context.Context, string) ([]string, error) {
+	return nil, fmt.Errorf("membership unavailable")
+}
+
+func (failingChats) MemberIDsPage(context.Context, string, string, int) ([]string, error) {
+	return nil, fmt.Errorf("membership unavailable")
+}
+
+func (failingChats) UserChats(context.Context, string, string, int) ([]model.ChatSummary, error) {
+	return nil, fmt.Errorf("chat list unavailable")
 }

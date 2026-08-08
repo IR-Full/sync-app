@@ -67,6 +67,19 @@ interface ChatDao {
     suspend fun findDirectByUsername(username: String): ChatEntity?
 
     /**
+     * The direct chat with a given person, by their user id — which is how a
+     * chat-list row identifies the other side of a 1:1 conversation.
+     */
+    @Query(
+        """
+        SELECT * FROM chats
+        WHERE peerUserId = :peerUserId AND chatId NOT LIKE '@%'
+        LIMIT 1
+        """,
+    )
+    suspend fun findDirectByPeer(peerUserId: String): ChatEntity?
+
+    /**
      * The real id of a direct chat, once it has one.
      *
      * The `NOT LIKE '@%'` excludes the placeholder row a conversation lives in
@@ -117,6 +130,37 @@ interface ChatDao {
 
     @Query("UPDATE chats SET oldestLoadedSeq = :oldest, hasMoreHistory = :hasMore WHERE chatId = :chatId")
     suspend fun updateHistoryCursor(chatId: String, oldest: Long, hasMore: Boolean)
+
+    /**
+     * Applies a CHAT_LIST row. Unlike [upsertKnown] this overwrites: the server's
+     * chat list is authoritative about a chat's type, title and owner, and a row
+     * first learned from an incoming message holds guesses for all three.
+     */
+    @Query(
+        """
+        UPDATE chats SET
+            type = :type,
+            title = :title,
+            ownerId = :ownerId,
+            peerUserId = COALESCE(:peerUserId, peerUserId)
+        WHERE chatId = :chatId
+        """,
+    )
+    suspend fun applySummary(
+        chatId: String,
+        type: String,
+        title: String,
+        ownerId: String?,
+        peerUserId: String?,
+    )
+
+    /**
+     * Records the handle of a direct chat's peer, learned from their profile. This is
+     * what lets "message @bob" find the conversation that already exists instead of
+     * probing the server for it.
+     */
+    @Query("UPDATE chats SET peerUsername = :username WHERE peerUserId = :peerUserId AND peerUsername IS NULL")
+    suspend fun setPeerUsername(peerUserId: String, username: String)
 
     @Query("DELETE FROM chats WHERE chatId = :chatId")
     suspend fun deleteById(chatId: String)

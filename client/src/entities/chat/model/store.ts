@@ -86,6 +86,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const next: ChatSummary = {
       ...previous,
       provisional: false,
+      // In a direct chat anyone who is not us IS the other party — the only
+      // place the peer's id can be learned, since no message reports chat
+      // membership. Presence and secret chats both need it.
+      peerUserId:
+        previous.peerUserId ??
+        (previous.kind === 'direct' && !isOwn ? message.senderId : undefined),
       lastSeq: Math.max(previous.lastSeq, message.chatSeq),
       // Our own message means we have obviously seen everything up to it.
       lastReadSeq: isOwn

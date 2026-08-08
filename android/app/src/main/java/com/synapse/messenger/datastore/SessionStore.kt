@@ -38,6 +38,8 @@ class SessionStore @Inject constructor(
         val sessionId: String,
         val token: String,
         val resumeToken: String,
+        val displayName: String,
+        val avatarRef: String,
     )
 
     val session: Flow<StoredSession?> = store.data.map { prefs ->
@@ -51,6 +53,8 @@ class SessionStore @Inject constructor(
             sessionId = prefs[KEY_SESSION_ID].orEmpty(),
             token = token,
             resumeToken = prefs[KEY_RESUME_TOKEN].orEmpty(),
+            displayName = prefs[KEY_DISPLAY_NAME].orEmpty(),
+            avatarRef = prefs[KEY_AVATAR_REF].orEmpty(),
         )
     }
 
@@ -64,6 +68,8 @@ class SessionStore @Inject constructor(
             prefs[KEY_RESUME_TOKEN] = gateway.resumeToken
             if (gateway.deviceId.isNotEmpty()) prefs[KEY_DEVICE_ID] = gateway.deviceId
             if (!username.isNullOrEmpty()) prefs[KEY_USERNAME] = username.lowercase()
+            prefs[KEY_DISPLAY_NAME] = gateway.displayName
+            prefs[KEY_AVATAR_REF] = gateway.avatarRef
         }
     }
 
@@ -96,5 +102,7 @@ class SessionStore @Inject constructor(
         val KEY_SESSION_ID = stringPreferencesKey("session_id")
         val KEY_TOKEN = stringPreferencesKey("token")
         val KEY_RESUME_TOKEN = stringPreferencesKey("resume_token")
+        val KEY_DISPLAY_NAME = stringPreferencesKey("display_name")
+        val KEY_AVATAR_REF = stringPreferencesKey("avatar_ref")
     }
 }

@@ -70,6 +70,11 @@ class MessageRepositoryImpl @Inject constructor(
             receipts.observeOthersReadSeq(chatId, selfId)
         }
 
+    override fun observeOthersDeliveredSeq(chatId: String): Flow<Long> =
+        sessionHolder.userId.flatMapLatest { selfId ->
+            receipts.observeOthersDeliveredSeq(chatId, selfId)
+        }
+
     override fun observeTyping(chatId: String): Flow<Set<String>> = typingTracker.observe(chatId)
 
     // ------------------------------------------------------------------- sending

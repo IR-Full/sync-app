@@ -23,10 +23,10 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SynapseDatabase =
         Room.databaseBuilder(context, SynapseDatabase::class.java, SynapseDatabase.NAME)
-            // No fallbackToDestructiveMigration: this database holds the only copy of
-            // the chat list (the protocol cannot enumerate chats), so dropping it on a
-            // schema change would lose conversations, not just a cache. Version bumps
-            // must ship a migration.
+            // No fallbackToDestructiveMigration: the outbox lives here, so dropping the
+            // database on a schema change would discard messages the user believes they
+            // sent. Version bumps ship a migration instead.
+            .addMigrations(SynapseDatabase.MIGRATION_1_2, SynapseDatabase.MIGRATION_2_3)
             .build()
 
     @Provides

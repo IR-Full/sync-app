@@ -58,5 +58,16 @@ let package = Package(
             dependencies: ["SynapsePersistence", "SynapseDomain", "SynapseNetwork"],
             path: "Tests/PersistenceTests"
         ),
+
+        // Depends on SynapseDI, which transitively pulls in every other target.
+        // That is the point as much as the assertions are: without it nothing
+        // compiles the SwiftUI layer until the app target does, and a failure
+        // there surfaces as `no such module` against the app's first import —
+        // pointing nowhere near the code that actually failed to build.
+        .testTarget(
+            name: "SynapsePresentationTests",
+            dependencies: ["SynapsePresentation", "SynapseDI", "SynapseDomain", "SynapseNetwork"],
+            path: "Tests/PresentationTests"
+        ),
     ]
 )

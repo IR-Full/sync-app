@@ -128,6 +128,18 @@ const (
 	MsgProfileSet MsgType = 126 // C→S: update MY display name / avatar
 	MsgProfile    MsgType = 127 // S→C: a user's public profile
 
+	// Delivery receipts. A SendAck proves the message is DURABLE, and a ReadUpd
+	// proves it was READ, but nothing reported the step between them: fanout
+	// pushed a message and told the sender nothing, so a client could only ever
+	// draw two states. This is emitted by the gateway that actually wrote the
+	// frame to a recipient's socket — not by the one that routed it — so it means
+	// the bytes left the server, not merely that a node was notified.
+	//
+	// The body is a ReadUpdateBody: (chat_id, user_id, up_to_chat_seq) is exactly
+	// the shape a delivery cursor needs, and per-chat seqs are monotonic, so a
+	// client keeps the maximum and duplicates are harmless.
+	MsgDelivered MsgType = 128 // S→C: a message of mine reached a recipient's device
+
 	// Calls & conferences (90s block). The server owns signaling only: media
 	// never flows through it (peer-to-peer or via an SFU).
 	MsgCallInvite  MsgType = 90 // C→S: start/join a call in a chat

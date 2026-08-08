@@ -41,7 +41,7 @@ async function main() {
 
   const b = new SynapseClient({ url: URL_ })
   b.setDeviceId('feat-bob')
-  await b.connect({
+  const bobSession = await b.connect({
     kind: 'password',
     username: bob,
     password: 'correct horse battery',
@@ -296,6 +296,68 @@ async function main() {
     header: dump.items[0]?.title || dump.items[0]?.type,
     messages: exported.length,
   })
+
+  // --- CALLS: signalling only; the server relays SDP/ICE and never parses it
+  const ringing: Body.CallState[] = []
+  const signals: Body.CallSignal[] = []
+  b.on('callState', (state) => ringing.push(state))
+  b.on('callSignal', (signal) => signals.push(signal))
+
+  const invited = await a.request<Body.CallState>(
+    MsgType.CALL_INVITE,
+    { chatId, kind: 'audio' },
+    { expect: MsgType.CALL_STATE },
+  )
+  const callId = invited.body.callId
+  check(
+    'CALL_INVITE -> CALL_STATE(ringing)',
+    invited.body.state === 'ringing' &&
+      invited.body.participants.some(
+        (p) => p.userId === bobSession.userId && p.state === 'invited',
+      ),
+    { state: invited.body.state, participants: invited.body.participants },
+  )
+
+  await sleep(600)
+  check(
+    'callee is rung via fanout',
+    ringing.some((s) => s.callId === callId),
+    {
+      pushes: ringing.length,
+    },
+  )
+
+  const accepted = await b.request<Body.CallState>(
+    MsgType.CALL_ACCEPT,
+    { callId },
+    { expect: MsgType.CALL_STATE },
+  )
+  check('CALL_ACCEPT -> CALL_STATE(active)', accepted.body.state === 'active', {
+    state: accepted.body.state,
+  })
+
+  // Relay one opaque payload; the server stamps the sender for us.
+  a.send(MsgType.CALL_SIGNAL, {
+    callId,
+    toUserId: bobSession.userId,
+    toDeviceId: '',
+    signalType: 'offer',
+    payload: JSON.stringify({ type: 'offer', sdp: 'v=0...' }),
+  })
+  await sleep(600)
+  const relayed = signals.find((s) => s.signalType === 'offer')
+  check('CALL_SIGNAL relayed with sender stamped', !!relayed && relayed.fromUserId !== '', {
+    from: relayed?.fromUserId,
+    type: relayed?.signalType,
+    payloadKept: relayed?.payload?.includes('v=0'),
+  })
+
+  const ended = await b.request<Body.CallState>(
+    MsgType.CALL_HANGUP,
+    { callId },
+    { expect: MsgType.CALL_STATE },
+  )
+  check('CALL_HANGUP -> CALL_STATE', ended.body.callId === callId, { state: ended.body.state })
 
   // --- DELETE last, so it does not disturb the checks above
   a.send(MsgType.DELETE, { chatId, messageId, forAll: true })

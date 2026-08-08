@@ -359,6 +359,11 @@ func (c *conn) writeOne(d delivery.Delivery) bool {
 		return false
 	}
 	metrics.FramesOut.Inc()
+	// The frame is on the wire now, which is the only moment a delivery receipt
+	// may honestly be claimed.
+	if d.OnWritten != nil {
+		d.OnWritten()
+	}
 	if c.gw.svc.Replay != nil && c.sessionID != "" {
 		_ = c.gw.svc.Replay.Append(context.Background(), c.sessionID, env.Seq, payload)
 	}

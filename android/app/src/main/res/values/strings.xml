@@ -25,6 +25,8 @@
     <string name="chat_send">Send</string>
     <string name="chat_attach">Attach image</string>
     <string name="chat_typing">typing…</string>
+    <string name="presence_online">online</string>
+    <string name="presence_last_seen">last seen %1$s</string>
     <string name="chat_edited">edited</string>
     <string name="chat_forwarded">Forwarded</string>
     <string name="chat_message_deleted">Message deleted</string>
@@ -34,6 +36,7 @@
     <!-- Message status -->
     <string name="status_pending">Sending</string>
     <string name="status_sent">Sent</string>
+    <string name="status_delivered">Delivered</string>
     <string name="status_read">Read</string>
     <string name="status_failed">Not sent</string>
 
@@ -43,7 +46,7 @@
     <string name="new_chat_tab_group">Group</string>
     <string name="new_chat_tab_join">Join</string>
     <string name="new_chat_username_label">Username</string>
-    <string name="new_chat_username_hint">Exact handle. The gateway resolves a username to a user; there is no fuzzy user search.</string>
+    <string name="new_chat_username_hint">Exact handle. The gateway resolves a username to a profile; there is no fuzzy user search.</string>
     <string name="new_chat_find">Find and open</string>
     <string name="new_chat_group_title">Title</string>
     <string name="new_chat_group_members">Members</string>
@@ -61,7 +64,7 @@
     <string name="settings_user_id">ID %1$s</string>
     <string name="settings_display_name">Display name</string>
     <string name="settings_change_avatar">Change photo</string>
-    <string name="settings_profile_local_note">Name and photo are stored on this device only: the protocol has no profile or avatar to publish them to.</string>
+    <string name="settings_remove_avatar">Remove photo</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>

@@ -4,14 +4,17 @@ import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -69,15 +72,24 @@ class GatewayInteropTest {
             assertEquals(0, welcome.caps and Cap.ZSTD)
             assertTrue(Cap.has(welcome.caps, Cap.COMPRESSION))
 
-            // --- AUTH (register)
+            // --- AUTH (register), with the display name the gateway honours only here
             val username = "androidtest" + System.currentTimeMillis()
             val auth = session.request<AuthOk>(
                 MsgType.AUTH,
-                Auth(username = username, password = "secret123", register = true),
+                Auth(
+                    username = username,
+                    password = "secret123",
+                    register = true,
+                    displayName = "Android Codec",
+                ),
             )
             assertTrue("user id assigned", auth.userId.isNotEmpty())
             assertTrue("bearer token issued", auth.token.isNotEmpty())
             assertTrue("resume token issued", auth.resumeToken.isNotEmpty())
+            // AUTH_OK carries the identity itself, which is what makes a token login on
+            // a later launch self-sufficient.
+            assertEquals(username, auth.username)
+            assertEquals("Android Codec", auth.displayName)
 
             // --- SEND to a second account, addressed by @username
             val peer = "androidpeer" + System.currentTimeMillis()
@@ -103,21 +115,73 @@ class GatewayInteropTest {
             assertEquals(ack.messageId, retry.messageId)
 
             // --- HISTORY: N NEW frames sharing our request id, then HISTORY_OK
-            val page = session.stream(
+            val historyPage = session.stream(
                 MsgType.HISTORY,
                 History(chatId = ack.chatId, beforeSeq = 0, limit = 20),
                 itemType = MsgType.NEW,
                 endType = MsgType.HISTORY_OK,
             )
-            val messages = page.items.map { it as NewMessage }
+            val messages = historyPage.items.map { it as NewMessage }
             assertEquals(1, messages.size)
             assertEquals("hello from the android codec", messages.first().text)
             assertEquals(ack.messageId, messages.first().messageId)
-            val end = page.end as HistoryOk
+            val end = historyPage.end as HistoryOk
             assertTrue("short page means done", end.done)
 
             // --- READ is answered only on failure; silence is success.
             session.write(MsgType.READ, Read(chatId = ack.chatId, upToChatSeq = ack.chatSeq), 0)
+
+            // --- CHAT_LIST: the enumeration a fresh install depends on. The chat we
+            // just created must be in it, described well enough to render a row.
+            val chatPage = session.request<Chats>(MsgType.CHAT_LIST, ChatList(limit = 50))
+            val row = chatPage.chats.firstOrNull { it.chatId == ack.chatId }
+            assertNotNull("the new chat appears in CHAT_LIST", row)
+            assertEquals("direct", row!!.type)
+            assertEquals("owner is the caller", auth.userId, row.ownerId)
+            // peer_id is what finally gives a 1:1 chat something to be named after.
+            assertTrue("peer id filled for a direct chat", row.peerId.isNotEmpty())
+            assertTrue("last_seq tells us what to backfill", row.lastSeq >= ack.chatSeq)
+            assertTrue("my_role reported", row.myRole.isNotEmpty())
+            assertTrue("a single page is the last one", chatPage.done)
+
+            // --- PROFILE_GET by handle: the user lookup, with no side effects.
+            val peerProfile = session.request<Profile>(MsgType.PROFILE_GET, ProfileGet(target = "@$peer"))
+            assertEquals(peer, peerProfile.username)
+            assertEquals(row.peerId, peerProfile.userId)
+
+            // An empty target means "me".
+            val me = session.request<Profile>(MsgType.PROFILE_GET, ProfileGet())
+            assertEquals(auth.userId, me.userId)
+            assertEquals("Android Codec", me.displayName)
+
+            // --- PROFILE_SET: our own name, and an avatar through the media pipeline.
+            val renamed = session.request<Profile>(
+                MsgType.PROFILE_SET,
+                ProfileSet(displayName = "Renamed From Android"),
+            )
+            assertEquals("Renamed From Android", renamed.displayName)
+            // Empty fields mean "leave as is", so the username must survive a name-only set.
+            assertEquals(username, renamed.username)
+
+            val ticket = session.request<MediaTicket>(
+                MsgType.MEDIA_INIT,
+                MediaInit(filename = "avatar.jpg", contentType = "image/jpeg", size = AVATAR.size.toLong()),
+            )
+            uploadAvatar(client, ticket.uploadUrl)
+            val withAvatar = session.request<Profile>(
+                MsgType.PROFILE_SET,
+                ProfileSet(avatarRef = ticket.mediaRef),
+            )
+            assertEquals(ticket.mediaRef, withAvatar.avatarRef)
+            assertEquals("a name-less set leaves the name alone", "Renamed From Android", withAvatar.displayName)
+
+            // Clearing is a flag, because proto3 cannot tell an absent ref from an empty one.
+            val cleared = session.request<Profile>(MsgType.PROFILE_SET, ProfileSet(clearAvatar = true))
+            assertEquals("", cleared.avatarRef)
+
+            // The avatar ref resolves to a signed URL like any other media.
+            val url = session.request<MediaUrl>(MsgType.MEDIA_FETCH, MediaFetch(mediaRef = ticket.mediaRef))
+            assertTrue("signed download URL", url.downloadUrl.startsWith("http"))
 
             // --- The gateway PINGs on its heartbeat; answering is what keeps the
             // connection alive past the idle timeout.
@@ -130,21 +194,183 @@ class GatewayInteropTest {
         }
     }
 
-    /** A peer has to exist before "@name" can resolve to a chat. */
-    private fun registerPeer(client: OkHttpClient, url: String, username: String) {
-        val peer = Session(client, url)
+    /**
+     * A delivery receipt reaches the sender once the recipient's device really has the
+     * message — the step between "durably stored" and "read", which had no source at
+     * all until the gateway started reporting its own writes.
+     */
+    @Test
+    fun `a message written to a recipient socket is reported back to the sender`() {
+        assumeTrue("set SYNAPSE_TEST_WS to run", url != null)
+
+        val client = OkHttpClient.Builder().readTimeout(0, TimeUnit.SECONDS).build()
+        val sender = Session(client, url!!)
+        var peer: Session? = null
         try {
-            peer.request<Welcome>(
+            sender.request<Welcome>(
                 MsgType.HELLO,
-                Hello(clientVersion = "android-test/0.1", deviceId = "peer-$username", platform = "android"),
+                Hello(
+                    clientVersion = "android-test/0.1",
+                    deviceId = "sender-" + UUID.randomUUID(),
+                    platform = "android",
+                ),
             )
-            peer.request<AuthOk>(
+            val me = sender.request<AuthOk>(
                 MsgType.AUTH,
-                Auth(username = username, password = "secret123", register = true),
+                Auth(
+                    username = "androidsend" + System.currentTimeMillis(),
+                    password = "secret123",
+                    register = true,
+                ),
+            )
+
+            // The recipient must be CONNECTED: an offline one gets a push notification,
+            // not a delivery receipt, and that difference is the whole point of the signal.
+            val peerName = "androidrecv" + System.currentTimeMillis()
+            peer = connectPeer(client, url!!, peerName, register = true)
+
+            val ack = sender.request<SendAck>(
+                MsgType.SEND,
+                Send(
+                    chatId = "@" + peerName,
+                    dedupKey = UUID.randomUUID().toString(),
+                    text = "are you there",
+                ),
+            )
+
+            val frame = sender.awaitPush(MsgType.DELIVERED, timeoutMs = 15_000)
+            assertNotNull("no DELIVERED frame arrived for a connected recipient", frame)
+            val receipt = BodyCodec.decode(MsgType.DELIVERED, frame!!.body) as ReadUpdate
+            assertEquals(ack.chatId, receipt.chatId)
+            // The receipt names WHO received it, which is what makes it usable in a group.
+            assertTrue("receipt names a recipient", receipt.userId.isNotEmpty())
+            assertTrue("receipt is not about the sender", receipt.userId != me.userId)
+            // It is a cursor, not a message id: a client keeps the maximum it has seen.
+            assertTrue(
+                "cursor covers the message (" + receipt.upToChatSeq + " vs " + ack.chatSeq + ")",
+                receipt.upToChatSeq >= ack.chatSeq,
             )
         } finally {
-            peer.close()
+            peer?.close()
+            sender.close()
+            client.dispatcher.executorService.shutdown()
         }
+    }
+
+    /**
+     * Presence reaches the peer of a direct chat.
+     *
+     * The audience is the design decision being pinned here: online state goes to the
+     * people a user has 1:1 chats with, so it only travels once such a chat exists —
+     * which the first message creates.
+     */
+    @Test
+    fun `presence transitions reach a direct chat peer`() {
+        assumeTrue("set SYNAPSE_TEST_WS to run", url != null)
+
+        val client = OkHttpClient.Builder().readTimeout(0, TimeUnit.SECONDS).build()
+        val watcher = Session(client, url!!)
+        var peer: Session? = null
+        try {
+            watcher.request<Welcome>(
+                MsgType.HELLO,
+                Hello(
+                    clientVersion = "android-test/0.1",
+                    deviceId = "watcher-" + UUID.randomUUID(),
+                    platform = "android",
+                ),
+            )
+            watcher.request<AuthOk>(
+                MsgType.AUTH,
+                Auth(
+                    username = "androidwatch" + System.currentTimeMillis(),
+                    password = "secret123",
+                    register = true,
+                ),
+            )
+
+            // Create the direct chat that makes the watcher an interested party.
+            val peerName = "androidseen" + System.currentTimeMillis()
+            registerPeer(client, url!!, peerName)
+            watcher.request<SendAck>(
+                MsgType.SEND,
+                Send(
+                    chatId = "@" + peerName,
+                    dedupKey = UUID.randomUUID().toString(),
+                    text = "hello",
+                ),
+            )
+
+            // Now the peer connects: the online transition must reach the watcher.
+            peer = connectPeer(client, url!!, peerName, register = false)
+            val online = watcher.awaitPush(MsgType.PRESENCE, timeoutMs = 15_000)
+            assertNotNull("no PRESENCE frame arrived for a direct-chat peer", online)
+            val onlineBody = BodyCodec.decode(MsgType.PRESENCE, online!!.body) as Presence
+            assertTrue("presence reports the peer online", onlineBody.online)
+            assertTrue("presence names the peer", onlineBody.userId.isNotEmpty())
+
+            // And the offline transition when they go away.
+            peer.close()
+            peer = null
+            val offline = watcher.awaitPush(MsgType.PRESENCE, timeoutMs = 20_000)
+            assertNotNull("no PRESENCE frame arrived when the peer disconnected", offline)
+            val offlineBody = BodyCodec.decode(MsgType.PRESENCE, offline!!.body) as Presence
+            assertEquals(onlineBody.userId, offlineBody.userId)
+            assertFalse("presence reports the peer offline", offlineBody.online)
+            assertTrue("offline carries a last-seen stamp", offlineBody.lastSeenMs > 0)
+        } finally {
+            peer?.close()
+            watcher.close()
+            client.dispatcher.executorService.shutdown()
+        }
+    }
+
+    /**
+     * PUTs the avatar bytes to the signed URL. The upload handler holds the body to
+     * exactly the size that was signed, so this sends the same array MEDIA_INIT declared.
+     */
+    private fun uploadAvatar(client: OkHttpClient, uploadUrl: String) {
+        val request = Request.Builder()
+            .url(uploadUrl)
+            .put(AVATAR.toRequestBody("image/jpeg".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            assertTrue("avatar upload accepted: ${response.code}", response.isSuccessful)
+        }
+    }
+
+    /** A peer has to exist before "@name" can resolve to a chat. */
+    private fun registerPeer(client: OkHttpClient, url: String, username: String) {
+        connectPeer(client, url, username, register = true).close()
+    }
+
+    /**
+     * Opens an authenticated session for another account and leaves it open.
+     *
+     * Delivery receipts and presence are only observable while the other side is
+     * really connected: one is raised by the gateway that writes to their socket, the
+     * other by their connection coming and going.
+     */
+    private fun connectPeer(
+        client: OkHttpClient,
+        url: String,
+        username: String,
+        register: Boolean,
+    ): Session {
+        val peer = Session(client, url)
+        peer.request<Welcome>(
+            MsgType.HELLO,
+            Hello(
+                clientVersion = "android-test/0.1",
+                deviceId = "peer-$username",
+                platform = "android",
+            ),
+        )
+        peer.request<AuthOk>(
+            MsgType.AUTH,
+            Auth(username = username, password = "secret123", register = register),
+        )
+        return peer
     }
 
     /**
@@ -244,4 +470,9 @@ class GatewayInteropTest {
     }
 
     private class StreamResult(val items: List<Any>, val end: Any?)
+
+    private companion object {
+        /** Any bytes will do: the media service stores blobs, it does not decode them. */
+        val AVATAR = ByteArray(64) { it.toByte() }
+    }
 }

@@ -125,7 +125,9 @@ public struct CreateGroupUseCase: Sendable {
 /// so the client must know which of the two it is asking for. There is no
 /// "log in, or register if new" mode to offer.
 public struct AuthenticateUseCase: Sendable {
-    public enum Intent: Sendable, Equatable {
+    /// `Hashable`, not merely `Equatable`: this is what a `Picker` selection is
+    /// tagged with, and `View.tag` requires it.
+    public enum Intent: Sendable, Hashable {
         case login, register
     }
 

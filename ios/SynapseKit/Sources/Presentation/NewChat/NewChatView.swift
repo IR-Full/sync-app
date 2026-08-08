@@ -17,7 +17,8 @@ final class NewChatViewModel: ObservableObject {
     // Suffixed so they do not collide with the methods of the same intent below.
     private let openDirectUseCase: OpenDirectChatUseCase
     private let createGroupUseCase: CreateGroupUseCase
-    private var observer: Task<Void, Never>?
+    private let tasks = TaskBag()
+    private var hasStarted = false
 
     init(factory: ViewFactory) {
         self.chatRepository = factory.chats
@@ -27,14 +28,17 @@ final class NewChatViewModel: ObservableObject {
     }
 
     func start() {
-        guard observer == nil else { return }
-        observer = Task { [weak self] in
+        guard !hasStarted else { return }
+        hasStarted = true
+        tasks.add(Task { [weak self] in
             guard let self else { return }
             for await contacts in self.contactRepository.observeContacts() {
                 self.contacts = contacts
             }
-        }
-        Task { try? await contactRepository.sync() }
+        })
+        tasks.add(Task { [weak self] in
+            try? await self?.contactRepository.sync()
+        })
     }
 
     /// Opening a chat with `@handle` is the only "user search" the protocol
@@ -121,7 +125,7 @@ final class NewChatViewModel: ObservableObject {
         }
     }
 
-    deinit { observer?.cancel() }
+    // No `deinit`: the bag cancels its tasks when it is released with us.
 }
 
 struct NewChatView: View {

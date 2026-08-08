@@ -30,6 +30,8 @@ func (t MsgType) String() string {
 		return "READ"
 	case MsgReadUpd:
 		return "READ_UPD"
+	case MsgDelivered:
+		return "DELIVERED"
 	case MsgTyping:
 		return "TYPING"
 	case MsgPresence:

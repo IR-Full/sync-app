@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.messenger.core.AppError
 import com.synapse.messenger.core.Outcome
+import com.synapse.messenger.data.media.MediaUrlCache
 import com.synapse.messenger.domain.model.ChatKind
 import com.synapse.messenger.domain.model.UserSummary
 import com.synapse.messenger.domain.repository.UserRepository
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,6 +51,7 @@ class NewChatViewModel @Inject constructor(
     private val findUser: FindUserUseCase,
     private val createGroup: CreateGroupChatUseCase,
     private val joinChat: JoinChatUseCase,
+    private val mediaUrls: MediaUrlCache,
     userRepository: UserRepository,
 ) : ViewModel() {
 
@@ -61,14 +64,16 @@ class NewChatViewModel @Inject constructor(
     /**
      * People this device knows.
      *
-     * Only those with a username are offered: a contact known by id alone cannot be
-     * opened, because addressing a direct chat requires either its chat id or the
-     * peer's handle — and CONTACT_SYNC returns neither for someone whose handle we
-     * never typed.
+     * Only those whose handle we hold are offered: opening a direct chat needs
+     * either its chat id or the peer's handle, and a profile fetch is what supplies
+     * the latter.
      */
     val contacts: StateFlow<List<UserSummary>> = userRepository.observeKnownUsers()
         .map { users -> users.filter { !it.username.isNullOrEmpty() && !it.blocked } }
+        .onEach { people -> mediaUrls.requestAll(people.map { it.avatarRef }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val avatarUrls: StateFlow<Map<String, String>> = mediaUrls.urls
 
     fun onTabChange(tab: NewChatTab) = _state.update { it.copy(tab = tab, error = null) }
 
@@ -83,12 +88,9 @@ class NewChatViewModel @Inject constructor(
     fun onInviteCodeChange(value: String) = _state.update { it.copy(inviteCode = value, error = null) }
 
     /**
-     * Looks a person up by handle.
-     *
-     * The lookup IS a contact add — CONTACT_ADD is the only request that turns a
-     * username into a user id — so a successful search also puts them in the address
-     * book. A username that does not exist comes back NOT_FOUND, which is what
-     * validates it.
+     * Looks a person up by handle: a profile read, with no side effect on the
+     * address book. An unknown handle comes back NOT_FOUND, which is what validates
+     * what the user typed.
      */
     fun findByUsername() {
         val handle = _state.value.username.trim().removePrefix("@")

@@ -24,6 +24,8 @@
     <string name="chat_send">Отправить</string>
     <string name="chat_attach">Прикрепить изображение</string>
     <string name="chat_typing">печатает…</string>
+    <string name="presence_online">в сети</string>
+    <string name="presence_last_seen">был(а) в сети %1$s</string>
     <string name="chat_edited">изменено</string>
     <string name="chat_forwarded">Переслано</string>
     <string name="chat_message_deleted">Сообщение удалено</string>
@@ -33,6 +35,7 @@
     <!-- Message status -->
     <string name="status_pending">Отправляется</string>
     <string name="status_sent">Отправлено</string>
+    <string name="status_delivered">Доставлено</string>
     <string name="status_read">Прочитано</string>
     <string name="status_failed">Не отправлено</string>
 
@@ -42,7 +45,7 @@
     <string name="new_chat_tab_group">Группа</string>
     <string name="new_chat_tab_join">Войти</string>
     <string name="new_chat_username_label">Имя пользователя</string>
-    <string name="new_chat_username_hint">Точный логин. Сервер находит пользователя по @username; поиска по подстроке в протоколе нет.</string>
+    <string name="new_chat_username_hint">Точный логин. Сервер находит профиль по @username; поиска по подстроке в протоколе нет.</string>
     <string name="new_chat_find">Найти и открыть</string>
     <string name="new_chat_group_title">Название</string>
     <string name="new_chat_group_members">Участники</string>
@@ -60,7 +63,7 @@
     <string name="settings_user_id">ID %1$s</string>
     <string name="settings_display_name">Отображаемое имя</string>
     <string name="settings_change_avatar">Сменить фото</string>
-    <string name="settings_profile_local_note">Имя и фото хранятся только на этом устройстве: в протоколе нет профиля и аватарок, публиковать их некуда.</string>
+    <string name="settings_remove_avatar">Удалить фото</string>
     <string name="settings_theme">Тема</string>
     <string name="settings_theme_system">Системная</string>
     <string name="settings_theme_light">Светлая</string>

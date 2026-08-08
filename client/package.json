@@ -14,9 +14,14 @@
     "typecheck": "tsc --noEmit",
     "proto:gen": "node scripts/gen-proto.mjs",
     "test:protocol": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-protocol.mts",
-    "test:features": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-features.mts"
+    "test:features": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-features.mts",
+    "test:secret": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-secret.mts",
+    "test:secret-responder": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-secret-responder.mts"
   },
   "dependencies": {
+    "@noble/ciphers": "^2.3.0",
+    "@noble/curves": "^2.3.0",
+    "@noble/hashes": "^2.3.0",
     "@tanstack/react-query": "^5.101.4",
     "next": "16.2.12",
     "protobufjs": "^8.7.1",

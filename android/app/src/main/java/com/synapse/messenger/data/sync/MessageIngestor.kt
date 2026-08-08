@@ -5,6 +5,7 @@ import com.synapse.messenger.data.SessionHolder
 import com.synapse.messenger.data.mapper.toEntity
 import com.synapse.messenger.database.SynapseDatabase
 import com.synapse.messenger.database.entity.MessageEntity
+import com.synapse.messenger.database.entity.DeliveryReceiptEntity
 import com.synapse.messenger.database.entity.MessageStatuses
 import com.synapse.messenger.database.entity.ReadReceiptEntity
 import com.synapse.messenger.network.protocol.NewMessage
@@ -156,6 +157,29 @@ class MessageIngestor @Inject constructor(
                 chats.advanceReadCursor(update.chatId, update.upToChatSeq)
             }
         }
+    }
+
+    /**
+     * A recipient's device received our messages up to a position.
+     *
+     * Stored as a cursor for the same reason the read receipt is: it is monotonic,
+     * so a message backfilled after the receipt arrived is still correctly shown as
+     * delivered, and duplicate receipts (one per device of theirs) collapse.
+     */
+    suspend fun ingestDelivery(update: ReadUpdate) {
+        if (update.chatId.isEmpty() || update.userId.isEmpty()) return
+        val selfId = sessionHolder.currentUserId
+        // A receipt about ourselves would mean our own other device received it,
+        // which says nothing about whether the other party did.
+        if (update.userId == selfId) return
+        receipts.upsertDelivery(
+            DeliveryReceiptEntity(
+                chatId = update.chatId,
+                userId = update.userId,
+                upToSeq = update.upToChatSeq,
+                updatedAt = System.currentTimeMillis(),
+            ),
+        )
     }
 
     /**

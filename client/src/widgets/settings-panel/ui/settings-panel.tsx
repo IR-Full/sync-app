@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react'
 
 import { useSettingsStore } from '@/entities/settings'
 import { useLogout } from '@/features/auth'
+import { usePushToken } from '@/features/push-token'
 import { LOCALE_LABELS, LOCALES, useLocaleStore, useTranslate } from '@/shared/i18n'
 import { cn } from '@/shared/lib/cn'
 import { useThemeStore, type ThemeMode } from '@/shared/theme/model'
@@ -91,6 +92,26 @@ export function SettingsPanel() {
     () => 'default' as const,
   )
 
+  const push = usePushToken()
+
+  /**
+   * Web Push is a separate thing from the in-page notifications above: it is
+   * what would let the server reach this browser while the tab is closed, and it
+   * only works if the deployment has a VAPID key and a provider behind it.
+   */
+  const pushStatusLabel =
+    push.status === 'registered'
+      ? t('settings.push.registered')
+      : push.status === 'unsupported'
+        ? t('settings.push.unsupported')
+        : push.status === 'not-configured'
+          ? t('settings.push.notConfigured')
+          : push.status === 'denied'
+            ? t('settings.notifications.blocked')
+            : push.status === 'failed'
+              ? t('settings.push.failed')
+              : ''
+
   async function enableNotifications() {
     if (typeof Notification === 'undefined') return
     const result = await Notification.requestPermission()
@@ -141,6 +162,21 @@ export function SettingsPanel() {
           onChange={(next) => settings.set('soundOnMessage', next)}
         />
         <p className="text-ink-faint mt-1 text-xs">{t('settings.notifications.hint')}</p>
+
+        <div className="border-line mt-3 flex items-center justify-between gap-3 border-t pt-3">
+          <span className="min-w-0 text-sm">
+            <span className="block font-medium">{t('settings.push')}</span>
+            <span className="text-ink-muted text-xs">{pushStatusLabel}</span>
+          </span>
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={!push.ready || push.status === 'registered'}
+            onClick={() => void push.register()}
+          >
+            {t('settings.push.register')}
+          </Button>
+        </div>
       </Section>
 
       <Section title={t('settings.session')}>

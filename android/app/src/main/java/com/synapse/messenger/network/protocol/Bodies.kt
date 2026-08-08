@@ -55,8 +55,19 @@ data class Auth(
     @ProtoNumber(2) val username: String = "",
     @ProtoNumber(3) val password: String = "",
     @ProtoNumber(4) val register: Boolean = false,
+    /**
+     * Honoured on registration only — afterwards PROFILE_SET is the single writer
+     * of the field, so a stale client cannot silently revert a name changed
+     * elsewhere. The server falls back to the username when this is empty.
+     */
+    @ProtoNumber(5) @SerialName("display_name") val displayName: String = "",
 )
 
+/**
+ * Identity, and now who that identity *is*. The last three fields matter for
+ * every launch after the first: a client that authenticated by token would
+ * otherwise know its user id and nothing else about itself.
+ */
 @Serializable
 data class AuthOk(
     @ProtoNumber(1) @SerialName("user_id") val userId: String = "",
@@ -64,6 +75,9 @@ data class AuthOk(
     @ProtoNumber(3) @SerialName("session_id") val sessionId: String = "",
     @ProtoNumber(4) val token: String = "",
     @ProtoNumber(5) @SerialName("resume_token") val resumeToken: String = "",
+    @ProtoNumber(6) val username: String = "",
+    @ProtoNumber(7) @SerialName("display_name") val displayName: String = "",
+    @ProtoNumber(8) @SerialName("avatar_ref") val avatarRef: String = "",
 )
 
 @Serializable
@@ -356,4 +370,67 @@ data class Invites(
 @Serializable
 data class PushToken(
     @ProtoNumber(1) val token: String = "",
+)
+
+// --- Chat list ---
+
+/** Keyset pagination by chat id: [after] is the last id of the previous page. */
+@Serializable
+data class ChatList(
+    @ProtoNumber(1) val after: String = "",
+    @ProtoNumber(2) val limit: Int = 0,
+)
+
+/**
+ * One row of the chat list — enough to render an entry without a round trip per
+ * chat. [peerId] is filled for direct chats only, which is what finally gives a
+ * 1:1 conversation something to be named after.
+ */
+@Serializable
+data class ChatSummary(
+    @ProtoNumber(1) @SerialName("chat_id") val chatId: String = "",
+    @ProtoNumber(2) val type: String = "",
+    @ProtoNumber(3) val title: String = "",
+    @ProtoNumber(4) @SerialName("owner_id") val ownerId: String = "",
+    @ProtoNumber(5) val username: String = "",
+    /** The chat's newest position, so a client knows how far it has to backfill. */
+    @ProtoNumber(6) @SerialName("last_seq") val lastSeq: Long = 0,
+    @ProtoNumber(7) @SerialName("my_role") val myRole: String = "",
+    @ProtoNumber(8) @SerialName("peer_id") val peerId: String = "",
+)
+
+@Serializable
+data class Chats(
+    @ProtoNumber(1) val chats: List<ChatSummary> = emptyList(),
+    @ProtoNumber(2) @SerialName("next_after") val nextAfter: String = "",
+    @ProtoNumber(3) val done: Boolean = false,
+)
+
+// --- Profiles ---
+
+/** [target] is a user id or `"@username"`; empty means "me". */
+@Serializable
+data class ProfileGet(
+    @ProtoNumber(1) val target: String = "",
+)
+
+/**
+ * Updates the caller's own profile — there is no way to address anyone else's.
+ * Empty fields mean "leave as is" (proto3 cannot tell absent from empty), which
+ * is why clearing the avatar is a flag rather than an empty ref.
+ */
+@Serializable
+data class ProfileSet(
+    @ProtoNumber(1) @SerialName("display_name") val displayName: String = "",
+    @ProtoNumber(2) @SerialName("avatar_ref") val avatarRef: String = "",
+    @ProtoNumber(3) @SerialName("clear_avatar") val clearAvatar: Boolean = false,
+)
+
+/** [avatarRef] points into the media service; fetch a URL for it with MEDIA_FETCH. */
+@Serializable
+data class Profile(
+    @ProtoNumber(1) @SerialName("user_id") val userId: String = "",
+    @ProtoNumber(2) val username: String = "",
+    @ProtoNumber(3) @SerialName("display_name") val displayName: String = "",
+    @ProtoNumber(4) @SerialName("avatar_ref") val avatarRef: String = "",
 )

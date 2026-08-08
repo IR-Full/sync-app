@@ -57,6 +57,13 @@ object BodyCodec {
         MsgType.CHAT_CREATE to serializer<ChatCreate>(),
         MsgType.CHAT_INFO to serializer<ChatInfo>(),
         MsgType.PUSH_TOKEN to serializer<PushToken>(),
+        MsgType.CHAT_LIST to serializer<ChatList>(),
+        MsgType.CHATS to serializer<Chats>(),
+        MsgType.PROFILE_GET to serializer<ProfileGet>(),
+        MsgType.PROFILE_SET to serializer<ProfileSet>(),
+        MsgType.PROFILE to serializer<Profile>(),
+        // Same body as READ_UPD by design: a delivery cursor has the same three fields.
+        MsgType.DELIVERED to serializer<ReadUpdate>(),
     )
 
     private val EMPTY = ByteArray(0)

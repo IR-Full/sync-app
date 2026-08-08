@@ -57,10 +57,12 @@ import com.synapse.messenger.domain.model.AttachmentKind
 import com.synapse.messenger.domain.model.ChatKind
 import com.synapse.messenger.domain.model.Message
 import com.synapse.messenger.domain.model.MessageStatus
+import com.synapse.messenger.presentation.components.Avatar
 import com.synapse.messenger.presentation.components.ConnectionBanner
 import com.synapse.messenger.presentation.components.EmptyState
 import com.synapse.messenger.presentation.components.MessageStatusIcon
 import com.synapse.messenger.presentation.components.formatClock
+import com.synapse.messenger.presentation.components.formatTimestamp
 import com.synapse.messenger.presentation.components.localized
 import kotlinx.coroutines.flow.filter
 
@@ -74,6 +76,7 @@ fun ChatScreen(
     val chatKey by viewModel.chatKey.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val typing by viewModel.typingUsers.collectAsStateWithLifecycle()
+    val presence by viewModel.peerPresence.collectAsStateWithLifecycle()
     val labels by viewModel.senderLabels.collectAsStateWithLifecycle()
     val mediaUrls by viewModel.mediaUrls.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -123,19 +126,37 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = chat?.title?.takeIf { it.isNotEmpty() }
-                                ?: chatKey.removePrefix("@").let { "@$it" },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                    val title = chat?.title?.takeIf { it.isNotEmpty() }
+                        ?: chatKey.removePrefix("@").let { "@$it" }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Avatar(
+                            label = title,
+                            size = 36.dp,
+                            imageUrl = mediaUrls[chat?.peerAvatarRef],
                         )
-                        if (typing.isNotEmpty()) {
-                            Text(
-                                text = stringResource(R.string.chat_typing),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            // Typing wins over presence: it is the more specific and more
+                            // perishable fact. Neither line appears when neither is known.
+                            when {
+                                typing.isNotEmpty() -> Text(
+                                    text = stringResource(R.string.chat_typing),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                                presence != null -> Text(
+                                    text = if (presence!!.online) {
+                                        stringResource(R.string.presence_online)
+                                    } else {
+                                        stringResource(
+                                            R.string.presence_last_seen,
+                                            formatTimestamp(presence!!.lastSeenMs),
+                                        )
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 },

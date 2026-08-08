@@ -32,15 +32,28 @@ jobs:
           xcrun simctl list runtimes
           xcrun simctl list devicetypes | grep -i iphone | tail -5
 
+      # This step now compiles every target, including the SwiftUI layer, because
+      # SynapsePresentationTests depends on SynapseDI. So it — not the app build
+      # — is where a compile error should surface, with the file and line.
+      # Hence no -quiet.
       - name: Run Swift package tests
         working-directory: ios/SynapseKit
         run: |
+          set -euo pipefail
+
           xcodebuild test \
             -scheme Synapse-Package \
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             CODE_SIGNING_ALLOWED=NO \
-            -quiet
+            2>&1 | tee "$RUNNER_TEMP/tests.log"
+
+      - name: Compiler diagnostics (tests)
+        if: failure()
+        run: |
+          echo "::group::Errors"
+          grep -E "error:" "$RUNNER_TEMP/tests.log" | sort -u || echo "none"
+          echo "::endgroup::"
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -80,15 +93,31 @@ jobs:
 
           rm -rf "$RUNNER_TEMP/synapse-derived-data"
 
+          # Deliberately not -quiet. When a package target fails to compile, the
+          # only line -quiet lets through is the app's downstream
+          # `no such module`, which names the import rather than the broken file.
+          #
+          # The configuration is `Dev`, not `Debug`: project.yml names the three
+          # configurations Dev/Stage/Prod, and there is no Debug to select.
+          #
+          # `set -o pipefail` is already on, so tee does not mask a failure.
           xcodebuild build \
             -project Synapse.xcodeproj \
             -scheme 'Synapse Dev' \
-            -configuration Debug \
+            -configuration Dev \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             -derivedDataPath "$RUNNER_TEMP/synapse-derived-data" \
             -clonedSourcePackagesDirPath "$RUNNER_TEMP/source-packages" \
             CODE_SIGNING_ALLOWED=NO \
-            -quiet
+            2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # The full log is long; this is the part worth reading first.
+      - name: Compiler diagnostics
+        if: failure()
+        run: |
+          echo "::group::Errors"
+          grep -E "error:" "$RUNNER_TEMP/build.log" | sort -u || echo "none"
+          echo "::endgroup::"
 
       - name: Launch app and create screenshot
         working-directory: ios

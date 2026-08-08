@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/synapse-chat/synapse/internal/metrics"
+	"github.com/synapse-chat/synapse/internal/model"
 	"github.com/synapse-chat/synapse/internal/router"
 	"github.com/synapse-chat/synapse/internal/tracing"
 	"github.com/synapse-chat/synapse/pkg/eventbus"
@@ -109,6 +110,9 @@ func (s *Service) Start() error {
 		return err
 	}
 	if err := s.bus.Subscribe(eventbus.SubjPinned, "fanout", s.onPinned); err != nil {
+		return err
+	}
+	if err := s.bus.Subscribe(eventbus.SubjPresence, "fanout", s.onPresence); err != nil {
 		return err
 	}
 	return s.bus.Subscribe(eventbus.SubjTyping, "fanout", s.onTyping)
@@ -299,6 +303,77 @@ func (s *Service) onTyping(ctx context.Context, e eventbus.Event) error {
 		return err
 	}
 	return nil
+}
+
+// onPresence delivers a user's online/last-seen transition to the people who are
+// entitled to it: the peers of their DIRECT chats.
+//
+// The audience is the whole design question, and "everyone who shares any chat"
+// is the wrong answer. Presence flips on every connect and disconnect, so that
+// rule would make one flaky mobile connection fan out to every member of every
+// group the user belongs to — a reconnect storm turning into a membership-sized
+// multiplication of frames, for a decoration. A 1:1 chat is where "last seen" is
+// actually shown, and its audience is exactly one person.
+//
+// Delivery is best-effort in the same sense as typing: the frame rides the
+// droppable QoS lane, and presence has a TTL behind it, so a lost transition
+// corrects itself.
+func (s *Service) onPresence(ctx context.Context, e eventbus.Event) error {
+	var body wire.PresenceBody
+	if err := wire.Unmarshal(e.Data, &body); err != nil {
+		return err
+	}
+	if body.UserID == "" {
+		return nil
+	}
+	peers, err := s.directPeers(ctx, body.UserID)
+	if err != nil {
+		// A registry read failing must not make the bus redeliver forever: presence is
+		// ephemeral, and the next transition (or the TTL) supersedes this one.
+		s.log.Warn("presence audience lookup failed", "user", body.UserID, "err", err)
+		return nil
+	}
+	payload := wire.Marshal(body)
+	for _, uid := range peers {
+		s.route(ctx, uid, "", wire.MsgPresence, payload)
+	}
+	return nil
+}
+
+// directPeers lists the other side of every direct chat a user is in, de-duplicated
+// (the same person can only be in one direct chat with them, but a defensive set
+// costs nothing and keeps a duplicated row from doubling the fanout).
+func (s *Service) directPeers(ctx context.Context, userID string) ([]string, error) {
+	seen := make(map[string]struct{})
+	out := make([]string, 0, 8)
+	after := ""
+	for pages := 0; pages < maxPresencePages; pages++ {
+		page, err := s.chats.UserChats(ctx, userID, after, presencePageSize)
+		if err != nil {
+			return nil, err
+		}
+		if len(page) == 0 {
+			return out, nil
+		}
+		for _, sum := range page {
+			if sum.Chat == nil {
+				continue
+			}
+			after = sum.Chat.ID
+			if sum.Chat.Type != model.ChatDirect || sum.PeerID == "" || sum.PeerID == userID {
+				continue
+			}
+			if _, dup := seen[sum.PeerID]; dup {
+				continue
+			}
+			seen[sum.PeerID] = struct{}{}
+			out = append(out, sum.PeerID)
+		}
+		if len(page) < presencePageSize {
+			return out, nil
+		}
+	}
+	return out, nil
 }
 
 // RouteSecret relays an opaque E2E ciphertext to a specific device on whatever

@@ -123,4 +123,8 @@ type Gateway struct {
 	// reaper: one shared liveness goroutine per node (idle-close + ping).
 	reaperOnce sync.Once
 	reaperDone chan struct{}
+	// delivered queues delivery receipts raised by connection writers, drained by
+	// one reporter goroutine (see delivered.go). Buffered and droppable: a writer
+	// must never wait on the routing registry to hand off a receipt.
+	delivered chan deliveryReport
 }

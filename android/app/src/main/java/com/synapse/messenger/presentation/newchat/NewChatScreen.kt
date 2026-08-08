@@ -53,6 +53,7 @@ fun NewChatScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val avatarUrls by viewModel.avatarUrls.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.destinations.collect { destination ->
@@ -150,7 +151,11 @@ fun NewChatScreen(
                 )
                 LazyColumn {
                     items(contacts, key = { it.userId }) { contact ->
-                        ContactRow(contact = contact, onClick = { viewModel.openContact(contact) })
+                        ContactRow(
+                            contact = contact,
+                            avatarUrl = avatarUrls[contact.avatarRef],
+                            onClick = { viewModel.openContact(contact) },
+                        )
                     }
                 }
             }
@@ -280,7 +285,7 @@ private fun SubmitButton(text: String, busy: Boolean, enabled: Boolean, onClick:
 }
 
 @Composable
-private fun ContactRow(contact: UserSummary, onClick: () -> Unit) {
+private fun ContactRow(contact: UserSummary, avatarUrl: String?, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -289,7 +294,7 @@ private fun ContactRow(contact: UserSummary, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Avatar(label = contact.displayLabel, size = 40.dp)
+        Avatar(label = contact.displayLabel, size = 40.dp, imageUrl = avatarUrl)
         Column {
             Text(contact.displayLabel, style = MaterialTheme.typography.bodyLarge)
             contact.username?.let {

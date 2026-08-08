@@ -29,6 +29,29 @@ function resolveGatewayUrl(): string {
   return 'ws://localhost:8080/ws'
 }
 
+/**
+ * ICE servers for WebRTC calls.
+ *
+ * The gateway relays signalling only — it is not a STUN/TURN server and never
+ * sees media — so NAT traversal is entirely the client's problem. The default
+ * is a public STUN server, which is enough to connect most peers but discloses
+ * their IP to a third party and cannot traverse symmetric NAT. Point
+ * `NEXT_PUBLIC_ICE_SERVERS` at your own STUN/TURN (JSON array of RTCIceServer)
+ * for anything beyond a demo; set it to `[]` to use host candidates only, which
+ * works on a LAN.
+ */
+function readIceServers(): RTCIceServer[] {
+  const raw = process.env.NEXT_PUBLIC_ICE_SERVERS
+  if (!raw) return [{ urls: 'stun:stun.l.google.com:19302' }]
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as RTCIceServer[]) : []
+  } catch {
+    console.warn('[synapse] NEXT_PUBLIC_ICE_SERVERS is not valid JSON; falling back to none')
+    return []
+  }
+}
+
 export const appEnv: AppEnv = readEnv()
 
 export const config = {
@@ -46,4 +69,6 @@ export const config = {
   typingTimeoutMs: 4000,
   /** Minimum gap between TYPING frames — the gateway throttles to ~1 per 2s per chat. */
   typingThrottleMs: 2500,
+  /** STUN/TURN used to negotiate call media paths. */
+  iceServers: readIceServers(),
 } as const

@@ -369,7 +369,7 @@ have to be driven through a Simulator destination rather than the macOS host.
 **No Mac?** `.github/workflows/ios.yml` runs the whole thing — tests, app build,
 and a screenshot of it launching in the Simulator — on a hosted macOS runner.
 `git init && git push` an `ios/` repo (the same way `server/` and `client/` are
-separate repos) and it runs on every push. Three suites, 75 tests:
+separate repos) and it runs on every push. Four suites:
 
 - **NetworkTests** — byte-level framing (magic, big-endian length, oversized
   prefix, truncation), varint boundaries, envelope field order, proto3 golden
@@ -386,6 +386,12 @@ separate repos) and it runs on every push. Three suites, 75 tests:
   never moving backwards, the paging cursor ignoring unsent rows, local expiry of
   self-destructing messages, draft last-writer-wins, and the migrations: a v1
   database must reach v2 *carrying its queued messages*, not be recreated.
+- **PresentationTests** — theme mapping, the missing-key fallback, chat-list
+  timestamps, and `TaskBag` cancelling on release. Half its value is the
+  dependency edge: it pulls in `SynapseDI`, and therefore every other target, so
+  CI compiles the SwiftUI layer. Without it nothing did until the app target,
+  where a failure appears as `no such module` against the app's first import and
+  names nothing that is actually broken.
 
 ---
 

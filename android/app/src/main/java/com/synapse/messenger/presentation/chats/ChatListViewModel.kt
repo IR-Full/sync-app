@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.messenger.core.AppError
 import com.synapse.messenger.core.Outcome
+import com.synapse.messenger.data.media.MediaUrlCache
 import com.synapse.messenger.domain.model.Chat
 import com.synapse.messenger.domain.repository.AuthRepository
 import com.synapse.messenger.domain.repository.ChatRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,6 +32,7 @@ class ChatListViewModel @Inject constructor(
     chatRepository: ChatRepository,
     authRepository: AuthRepository,
     private val refreshChats: RefreshChatsUseCase,
+    private val mediaUrls: MediaUrlCache,
 ) : ViewModel() {
 
     /**
@@ -39,7 +42,13 @@ class ChatListViewModel @Inject constructor(
      * of the user's conversations that exists on the device.
      */
     val chats: StateFlow<List<Chat>> = chatRepository.observeChats()
+        // Avatar URLs are resolved as rows appear, through a shared app-scoped cache:
+        // a media ref has to be exchanged for a signed URL, and the same person shows
+        // up on several screens.
+        .onEach { rows -> mediaUrls.requestAll(rows.map { it.peerAvatarRef }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val avatarUrls: StateFlow<Map<String, String>> = mediaUrls.urls
 
     val connection: StateFlow<ConnectionStatus> = authRepository.connection
 

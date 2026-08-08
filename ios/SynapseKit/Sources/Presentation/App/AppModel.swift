@@ -29,7 +29,7 @@ public final class AppModel: ObservableObject {
     private let auth: any AuthRepository
     private let settingsRepository: any SettingsRepository
     private let push: any PushRepository
-    private var observers: [Task<Void, Never>] = []
+    private let observers = TaskBag()
 
     public init(
         auth: any AuthRepository,
@@ -94,7 +94,7 @@ public final class AppModel: ObservableObject {
     // MARK: - Observation
 
     private func observeSettings() {
-        observers.append(Task { [weak self] in
+        observers.add(Task { [weak self] in
             guard let self else { return }
             for await settings in self.settingsRepository.settings() {
                 self.settings = settings
@@ -110,7 +110,7 @@ public final class AppModel: ObservableObject {
     }
 
     private func observeConnection() {
-        observers.append(Task { [weak self] in
+        observers.add(Task { [weak self] in
             guard let self else { return }
             for await status in self.auth.connectionStatus() {
                 withAnimation { self.connection = status }
@@ -119,7 +119,7 @@ public final class AppModel: ObservableObject {
     }
 
     private func observeSessionExpiry() {
-        observers.append(Task { [weak self] in
+        observers.add(Task { [weak self] in
             guard let self else { return }
             for await _ in self.auth.sessionExpirations() {
                 // The server revoked us. Reconnecting cannot fix it, so drop
@@ -131,7 +131,5 @@ public final class AppModel: ObservableObject {
         })
     }
 
-    deinit {
-        for observer in observers { observer.cancel() }
-    }
+    // No `deinit`: the bag cancels its tasks when it is released with us.
 }

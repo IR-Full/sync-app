@@ -3,6 +3,7 @@ package com.synapse.messenger.data.repository
 import com.synapse.messenger.core.AppScope
 import com.synapse.messenger.core.Outcome
 import com.synapse.messenger.core.runOutcome
+import com.synapse.messenger.data.sync.PresenceTracker
 import com.synapse.messenger.data.sync.TypingTracker
 import com.synapse.messenger.database.SynapseDatabase
 import com.synapse.messenger.database.clearUserData
@@ -29,13 +30,20 @@ class AuthRepositoryImpl @Inject constructor(
     private val sessionStore: SessionStore,
     private val database: SynapseDatabase,
     private val typingTracker: TypingTracker,
+    private val presenceTracker: PresenceTracker,
     @param:AppScope private val scope: CoroutineScope,
 ) : AuthRepository {
 
     override val session: StateFlow<Session?> = sessionStore.session
         .map { stored ->
             stored?.let {
-                Session(userId = it.userId, username = it.username, deviceId = it.deviceId)
+                Session(
+                    userId = it.userId,
+                    username = it.username,
+                    deviceId = it.deviceId,
+                    displayName = it.displayName,
+                    avatarRef = it.avatarRef.takeIf { ref -> ref.isNotEmpty() },
+                )
             }
         }
         .stateIn(scope, SharingStarted.Eagerly, null)
@@ -89,11 +97,13 @@ class AuthRepositoryImpl @Inject constructor(
         val gatewaySession = gateway.connect(
             Credentials.Password(username = normalized, password = password, register = register),
         )
-        sessionStore.save(gatewaySession, normalized)
+        sessionStore.save(gatewaySession, gatewaySession.username.ifEmpty { normalized })
         Session(
             userId = gatewaySession.userId,
-            username = normalized,
+            username = gatewaySession.username.ifEmpty { normalized },
             deviceId = gatewaySession.deviceId,
+            displayName = gatewaySession.displayName,
+            avatarRef = gatewaySession.avatarRef.takeIf { it.isNotEmpty() },
         )
     }
 
@@ -104,6 +114,7 @@ class AuthRepositoryImpl @Inject constructor(
         runCatching { gateway.send(MsgType.PUSH_TOKEN, PushToken(token = "")) }
         gateway.disconnect()
         typingTracker.clear()
+        presenceTracker.clear()
         sessionStore.clear()
         database.clearUserData()
     }

@@ -3,6 +3,7 @@ package com.synapse.messenger.network
 import com.synapse.messenger.network.protocol.ChatInfo
 import com.synapse.messenger.network.protocol.NewMessage
 import com.synapse.messenger.network.protocol.Presence
+import com.synapse.messenger.network.protocol.Profile
 import com.synapse.messenger.network.protocol.ProtocolException
 import com.synapse.messenger.network.protocol.ReadUpdate
 import com.synapse.messenger.network.protocol.SendAck
@@ -33,6 +34,10 @@ sealed interface Credentials {
  * What AUTH_OK gave us. [token] is the bearer credential for later logins;
  * [resumeToken] replays a dropped session's missed frames instead of refetching
  * history, and the gateway mints a fresh one per login.
+ *
+ * The profile fields come from the same frame, which is what makes a token login
+ * self-sufficient: on every launch after the first there is no password to derive
+ * a username from, and no other message would tell us who we are.
  */
 data class GatewaySession(
     val userId: String,
@@ -40,6 +45,9 @@ data class GatewaySession(
     val sessionId: String,
     val token: String,
     val resumeToken: String,
+    val username: String = "",
+    val displayName: String = "",
+    val avatarRef: String = "",
 )
 
 /**
@@ -57,17 +65,30 @@ sealed interface ServerEvent {
 
     data class ReadReceipt(val body: ReadUpdate) : ServerEvent
 
+    /**
+     * One of our messages reached a recipient's device. Shares [ReadUpdate]'s shape
+     * with a read receipt because it is the same kind of fact — a monotonic
+     * per-chat cursor for one person — one step earlier.
+     */
+    data class DeliveryReceipt(val body: ReadUpdate) : ServerEvent
+
     data class TypingSignal(val body: Typing) : ServerEvent
 
     /**
-     * Presence update. Declared by the protocol but currently unreachable: the
-     * server publishes `user.presence` to the bus and nothing subscribes, so no
-     * PRESENCE frame is ever delivered. Handled anyway — the day fanout picks the
-     * subject up, this client already renders it.
+     * Someone's online state changed. Delivered to the peers of a user's direct
+     * chats — the audience "last seen" is actually shown to, and the only one
+     * bounded enough to fan out on every connect and disconnect.
      */
     data class PresenceUpdate(val body: Presence) : ServerEvent
 
     data class ChatCreated(val body: ChatInfo) : ServerEvent
+
+    /**
+     * A profile changed. The gateway mirrors a PROFILE_SET to the author's other
+     * devices, so a name changed on the phone does not stay stale on the desktop
+     * until it happens to reconnect.
+     */
+    data class ProfileUpdated(val body: Profile) : ServerEvent
 
     /** An error frame that correlated to no in-flight request. */
     data class Failure(val error: ProtocolException) : ServerEvent

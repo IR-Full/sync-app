@@ -86,6 +86,9 @@ object MessageStatuses {
     /** Durably persisted server-side (SEND_ACK), or received from fanout/history. */
     const val SENT = "sent"
 
+    /** A recipient's device received it (DELIVERED). */
+    const val DELIVERED = "delivered"
+
     /** Someone else's read cursor has passed this message's seq. */
     const val READ = "read"
 
@@ -128,13 +131,25 @@ data class ReadReceiptEntity(
 )
 
 /**
- * The local user directory.
+ * How far a member's DEVICE has received (DELIVERED) — a separate cursor from the
+ * read one, and behind it: a message can be delivered and never read, so folding
+ * the two into one column would make the earlier fact unrepresentable.
+ */
+@Entity(tableName = "delivery_receipts", primaryKeys = ["chatId", "userId"])
+data class DeliveryReceiptEntity(
+    val chatId: String,
+    val userId: String,
+    val upToSeq: Long,
+    val updatedAt: Long,
+)
+
+/**
+ * The local user directory: everyone this device can name.
  *
- * The protocol has no profile fetch: CONTACT_ADD resolves `"@username"` to a user
- * id and CONTACT_SYNC returns ids plus our own private labels, but a username or
- * display name never comes back from the server. So the username is recorded here
- * at the moment we type it, and it is the only way this client can render
- * anything but a numeric id for another person.
+ * Two names, on purpose. [displayName] is the person's own public profile name
+ * (PROFILE_GET / PROFILE), while [name] is the private label we gave them in our
+ * address book (CONTACT_SYNC) — contacts are per-owner rows server-side, so our
+ * label must not be overwritten when their profile changes, or the other way round.
  */
 @Entity(tableName = "users", indices = [Index(value = ["username"])])
 data class UserEntity(
@@ -142,6 +157,10 @@ data class UserEntity(
     val username: String? = null,
     /** Our private label for this person (contacts are per-owner rows server-side). */
     val name: String? = null,
+    /** Their own profile name. */
+    val displayName: String? = null,
+    /** Media reference for their avatar; resolve to a URL with MEDIA_FETCH. */
+    val avatarRef: String? = null,
     val isContact: Boolean = false,
     val blocked: Boolean = false,
     val updatedAt: Long = 0,

@@ -9,15 +9,16 @@ package com.synapse.messenger.domain.model
 enum class ChatKind { DIRECT, GROUP, CHANNEL, UNKNOWN }
 
 /**
- * Delivery state of an outgoing message.
+ * Delivery state of an outgoing message. Every step is sourced from a distinct
+ * server fact, none inferred:
  *
- * There is deliberately no DELIVERED: the gateway acknowledges *durable
- * persistence* (SEND_ACK) and relays *read receipts* (READ_UPD), but fanout to a
- * recipient's device is fire-and-forget with no per-device ack, so "delivered to
- * their phone" is not a fact this protocol can report. Two states, honestly
- * sourced, beat three where one is invented.
+ *  - [SENT] — SEND_ACK: the write is durable.
+ *  - [DELIVERED] — DELIVERED: the gateway holding a recipient's socket wrote the
+ *    frame to it. Reported by the node that witnessed the write, so it means the
+ *    bytes left the server rather than that a node was notified.
+ *  - [READ] — READ_UPD: their read cursor passed this message.
  */
-enum class MessageStatus { PENDING, SENT, READ, FAILED }
+enum class MessageStatus { PENDING, SENT, DELIVERED, READ, FAILED }
 
 enum class AttachmentKind {
     IMAGE,
@@ -97,6 +98,8 @@ data class Chat(
     val title: String,
     val peerUserId: String? = null,
     val peerUsername: String? = null,
+    /** Media reference for the peer's avatar, in a direct chat. */
+    val peerAvatarRef: String? = null,
     val lastMessage: LastMessage? = null,
     val unreadCount: Int = 0,
     val myReadSeq: Long = 0,
@@ -112,22 +115,46 @@ data class Chat(
 data class UserSummary(
     val userId: String,
     val username: String? = null,
+    /** Our private address-book label for them. */
     val name: String? = null,
+    /** Their own profile name. */
+    val displayName: String? = null,
+    /** Media reference for their avatar. */
+    val avatarRef: String? = null,
     val isContact: Boolean = false,
     val blocked: Boolean = false,
 ) {
-    /** What to show when nothing better is known than a snowflake id. */
+    /**
+     * What to call them. Our own label wins over their profile name — an address
+     * book exists precisely so a person can be filed under the name we know them
+     * by — and a handle beats the snowflake id we would otherwise be stuck with.
+     */
     val displayLabel: String
         get() = name?.takeIf { it.isNotBlank() }
+            ?: displayName?.takeIf { it.isNotBlank() }
             ?: username?.let { "@$it" }
             ?: userId
 }
 
-/** The signed-in identity. */
+/**
+ * Someone's online state. Absent (a null [UserPresence]) means "we have not been
+ * told", which is different from offline and must render differently: the gateway
+ * only reports presence for people it has sent us a frame about.
+ */
+data class UserPresence(
+    val userId: String,
+    val online: Boolean,
+    /** When they were last seen, in unix millis. */
+    val lastSeenMs: Long,
+)
+
+/** The signed-in identity, as AUTH_OK reported it. */
 data class Session(
     val userId: String,
     val username: String,
     val deviceId: String,
+    val displayName: String = "",
+    val avatarRef: String? = null,
 )
 
 /**

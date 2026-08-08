@@ -9,6 +9,7 @@ import { flattenHistory, type ChatMessage } from '@/entities/message'
 import { usePollStore } from '@/entities/poll'
 import { useSessionStore } from '@/entities/session'
 import { labelForUser, useUserDirectory } from '@/entities/user'
+import { useCallActions } from '@/features/calls'
 import { ChatAdminPanel } from '@/features/chat-admin'
 import { useDraftWriter } from '@/features/drafts'
 import { AttachmentView, useMediaUpload } from '@/features/media'
@@ -19,6 +20,7 @@ import { PollCard, PollComposer, usePollActions } from '@/features/polls'
 import { useMarkRead, usePeerReadSeq } from '@/features/read-receipts'
 import { useScheduleMessage } from '@/features/scheduled'
 import { SearchPanel } from '@/features/search'
+import { SecretChatPanel } from '@/features/secret-chats'
 import { isHandleTarget, MessageComposer, useSendMessage } from '@/features/send-message'
 import { useTypingNotifier, useTypingUsers } from '@/features/typing-indicator'
 import { useIsConnected } from '@/shared/api'
@@ -66,6 +68,7 @@ export function ChatWindow({ target }: { target: string }) {
   const forwardMessage = useForwardMessage()
   const { vote, close: closePoll } = usePollActions(chatId)
   const scheduleMessage = useScheduleMessage(chatId)
+  const { startCall } = useCallActions()
 
   const [replyTo, setReplyTo] = useState<{ id: string; label: string } | null>(null)
   const [editing, setEditing] = useState<ChatMessage | null>(null)
@@ -73,6 +76,7 @@ export function ChatWindow({ target }: { target: string }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
   const [pollOpen, setPollOpen] = useState(false)
+  const [secretOpen, setSecretOpen] = useState(false)
 
   const { send, retry } = useSendMessage(target, (resolved) => {
     // The first message to a handle resolved into a real chat — switch the URL
@@ -149,6 +153,49 @@ export function ChatWindow({ target }: { target: string }) {
           <span className="text-ink-faint text-xs">{unreadCount(chat)}</span>
         )}
 
+        {!isNew && (
+          <>
+            <button
+              type="button"
+              onClick={() => void startCall(chatId, 'audio')}
+              aria-label={t('call.audio')}
+              title={t('call.audio')}
+              className="hover:bg-surface-hover text-ink-muted hover:text-ink rounded-lg p-1.5 transition-colors"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              >
+                <path
+                  d="M6.5 3.5l1.8 3-1.4 1.6a9 9 0 004 4l1.6-1.4 3 1.8-.6 2.4c-.2.6-.8 1-1.4.9C8.4 15 5 11.6 4.2 6.5c-.1-.6.3-1.2.9-1.4l1.4-.4z"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => void startCall(chatId, 'video')}
+              aria-label={t('call.video')}
+              title={t('call.video')}
+              className="hover:bg-surface-hover text-ink-muted hover:text-ink rounded-lg p-1.5 transition-colors"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              >
+                <rect x="2.5" y="5.5" width="10" height="9" rx="2" />
+                <path d="M12.5 9l5-2.5v7L12.5 11" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </>
+        )}
+
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
@@ -167,6 +214,27 @@ export function ChatWindow({ target }: { target: string }) {
             <path d="M13.5 13.5L17 17" strokeLinecap="round" />
           </svg>
         </button>
+
+        {!isNew && chat?.peerUserId && (
+          <button
+            type="button"
+            onClick={() => setSecretOpen(true)}
+            aria-label={t('secret.open')}
+            title={t('secret.open')}
+            className="hover:bg-surface-hover text-ink-muted hover:text-ink rounded-lg p-1.5 transition-colors"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
+              <rect x="4" y="9" width="12" height="8" rx="2" />
+              <path d="M7 9V6.5a3 3 0 016 0V9" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
 
         {!isNew && (
           <button
@@ -307,6 +375,14 @@ export function ChatWindow({ target }: { target: string }) {
             onClose={() => setAdminOpen(false)}
           />
           <PollComposer chatId={chatId} open={pollOpen} onClose={() => setPollOpen(false)} />
+          {chat?.peerUserId && (
+            <SecretChatPanel
+              peerUserId={chat.peerUserId}
+              peerLabel={title}
+              open={secretOpen}
+              onClose={() => setSecretOpen(false)}
+            />
+          )}
           {thread && (
             <ThreadPanel
               chatId={chatId}

@@ -48,16 +48,18 @@ class OpenChatUseCase @Inject constructor(
 /**
  * Finds a person by handle.
  *
- * The lookup and the contact add are the same request in this protocol
- * (CONTACT_ADD is the only one that takes a username and returns an id), so
- * searching for someone necessarily records them. That is a protocol fact worth
- * knowing at the call site, not a decision made here.
+ * A profile read, nothing more: the lookup no longer has to be smuggled through a
+ * contact add, so searching for someone does not silently add them to the address
+ * book. An unknown handle answers NOT_FOUND.
  */
 class FindUserUseCase @Inject constructor(
     private val userRepository: UserRepository,
 ) {
-    suspend operator fun invoke(username: String): Outcome<UserSummary> =
-        userRepository.addContact(username)
+    suspend operator fun invoke(username: String): Outcome<UserSummary> {
+        val handle = username.trim().removePrefix("@")
+        if (handle.isEmpty()) return Outcome.Failure(AppError.NotFound(null))
+        return userRepository.fetchProfile("@$handle")
+    }
 }
 
 class CreateGroupChatUseCase @Inject constructor(

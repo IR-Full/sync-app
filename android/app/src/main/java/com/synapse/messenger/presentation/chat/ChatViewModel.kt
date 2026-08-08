@@ -5,14 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.synapse.messenger.core.AppError
 import com.synapse.messenger.core.Outcome
+import com.synapse.messenger.data.media.MediaUrlCache
 import com.synapse.messenger.domain.model.Chat
+import com.synapse.messenger.domain.model.ChatKind
 import com.synapse.messenger.domain.model.ChatTarget
 import com.synapse.messenger.domain.model.Message
 import com.synapse.messenger.domain.model.MessageStatus
+import com.synapse.messenger.domain.model.UserPresence
 import com.synapse.messenger.domain.repository.AuthRepository
 import com.synapse.messenger.domain.repository.ChatRepository
 import com.synapse.messenger.domain.repository.ConnectionStatus
-import com.synapse.messenger.domain.repository.MediaRepository
 import com.synapse.messenger.domain.repository.MessageRepository
 import com.synapse.messenger.domain.repository.UserRepository
 import com.synapse.messenger.domain.usecase.LoadOlderMessagesUseCase
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -46,7 +49,7 @@ class ChatViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val chatRepository: ChatRepository,
     private val messageRepository: MessageRepository,
-    private val mediaRepository: MediaRepository,
+    private val mediaCache: MediaUrlCache,
     private val userRepository: UserRepository,
     private val openChat: OpenChatUseCase,
     private val sendMessage: SendMessageUseCase,
@@ -77,14 +80,16 @@ class ChatViewModel @Inject constructor(
 
     val chat: StateFlow<Chat?> = chatKey
         .flatMapLatest { key -> if (key.isEmpty()) flowOf(null) else chatRepository.observeChat(key) }
+        .onEach { mediaCache.request(it?.peerAvatarRef) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
      * The transcript.
      *
-     * Read state is derived from the other members' read cursor rather than stored per
-     * message: the cursor is monotonic, so a message backfilled after the receipt
-     * arrived is still correctly shown as read.
+     * Delivery and read state are derived from the other members' cursors rather than
+     * stored per message: both are monotonic, so a message backfilled *after* a receipt
+     * arrived is still shown correctly — which a one-off row update at receipt time
+     * would have missed.
      */
     val messages: StateFlow<List<Message>> = chatKey
         .flatMapLatest { key ->
@@ -94,21 +99,25 @@ class ChatViewModel @Inject constructor(
                 combine(
                     messageRepository.observeMessages(key),
                     messageRepository.observeOthersReadSeq(key),
-                ) { rows, readSeq ->
-                    rows.map { message ->
-                        if (message.isOutgoing &&
-                            message.status == MessageStatus.SENT &&
-                            message.seq in 1..readSeq
-                        ) {
-                            message.copy(status = MessageStatus.READ)
-                        } else {
-                            message
-                        }
-                    }
+                    messageRepository.observeOthersDeliveredSeq(key),
+                ) { rows, readSeq, deliveredSeq ->
+                    rows.map { message -> message.withReceipts(readSeq, deliveredSeq) }
                 }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The other person's online state, for a direct chat only — a group has no single
+     * "last seen" to show. Null until the gateway says something, and the UI shows
+     * nothing at all in that case rather than implying they are offline.
+     */
+    val peerPresence: StateFlow<UserPresence?> = chat
+        .flatMapLatest { current ->
+            val peerId = current?.peerUserId?.takeIf { current.kind == ChatKind.DIRECT }
+            if (peerId == null) flowOf(null) else userRepository.observePresence(peerId)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val typingUsers: StateFlow<List<String>> = chatKey
         .flatMapLatest { key ->
@@ -122,10 +131,12 @@ class ChatViewModel @Inject constructor(
         .map { users -> users.associateBy({ it.userId }, { it.displayLabel }) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    private val _mediaUrls = MutableStateFlow<Map<String, String>>(emptyMap())
-
-    /** Signed, expiring download URLs, fetched on demand as bubbles come into view. */
-    val mediaUrls: StateFlow<Map<String, String>> = _mediaUrls.asStateFlow()
+    /**
+     * Signed, expiring URLs for the refs on screen — attachments and the peer's
+     * avatar alike. Shared app-wide, so a person's picture is fetched once however
+     * many screens draw it.
+     */
+    val mediaUrls: StateFlow<Map<String, String>> = mediaCache.urls
 
     private val _state = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
@@ -217,17 +228,21 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch { markRead(key, newest) }
     }
 
-    fun requestMedia(mediaRef: String) {
-        if (mediaRef.isEmpty() || _mediaUrls.value.containsKey(mediaRef)) return
-        viewModelScope.launch {
-            when (val outcome = mediaRepository.downloadUrl(mediaRef)) {
-                is Outcome.Success -> _mediaUrls.update { it + (mediaRef to outcome.value) }
-                is Outcome.Failure -> Unit // a missing preview is not worth an error banner
-            }
-        }
-    }
+    fun requestMedia(mediaRef: String) = mediaCache.request(mediaRef)
 
     fun dismissError() = _state.update { it.copy(error = null) }
+
+    /**
+     * Applies the two receipt cursors to one message. Read wins over delivered: it is
+     * the later fact, and a cursor that has passed a message for reading has
+     * necessarily passed it for delivery.
+     */
+    private fun Message.withReceipts(readSeq: Long, deliveredSeq: Long): Message = when {
+        !isOutgoing || status != MessageStatus.SENT || seq <= 0 -> this
+        seq <= readSeq -> copy(status = MessageStatus.READ)
+        seq <= deliveredSeq -> copy(status = MessageStatus.DELIVERED)
+        else -> this
+    }
 
     private fun targetOf(key: String): ChatTarget? = when {
         key.isEmpty() -> null

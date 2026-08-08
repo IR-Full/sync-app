@@ -24,17 +24,12 @@ data class AppSettings(
     val notificationsEnabled: Boolean = true,
     /** Non-null only in builds that allow it (development/staging). */
     val gatewayUrlOverride: String? = null,
-    /**
-     * The name and photo this device shows for itself. Local by necessity: the
-     * protocol has no profile write and no avatar concept, so there is nowhere to
-     * publish either.
-     */
-    val displayName: String? = null,
-    val avatarPath: String? = null,
 )
 
 /**
- * User settings, and the endpoint override.
+ * User settings, and the endpoint override. Nothing about the person lives here:
+ * the display name and avatar are published with PROFILE_SET and read back from the
+ * user directory, so this device holds no second copy to drift.
  *
  * The override exists because the gateway address is a deployment concern, not a
  * code constant: a development build points at the emulator's host loopback by
@@ -58,8 +53,6 @@ class SettingsStore @Inject constructor(
             gatewayUrlOverride = prefs[KEY_GATEWAY_URL]?.takeIf {
                 it.isNotBlank() && BuildConfig.ALLOW_ENDPOINT_OVERRIDE
             },
-            displayName = prefs[KEY_DISPLAY_NAME]?.takeIf { it.isNotBlank() },
-            avatarPath = prefs[KEY_AVATAR_PATH]?.takeIf { it.isNotBlank() },
         )
     }
 
@@ -74,14 +67,6 @@ class SettingsStore @Inject constructor(
         if (url.isNullOrBlank()) prefs.remove(KEY_GATEWAY_URL) else prefs[KEY_GATEWAY_URL] = url.trim()
     }
 
-    suspend fun setDisplayName(name: String?) = store.edit { prefs ->
-        if (name.isNullOrBlank()) prefs.remove(KEY_DISPLAY_NAME) else prefs[KEY_DISPLAY_NAME] = name.trim()
-    }
-
-    suspend fun setAvatarPath(path: String?) = store.edit { prefs ->
-        if (path.isNullOrBlank()) prefs.remove(KEY_AVATAR_PATH) else prefs[KEY_AVATAR_PATH] = path
-    }
-
     override suspend fun gatewayUrl(): String =
         settings.first().gatewayUrlOverride ?: BuildConfig.GATEWAY_URL
 
@@ -90,7 +75,5 @@ class SettingsStore @Inject constructor(
         val KEY_LANGUAGE = stringPreferencesKey("language")
         val KEY_NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
         val KEY_GATEWAY_URL = stringPreferencesKey("gateway_url")
-        val KEY_DISPLAY_NAME = stringPreferencesKey("display_name")
-        val KEY_AVATAR_PATH = stringPreferencesKey("avatar_path")
     }
 }

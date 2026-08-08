@@ -34,6 +34,10 @@ interface MessageDao {
     @Query("SELECT MIN(seq) FROM messages WHERE chatId = :chatId AND seq > 0")
     suspend fun oldestSeq(chatId: String): Long?
 
+    /** Compared against the chat list's `last_seq` to decide what needs backfilling. */
+    @Query("SELECT MAX(seq) FROM messages WHERE chatId = :chatId")
+    suspend fun newestSeq(chatId: String): Long?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(message: MessageEntity)
 
