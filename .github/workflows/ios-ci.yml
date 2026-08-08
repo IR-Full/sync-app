@@ -37,6 +37,7 @@ jobs:
         run: |
           xcodebuild test \
             -scheme Synapse-Package \
+            -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
@@ -58,6 +59,7 @@ jobs:
           xcodebuild build \
             -project Synapse.xcodeproj \
             -scheme 'Synapse Dev' \
+            -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             -derivedDataPath "$RUNNER_TEMP/synapse-derived-data" \
             CODE_SIGNING_ALLOWED=NO \
@@ -108,20 +110,20 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
 
           APP="$(
-            find "$RUNNER_TEMP/synapse-derived-data/Build/Products/Debug-iphonesimulator" \
-              -maxdepth 1 \
-              -name '*.app' \
+            find "$RUNNER_TEMP/synapse-derived-data" \
               -type d \
+              -name '*.app' \
               -print \
-              -quit
+              -quit \
+              2>/dev/null || true
           )"
 
           if [ -z "$APP" ]; then
             echo "::error::Application bundle was not found"
 
-            echo "::group::Build directory contents"
+            echo "::group::DerivedData contents"
             find "$RUNNER_TEMP/synapse-derived-data" \
-              -maxdepth 6 \
+              -maxdepth 8 \
               -print || true
             echo "::endgroup::"
 
