@@ -222,15 +222,30 @@ final class SynapseClientTests: XCTestCase {
     func testFireAndForgetSendsRequestIDZero() async throws {
         let gateway = FakeGateway()
         let client = makeClient(gateway)
-        _ = try await client.connect(credentials: .token("t"))
 
-        try await client.setTyping(chatID: "10", active: true)
-        try await client.markRead(chatID: "10", upToMessageID: "m1", upToChatSeq: 4)
+        _ = try await client.connect(
+            credentials: .token("t")
+        )
 
-        let typingFrames = await gateway.envelopes(ofType: .typing)
-        let readFrames = await gateway.envelopes(ofType: .read)
-        let typing = try XCTUnwrap(typingFrames.first)
-        let read = try XCTUnwrap(readFrames.first)
+        try await client.setTyping(
+            chatID: "10",
+            active: true
+        )
+
+        try await client.markRead(
+            chatID: "10",
+            upToMessageID: "m1",
+            upToChatSeq: 4
+        )
+
+        let typing = try await gateway.waitForEnvelope(
+            ofType: .typing
+        )
+
+        let read = try await gateway.waitForEnvelope(
+            ofType: .read
+        )
+
         XCTAssertEqual(typing.requestID, 0)
         XCTAssertEqual(read.requestID, 0)
     }

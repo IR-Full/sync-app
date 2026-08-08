@@ -1,6 +1,11 @@
 import Foundation
 @testable import SynapseNetwork
 
+
+enum FakeGatewayError: Error {
+    case timeout
+}
+
 /// A scripted gateway.
 ///
 /// It speaks the real protocol — real frames, real envelopes, real protobuf
@@ -28,6 +33,21 @@ actor FakeGateway: Transport {
     func setHistory(_ messages: [NewMessageBody]) { historyMessages = messages }
 
     func connect() async throws {}
+
+    func waitForEnvelope(
+        ofType type: MsgType,
+        timeoutAttempts: Int = 100
+    ) async throws -> Envelope {
+        for _ in 0..<timeoutAttempts {
+            if let envelope = received.first(where: { $0.type == type }) {
+                return envelope
+            }
+
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        throw FakeGatewayError.timeout
+    }
 
     func send(payload: Data) async throws {
         guard !isClosed else { throw TransportError.connectionClosed }
