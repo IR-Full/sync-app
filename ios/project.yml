@@ -21,9 +21,15 @@ settings:
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
 
+# The package lives in a subdirectory, not here.
+#
+# A local package whose root is the directory that also holds the generated
+# .xcodeproj does not resolve: the package would contain the project consuming
+# it. Xcode reports that as `no such module` at the first import, which points
+# at the app's source rather than at the reference that failed.
 packages:
   Synapse:
-    path: .
+    path: SynapseKit
 
 targets:
   Synapse:
@@ -44,11 +50,15 @@ targets:
       Stage: Config/Stage.xcconfig
       Prod: Config/Prod.xcconfig
 
+    # One entry per product. `products:` (plural) needs XcodeGen 2.28+; the
+    # singular form has been supported since 2.x, and a spec key an older
+    # XcodeGen does not understand is skipped silently — producing exactly the
+    # same `no such module` with nothing in the log to say why.
     dependencies:
       - package: Synapse
-        products:
-          - SynapseDI
-          - SynapsePresentation
+        product: SynapseDI
+      - package: Synapse
+        product: SynapsePresentation
 
     settings:
       base:

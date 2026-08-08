@@ -113,7 +113,7 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-ink-muted">
+      <div className="text-ink-muted flex flex-1 items-center justify-center px-6 text-center text-sm">
         {emptyLabel}
       </div>
     )
@@ -131,7 +131,7 @@ export function MessageList({
         </div>
       )}
       {!hasOlder && !loadingOlder && (
-        <p className="py-2 text-center text-xs text-ink-faint">{t('chat.historyStart')}</p>
+        <p className="text-ink-faint py-2 text-center text-xs">{t('chat.historyStart')}</p>
       )}
 
       {messages.map((message, index) => {
@@ -144,7 +144,7 @@ export function MessageList({
           <div key={message.id} className="contents">
             {startsNewDay && (
               <div className="my-3 flex justify-center">
-                <span className="rounded-full bg-surface-hover px-3 py-1 text-xs text-ink-muted">
+                <span className="bg-surface-hover text-ink-muted rounded-full px-3 py-1 text-xs">
                   {formatDateSeparator(message.timestamp, locale)}
                 </span>
               </div>
@@ -159,7 +159,9 @@ export function MessageList({
               onToggleReaction={(emoji) => onToggleReaction?.(message, emoji)}
               actions={renderActions?.(message)}
               pinned={isPinned?.(message.id)}
-              forwardedFrom={message.forward ? senderLabel(message.forward.senderId) : undefined}
+              forwardedFrom={
+                message.forward ? senderLabel(message.forward.senderId) : undefined
+              }
               onOpenThread={onOpenThread ? () => onOpenThread(message) : undefined}
             >
               {renderExtras?.(message)}

@@ -42,7 +42,7 @@ export function SearchPanel({ open, onClose }: { open: boolean; onClose: () => v
 
       <div className="mt-3 max-h-96 overflow-y-auto">
         {input.trim().length < 2 ? (
-          <p className="py-6 text-center text-sm text-ink-faint">{t('search.hint')}</p>
+          <p className="text-ink-faint py-6 text-center text-sm">{t('search.hint')}</p>
         ) : isFetching ? (
           <div className="flex justify-center py-6">
             <Spinner />
@@ -56,17 +56,17 @@ export function SearchPanel({ open, onClose }: { open: boolean; onClose: () => v
                 <Link
                   href={`/chats/${hit.chatId}`}
                   onClick={onClose}
-                  className="block rounded-xl px-3 py-2 transition-colors hover:bg-surface-hover"
+                  className="hover:bg-surface-hover block rounded-xl px-3 py-2 transition-colors"
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-xs font-medium text-accent">
+                    <span className="text-accent truncate text-xs font-medium">
                       {chats[hit.chatId]?.title ?? `#${hit.chatId.slice(-6)}`}
                     </span>
-                    <span className="shrink-0 text-[11px] text-ink-faint">
+                    <span className="text-ink-faint shrink-0 text-[11px]">
                       {labelForUser(directory[hit.senderId], hit.senderId)}
                     </span>
                   </span>
-                  <span className="mt-0.5 block truncate text-sm text-ink">{hit.text}</span>
+                  <span className="text-ink mt-0.5 block truncate text-sm">{hit.text}</span>
                 </Link>
               </li>
             ))}

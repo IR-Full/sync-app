@@ -5,7 +5,7 @@ import { RequireSession } from '../require-session'
 export default function ContactsPage() {
   return (
     <RequireSession>
-      <main className="min-h-dvh bg-surface-sunken">
+      <main className="bg-surface-sunken min-h-dvh">
         <ContactsPanel />
       </main>
     </RequireSession>

@@ -127,10 +127,10 @@ export function MessageComposer({
   }
 
   return (
-    <div className="border-t border-line bg-surface">
+    <div className="border-line bg-surface border-t">
       {(replyTo || editing) && (
-        <div className="flex items-center gap-2 border-b border-line px-3 py-1.5 text-xs">
-          <span className="min-w-0 flex-1 truncate text-ink-muted">
+        <div className="border-line flex items-center gap-2 border-b px-3 py-1.5 text-xs">
+          <span className="text-ink-muted min-w-0 flex-1 truncate">
             {editing ? t('chat.editing') : t('chat.replyingTo', { name: replyTo!.label })}
           </span>
           <button
@@ -149,7 +149,7 @@ export function MessageComposer({
       )}
 
       {(attachment || uploading || uploadError) && (
-        <div className="flex items-center gap-2 border-b border-line px-3 py-1.5 text-xs">
+        <div className="border-line flex items-center gap-2 border-b px-3 py-1.5 text-xs">
           {uploading ? (
             <>
               <Spinner className="size-3.5" />
@@ -159,7 +159,7 @@ export function MessageComposer({
             <span className="text-danger">{t('chat.uploadFailed')}</span>
           ) : (
             <>
-              <span className="min-w-0 flex-1 truncate text-ink">{attachment!.filename}</span>
+              <span className="text-ink min-w-0 flex-1 truncate">{attachment!.filename}</span>
               <button
                 type="button"
                 onClick={() => setAttachment(null)}
@@ -192,9 +192,15 @@ export function MessageComposer({
               onClick={() => fileInput.current?.click()}
               aria-label={t('chat.attach')}
               title={t('chat.attach')}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+              className="text-ink-muted hover:bg-surface-hover hover:text-ink flex size-9 shrink-0 items-center justify-center rounded-full transition-colors"
             >
-              <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <svg
+                viewBox="0 0 20 20"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              >
                 <path
                   d="M13.5 8.5l-4.6 4.6a2.2 2.2 0 003.1 3.1l5-5a3.7 3.7 0 00-5.2-5.2l-5 5a5.2 5.2 0 007.4 7.4l4.3-4.3"
                   strokeLinecap="round"
@@ -211,9 +217,15 @@ export function MessageComposer({
             onClick={onOpenPoll}
             aria-label={t('chat.poll')}
             title={t('chat.poll')}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+            className="text-ink-muted hover:bg-surface-hover hover:text-ink flex size-9 shrink-0 items-center justify-center rounded-full transition-colors"
           >
-            <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg
+              viewBox="0 0 20 20"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
               <path d="M4 15V9M10 15V5M16 15v-4" strokeLinecap="round" />
             </svg>
           </button>
@@ -234,8 +246,8 @@ export function MessageComposer({
           placeholder={t('chat.placeholder')}
           aria-label={t('chat.placeholder')}
           className={cn(
-            'max-h-40 min-h-9 flex-1 resize-none rounded-2xl border border-line bg-surface-raised px-3.5 py-2 text-sm text-ink',
-            'placeholder:text-ink-faint focus:outline-2 focus:outline-accent',
+            'border-line bg-surface-raised text-ink max-h-40 min-h-9 flex-1 resize-none rounded-2xl border px-3.5 py-2 text-sm',
+            'placeholder:text-ink-faint focus:outline-accent focus:outline-2',
             'disabled:cursor-not-allowed disabled:opacity-60',
           )}
         />
@@ -247,7 +259,7 @@ export function MessageComposer({
             value={ttlSeconds}
             onChange={(event) => setTtlSeconds(Number(event.target.value))}
             className={cn(
-              'h-9 shrink-0 rounded-full border border-line bg-surface-raised px-2 text-xs',
+              'border-line bg-surface-raised h-9 shrink-0 rounded-full border px-2 text-xs',
               ttlSeconds > 0 && 'border-accent text-accent',
             )}
           >
@@ -269,17 +281,22 @@ export function MessageComposer({
               if (!when) return
               const relative = /^\+(\d+)([mh])$/.exec(when.trim())
               const sendAt = relative
-                ? Date.now() +
-                  Number(relative[1]) * (relative[2] === 'h' ? 3_600_000 : 60_000)
+                ? Date.now() + Number(relative[1]) * (relative[2] === 'h' ? 3_600_000 : 60_000)
                 : Date.parse(when)
               if (!Number.isFinite(sendAt)) return
               onSchedule(text.trim(), sendAt)
               setText('')
             }}
             disabled={!text.trim()}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink disabled:opacity-40"
+            className="text-ink-muted hover:bg-surface-hover hover:text-ink flex size-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
           >
-            <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg
+              viewBox="0 0 20 20"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
               <circle cx="10" cy="10" r="7" />
               <path d="M10 6v4.2l2.6 1.6" strokeLinecap="round" />
             </svg>
@@ -294,7 +311,7 @@ export function MessageComposer({
           className={cn(
             'flex size-9 shrink-0 items-center justify-center rounded-full transition-colors',
             'bg-accent text-accent-ink hover:bg-accent-hover',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+            'focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2',
             'disabled:cursor-not-allowed disabled:opacity-45',
           )}
         >

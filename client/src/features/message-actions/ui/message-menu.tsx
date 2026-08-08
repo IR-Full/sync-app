@@ -73,7 +73,7 @@ export function MessageMenu({
         onClick()
       }}
       className={cn(
-        'w-full rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover',
+        'hover:bg-surface-hover w-full rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors',
         tone === 'danger' && 'text-danger',
       )}
     >
@@ -88,7 +88,7 @@ export function MessageMenu({
         onClick={() => setOpen((value) => !value)}
         aria-label={t('chat.actions')}
         aria-expanded={open}
-        className="rounded-full p-1 text-ink-faint transition-colors hover:bg-surface-hover hover:text-ink"
+        className="text-ink-faint hover:bg-surface-hover hover:text-ink rounded-full p-1 transition-colors"
       >
         <svg viewBox="0 0 16 16" className="size-4" fill="currentColor">
           <circle cx="8" cy="3" r="1.4" />
@@ -100,7 +100,7 @@ export function MessageMenu({
       {open && (
         <div
           role="menu"
-          className="absolute top-0 right-0 z-20 w-44 rounded-xl border border-line bg-surface-raised p-1 shadow-lg"
+          className="border-line bg-surface-raised absolute top-0 right-0 z-20 w-44 rounded-xl border p-1 shadow-lg"
         >
           <div className="flex justify-between gap-0.5 px-1 pb-1">
             {QUICK_REACTIONS.map((emoji) => (
@@ -117,7 +117,7 @@ export function MessageMenu({
               </button>
             ))}
           </div>
-          <div className="border-t border-line pt-1">
+          <div className="border-line border-t pt-1">
             {item(t('chat.reply'), onReply)}
             {item(t('chat.openThread'), onOpenThread)}
             {item(t('chat.forward'), onForward)}

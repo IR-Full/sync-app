@@ -12,7 +12,13 @@ export interface ReactionTally {
 interface ReactionState {
   /** messageId -> tally */
   byMessage: Record<string, ReactionTally>
-  apply: (messageId: string, counts: Record<string, number>, emoji: string, added: boolean, isSelf: boolean) => void
+  apply: (
+    messageId: string,
+    counts: Record<string, number>,
+    emoji: string,
+    added: boolean,
+    isSelf: boolean,
+  ) => void
   clear: () => void
 }
 

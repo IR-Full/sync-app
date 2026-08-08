@@ -10,12 +10,7 @@ import {
   useTypingStore,
 } from '@/entities/chat'
 import { useDraftStore } from '@/entities/draft'
-import {
-  fromWire,
-  updateHistory,
-  upsertMessage,
-  useReactionStore,
-} from '@/entities/message'
+import { fromWire, updateHistory, upsertMessage, useReactionStore } from '@/entities/message'
 import { applyWirePoll } from '@/entities/poll'
 import { useSessionStore } from '@/entities/session'
 import { useUserDirectory } from '@/entities/user'

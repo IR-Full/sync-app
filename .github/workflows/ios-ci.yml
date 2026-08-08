@@ -33,7 +33,7 @@ jobs:
           xcrun simctl list devicetypes | grep -i iphone | tail -5
 
       - name: Run Swift package tests
-        working-directory: ios
+        working-directory: ios/SynapseKit
         run: |
           xcodebuild test \
             -scheme Synapse-Package \
@@ -48,8 +48,21 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: |
+          set -euo pipefail
+
           rm -rf Synapse.xcodeproj
           xcodegen generate
+
+          # A local package that fails to attach produces no error here — the
+          # failure surfaces much later as `no such module` pointing at the
+          # app's first import, which says nothing about the reference that was
+          # dropped. Assert the wiring directly instead.
+          for product in SynapseDI SynapsePresentation; do
+            if ! grep -q "$product" Synapse.xcodeproj/project.pbxproj; then
+              echo "::error::$product is missing from the generated project — check the 'packages' path in project.yml"
+              exit 1
+            fi
+          done
 
       - name: Resolve Swift package dependencies
         working-directory: ios

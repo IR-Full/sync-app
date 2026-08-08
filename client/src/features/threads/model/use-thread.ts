@@ -27,7 +27,13 @@ export function useThread(chatId: string, rootId: string, pageSize = 50) {
   const connected = useIsConnected()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 
-  return useInfiniteQuery<ThreadPage, Error, { pages: ThreadPage[] }, readonly unknown[], number>({
+  return useInfiniteQuery<
+    ThreadPage,
+    Error,
+    { pages: ThreadPage[] },
+    readonly unknown[],
+    number
+  >({
     queryKey: ['thread', chatId, rootId],
     initialPageParam: 0,
     getNextPageParam: (lastPage) => (lastPage.done ? undefined : lastPage.nextAfter),

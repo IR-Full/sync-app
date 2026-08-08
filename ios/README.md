@@ -190,19 +190,28 @@ block in either direction. (`SynapseClient.resolveDirectChat`.)
 
 ```
 ios/
-├── Sources/
-│   ├── Network/       frames, envelope, proto3 codec, transports, client
-│   ├── Domain/        entities, repository protocols, use cases  (depends on nothing)
-│   ├── Persistence/   SQLite cache, sync engine, repository implementations
-│   ├── Presentation/  ViewModels + SwiftUI screens               (Domain only)
-│   └── DI/            composition root
-├── App/               the app shell (@main, AppDelegate, Info.plist)
-├── Config/            Dev / Stage / Prod .xcconfig
+├── SynapseKit/            the SPM package — all the code lives here
+│   ├── Package.swift
+│   ├── Sources/
+│   │   ├── Network/       frames, envelope, proto3 codec, transports, client
+│   │   ├── Domain/        entities, repository protocols, use cases  (depends on nothing)
+│   │   ├── Persistence/   SQLite cache, sync engine, repository implementations
+│   │   ├── Presentation/  ViewModels + SwiftUI screens               (Domain only)
+│   │   └── DI/            composition root
+│   └── Tests/             NetworkTests, DomainTests, PersistenceTests
+├── App/                   the app shell (@main, AppDelegate, Info.plist)
+├── Config/                Dev / Stage / Prod .xcconfig
 ├── Resources/
-│   ├── Strings/       en.lproj, ru.lproj
-│   └── Assets/        colours, app icon
-└── Tests/             NetworkTests, DomainTests, PersistenceTests
+│   ├── Strings/           en.lproj, ru.lproj
+│   └── Assets/            colours, app icon
+└── project.yml            XcodeGen spec
 ```
+
+The package sits in a subdirectory rather than at `ios/` — deliberately. A local
+package whose root is also the directory holding the generated `.xcodeproj` does
+not resolve, because the package would contain the project consuming it. Xcode
+reports that as `no such module` at the app's first `import`, which points
+nowhere near the reference that was actually dropped.
 
 Each layer is a separate SPM target, so the dependency direction is enforced by
 the **compiler**, not by convention: `Presentation` cannot reach the wire
@@ -346,10 +355,11 @@ config file cannot silently disable certificate validation in a shipped build.
 
 ### Tests
 
-⌘U in Xcode, or from a terminal:
+⌘U in Xcode, or from a terminal — note the directory, the tests belong to the
+package rather than to the app project:
 
 ```bash
-xcodebuild test -scheme Synapse-Package -destination 'platform=iOS Simulator,name=iPhone 15'
+cd ios/SynapseKit && xcodebuild test -scheme Synapse-Package -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 Not `swift test`: the package declares iOS as its only platform, so the tests

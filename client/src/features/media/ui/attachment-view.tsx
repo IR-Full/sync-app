@@ -83,13 +83,24 @@ export function AttachmentView({
         own ? 'bg-white/15 hover:bg-white/25' : 'bg-black/5 hover:bg-black/10 dark:bg-white/10',
       )}
     >
-      <svg viewBox="0 0 20 20" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M11 2.5H6a1.5 1.5 0 00-1.5 1.5v12A1.5 1.5 0 006 17.5h8a1.5 1.5 0 001.5-1.5V7L11 2.5z" strokeLinejoin="round" />
+      <svg
+        viewBox="0 0 20 20"
+        className="size-5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      >
+        <path
+          d="M11 2.5H6a1.5 1.5 0 00-1.5 1.5v12A1.5 1.5 0 006 17.5h8a1.5 1.5 0 001.5-1.5V7L11 2.5z"
+          strokeLinejoin="round"
+        />
         <path d="M11 2.5V7h4.5" strokeLinejoin="round" />
       </svg>
       <span className="min-w-0">
         <span className="block truncate font-medium">{attachment.filename || 'file'}</span>
-        {attachment.size > 0 && <span className="opacity-70">{formatSize(attachment.size)}</span>}
+        {attachment.size > 0 && (
+          <span className="opacity-70">{formatSize(attachment.size)}</span>
+        )}
       </span>
     </a>
   )

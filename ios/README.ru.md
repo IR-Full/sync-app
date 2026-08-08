@@ -182,17 +182,26 @@ SQLite.
 
 ```
 ios/
-├── Sources/
-│   ├── Network/       фреймы, конверт, кодек proto3, транспорты, клиент
-│   ├── Domain/        сущности, протоколы репозиториев, use cases  (без зависимостей)
-│   ├── Persistence/   SQLite-кэш, sync engine, реализации репозиториев
-│   ├── Presentation/  ViewModel + SwiftUI-экраны                  (только Domain)
-│   └── DI/            композиция зависимостей
-├── App/               оболочка приложения (@main, AppDelegate, Info.plist)
-├── Config/            Dev / Stage / Prod .xcconfig
-├── Resources/         Strings (en/ru), Assets
-└── Tests/             NetworkTests, DomainTests, PersistenceTests
+├── SynapseKit/            SPM-пакет — весь код здесь
+│   ├── Package.swift
+│   ├── Sources/
+│   │   ├── Network/       фреймы, конверт, кодек proto3, транспорты, клиент
+│   │   ├── Domain/        сущности, протоколы репозиториев, use cases  (без зависимостей)
+│   │   ├── Persistence/   SQLite-кэш, sync engine, реализации репозиториев
+│   │   ├── Presentation/  ViewModel + SwiftUI-экраны                  (только Domain)
+│   │   └── DI/            композиция зависимостей
+│   └── Tests/             NetworkTests, DomainTests, PersistenceTests
+├── App/                   оболочка приложения (@main, AppDelegate, Info.plist)
+├── Config/                Dev / Stage / Prod .xcconfig
+├── Resources/             Strings (en/ru), Assets
+└── project.yml            спека XcodeGen
 ```
+
+Пакет лежит в подпапке, а не в `ios/`, — намеренно. Локальный пакет, чей корень
+совпадает с директорией сгенерированного `.xcodeproj`, не резолвится: пакет
+содержал бы сам проект, который его подключает. Xcode сообщает об этом как
+`no such module` на первом `import` приложения — то есть в месте, не имеющем
+отношения к настоящей причине.
 
 Каждый слой — отдельный SPM-таргет, поэтому направление зависимостей проверяет
 **компилятор**, а не соглашение: `Presentation` физически не дотянется до
@@ -334,10 +343,11 @@ cd ../server && go run ./cmd/client -register -user bob -pass secret123
 
 ### Тесты
 
-⌘U в Xcode или из терминала:
+⌘U в Xcode или из терминала — обратите внимание на директорию: тесты
+принадлежат пакету, а не проекту приложения:
 
 ```bash
-xcodebuild test -scheme Synapse-Package -destination 'platform=iOS Simulator,name=iPhone 15'
+cd ios/SynapseKit && xcodebuild test -scheme Synapse-Package -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 Не `swift test`: пакет объявляет единственной платформой iOS, поэтому тесты

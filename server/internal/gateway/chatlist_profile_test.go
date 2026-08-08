@@ -244,6 +244,29 @@ func loginWithName(t *testing.T, addr, user, pass, displayName string) wire.Auth
 	return ok
 }
 
+// TestPageTerminatorsCarryTheResolvedChatID: a client may address a chat by
+// "@handle", and the NEW frames of a history page carry the real chat id. The
+// terminator has to agree with them — a client keying its cache on the id it
+// gets back would otherwise file the page under a name that is not a chat id.
+func TestPageTerminatorsCarryTheResolvedChatID(t *testing.T) {
+	addr := startGateway(t)
+	alice := connect(t, addr, "histalice", "secret123")
+	connect(t, addr, "histbob", "secret123")
+
+	alice.send(t, wire.MsgSend, 1, wire.SendBody{ChatID: "@histbob", DedupKey: "h1", Text: "hi"})
+	ack := alice.readUntil(t, wire.MsgSendAck)
+	var ab wire.SendAckBody
+	_ = wire.Unmarshal(ack.Body, &ab)
+
+	alice.send(t, wire.MsgHistory, 2, wire.HistoryBody{ChatID: "@histbob", Limit: 10})
+	e := alice.readUntil(t, wire.MsgHistoryOK)
+	var h wire.HistoryOKBody
+	_ = wire.Unmarshal(e.Body, &h)
+	if h.ChatID != ab.ChatID {
+		t.Fatalf("HISTORY_OK echoed %q, want the resolved chat id %q", h.ChatID, ab.ChatID)
+	}
+}
+
 // TestProfileChangeReachesOtherDevices: a profile is per ACCOUNT, so a name
 // changed on the phone must not stay stale on the desktop until that session
 // happens to reconnect.

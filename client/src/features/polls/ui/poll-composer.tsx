@@ -62,7 +62,9 @@ export function PollComposer({
             value={option}
             onChange={(event) =>
               setOptions((current) =>
-                current.map((value, position) => (position === index ? event.target.value : value)),
+                current.map((value, position) =>
+                  position === index ? event.target.value : value,
+                ),
               )
             }
           />

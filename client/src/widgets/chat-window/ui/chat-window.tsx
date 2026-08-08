@@ -116,31 +116,37 @@ export function ChatWindow({ target }: { target: string }) {
   }, [pins.data, messages])
 
   return (
-    <section className="flex h-full min-w-0 flex-1 flex-col bg-surface">
-      <header className="flex items-center gap-3 border-b border-line px-4 py-2.5">
+    <section className="bg-surface flex h-full min-w-0 flex-1 flex-col">
+      <header className="border-line flex items-center gap-3 border-b px-4 py-2.5">
         <button
           type="button"
           onClick={() => router.push('/chats')}
           aria-label={t('nav.back')}
-          className="-ml-1 rounded-lg p-1.5 text-ink-muted hover:bg-surface-hover md:hidden"
+          className="text-ink-muted hover:bg-surface-hover -ml-1 rounded-lg p-1.5 md:hidden"
         >
-          <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg
+            viewBox="0 0 20 20"
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
             <path d="M12 4l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
 
         <Avatar seed={chat?.id ?? target} name={title} online={peer?.online} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-semibold text-ink">{title}</h1>
+          <h1 className="text-ink truncate text-sm font-semibold">{title}</h1>
           {subtitle && (
-            <p className="truncate text-xs text-accent" aria-live="polite">
+            <p className="text-accent truncate text-xs" aria-live="polite">
               {subtitle}
             </p>
           )}
         </div>
 
         {chat && unreadCount(chat) > 0 && (
-          <span className="text-xs text-ink-faint">{unreadCount(chat)}</span>
+          <span className="text-ink-faint text-xs">{unreadCount(chat)}</span>
         )}
 
         <button
@@ -148,9 +154,15 @@ export function ChatWindow({ target }: { target: string }) {
           onClick={() => setSearchOpen(true)}
           aria-label={t('search.open')}
           title={t('search.open')}
-          className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+          className="text-ink-muted hover:bg-surface-hover hover:text-ink rounded-lg p-1.5 transition-colors"
         >
-          <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.7">
+          <svg
+            viewBox="0 0 20 20"
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          >
             <circle cx="9" cy="9" r="5.5" />
             <path d="M13.5 13.5L17 17" strokeLinecap="round" />
           </svg>
@@ -162,9 +174,15 @@ export function ChatWindow({ target }: { target: string }) {
             onClick={() => setAdminOpen(true)}
             aria-label={t('admin.title')}
             title={t('admin.title')}
-            className="rounded-lg p-1.5 text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+            className="text-ink-muted hover:bg-surface-hover hover:text-ink rounded-lg p-1.5 transition-colors"
           >
-            <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <svg
+              viewBox="0 0 20 20"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+            >
               <circle cx="10" cy="10" r="7" />
               <path d="M10 7v3.5l2.4 1.4" strokeLinecap="round" />
             </svg>
@@ -173,9 +191,9 @@ export function ChatWindow({ target }: { target: string }) {
       </header>
 
       {pinnedPreview && (
-        <div className="flex items-center gap-2 border-b border-line bg-surface-sunken px-4 py-1.5 text-xs">
-          <span className="font-medium text-accent">{t('chat.pinnedBar')}</span>
-          <span className="min-w-0 flex-1 truncate text-ink-muted">
+        <div className="border-line bg-surface-sunken flex items-center gap-2 border-b px-4 py-1.5 text-xs">
+          <span className="text-accent font-medium">{t('chat.pinnedBar')}</span>
+          <span className="text-ink-muted min-w-0 flex-1 truncate">
             {pinnedPreview.text || pinnedPreview.attachment?.filename || '—'}
           </span>
         </div>
@@ -264,9 +282,7 @@ export function ChatWindow({ target }: { target: string }) {
         onUpload={isNew ? undefined : async (file) => (await upload(file)).attachment}
         onOpenPoll={isNew ? undefined : () => setPollOpen(true)}
         onSchedule={
-          isNew
-            ? undefined
-            : (text, sendAt) => scheduleMessage.mutate({ text, sendAt })
+          isNew ? undefined : (text, sendAt) => scheduleMessage.mutate({ text, sendAt })
         }
         initialText={editing ? editing.text : draft}
         replyTo={replyTo}
@@ -285,7 +301,11 @@ export function ChatWindow({ target }: { target: string }) {
       <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
       {!isNew && (
         <>
-          <ChatAdminPanel chatId={chatId} open={adminOpen} onClose={() => setAdminOpen(false)} />
+          <ChatAdminPanel
+            chatId={chatId}
+            open={adminOpen}
+            onClose={() => setAdminOpen(false)}
+          />
           <PollComposer chatId={chatId} open={pollOpen} onClose={() => setPollOpen(false)} />
           {thread && (
             <ThreadPanel

@@ -299,8 +299,12 @@ func (c *conn) handleHistory(ctx context.Context, e wire.Envelope) error {
 		nextBefore = m.Seq
 		_ = c.reply(wire.MsgNew, e.RequestID, msgToWire(m))
 	}
+	// The RESOLVED id, not the string that was sent. A client may address a chat
+	// as "@bob"; echoing that back makes the page terminator the one frame in the
+	// stream that does not name the chat the messages actually came from — and
+	// the NEW frames beside it carry the real id.
 	return c.reply(wire.MsgHistoryOK, e.RequestID, wire.HistoryOKBody{
-		ChatID:     body.ChatID,
+		ChatID:     chatID,
 		NextBefore: nextBefore,
 		Done:       len(msgs) < limit,
 	})
@@ -409,6 +413,6 @@ func (c *conn) handleThread(ctx context.Context, e wire.Envelope) error {
 		_ = c.reply(wire.MsgNew, e.RequestID, msgToWire(m))
 	}
 	return c.reply(wire.MsgThreadOK, e.RequestID, wire.ThreadOKBody{
-		ChatID: body.ChatID, RootID: body.RootID, NextAfter: nextAfter, Done: len(msgs) < limit,
+		ChatID: chatID, RootID: body.RootID, NextAfter: nextAfter, Done: len(msgs) < limit,
 	})
 }

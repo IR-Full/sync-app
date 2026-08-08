@@ -15,7 +15,13 @@ function StatusMark({ message }: { message: ChatMessage }) {
 
   if (message.status === 'pending') {
     return (
-      <svg viewBox="0 0 16 16" className="size-3.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <svg
+        viewBox="0 0 16 16"
+        className="size-3.5 opacity-70"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      >
         <circle cx="8" cy="8" r="6" />
         <path d="M8 5v3.2l2 1.2" strokeLinecap="round" />
       </svg>
@@ -24,7 +30,13 @@ function StatusMark({ message }: { message: ChatMessage }) {
   if (message.status === 'failed') {
     return (
       <span title={message.error ?? t('chat.failed')} className="text-danger">
-        <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <svg
+          viewBox="0 0 16 16"
+          className="size-3.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        >
           <circle cx="8" cy="8" r="6" />
           <path d="M8 4.8v4M8 11.2h.01" strokeLinecap="round" />
         </svg>
@@ -32,7 +44,13 @@ function StatusMark({ message }: { message: ChatMessage }) {
     )
   }
   return (
-    <svg viewBox="0 0 16 16" className="size-3.5 opacity-80" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg
+      viewBox="0 0 16 16"
+      className="size-3.5 opacity-80"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
       <path d="M2.5 8.5l3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
@@ -79,7 +97,7 @@ export function MessageBubble({
   if (message.deleted) {
     return (
       <div className={cn('flex px-1', own ? 'justify-end' : 'justify-start')}>
-        <div className="max-w-[min(34rem,78%)] rounded-2xl border border-line px-3 py-2 text-sm text-ink-faint italic">
+        <div className="border-line text-ink-faint max-w-[min(34rem,78%)] rounded-2xl border px-3 py-2 text-sm italic">
           {t('chat.deleted')}
         </div>
       </div>
@@ -101,9 +119,9 @@ export function MessageBubble({
         className={cn(
           'max-w-[min(34rem,78%)] rounded-2xl px-3 py-2 text-sm',
           own
-            ? 'rounded-br-md bg-bubble-own text-bubble-own-ink'
-            : 'rounded-bl-md bg-bubble-peer text-bubble-peer-ink',
-          message.status === 'failed' && 'ring-1 ring-danger',
+            ? 'bg-bubble-own text-bubble-own-ink rounded-br-md'
+            : 'bg-bubble-peer text-bubble-peer-ink rounded-bl-md',
+          message.status === 'failed' && 'ring-danger ring-1',
         )}
       >
         {showSender && senderLabel && (
@@ -131,7 +149,9 @@ export function MessageBubble({
                 onClick={() => onToggleReaction?.(emoji)}
                 className={cn(
                   'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs transition-colors',
-                  own ? 'bg-white/20 hover:bg-white/30' : 'bg-black/5 hover:bg-black/10 dark:bg-white/10',
+                  own
+                    ? 'bg-white/20 hover:bg-white/30'
+                    : 'bg-black/5 hover:bg-black/10 dark:bg-white/10',
                   reactions?.mine === emoji && 'ring-1 ring-current',
                 )}
               >
@@ -166,7 +186,13 @@ export function MessageBubble({
           )}
           {message.expiresAt > 0 && (
             <span title={t('chat.selfDestruct')} aria-label={t('chat.selfDestruct')}>
-              <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <svg
+                viewBox="0 0 16 16"
+                className="size-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              >
                 <circle cx="8" cy="9" r="5.5" />
                 <path d="M8 6.5V9l1.6 1M6 1.5h4" strokeLinecap="round" />
               </svg>

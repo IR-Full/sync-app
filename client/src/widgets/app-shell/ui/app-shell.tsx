@@ -50,11 +50,20 @@ export function AppShell({ list, children }: { list: ReactNode; children: ReactN
               href="/contacts"
               aria-label={t('contacts.manage')}
               title={t('contacts.manage')}
-              className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+              className="text-ink-muted hover:bg-surface-hover hover:text-ink rounded-lg p-2 transition-colors"
             >
-              <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <svg
+                viewBox="0 0 20 20"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <circle cx="8" cy="7" r="3" />
-                <path d="M2.5 16.5c0-2.8 2.5-4.5 5.5-4.5s5.5 1.7 5.5 4.5M14 8h4M16 6v4" strokeLinecap="round" />
+                <path
+                  d="M2.5 16.5c0-2.8 2.5-4.5 5.5-4.5s5.5 1.7 5.5 4.5M14 8h4M16 6v4"
+                  strokeLinecap="round"
+                />
               </svg>
             </Link>
 

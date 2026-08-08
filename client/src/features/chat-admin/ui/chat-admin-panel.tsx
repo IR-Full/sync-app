@@ -135,16 +135,18 @@ export function ChatAdminPanel({
             {invites.isLoading ? (
               <Spinner className="size-4" />
             ) : !invites.data?.length ? (
-              <p className="text-xs text-ink-faint">{t('admin.noInvites')}</p>
+              <p className="text-ink-faint text-xs">{t('admin.noInvites')}</p>
             ) : (
               <ul className="flex flex-col gap-1">
                 {invites.data.map((link) => (
                   <li
                     key={link.code}
-                    className="flex items-center gap-2 rounded-lg bg-surface-sunken px-2 py-1.5"
+                    className="bg-surface-sunken flex items-center gap-2 rounded-lg px-2 py-1.5"
                   >
-                    <code className="min-w-0 flex-1 truncate font-mono text-xs">{link.code}</code>
-                    <span className="shrink-0 text-[11px] text-ink-faint">
+                    <code className="min-w-0 flex-1 truncate font-mono text-xs">
+                      {link.code}
+                    </code>
+                    <span className="text-ink-faint shrink-0 text-[11px]">
                       {t('admin.uses', {
                         used: link.uses,
                         max: link.maxUses || t('admin.unlimited'),
@@ -184,7 +186,7 @@ export function ChatAdminPanel({
               aria-label={t('admin.role')}
               value={role}
               onChange={(event) => setRoleValue(event.target.value as MemberRole)}
-              className="h-10 rounded-xl border border-line bg-surface-raised px-2 text-sm"
+              className="border-line bg-surface-raised h-10 rounded-xl border px-2 text-sm"
             >
               {ROLES.map((value) => (
                 <option key={value} value={value}>
@@ -196,7 +198,10 @@ export function ChatAdminPanel({
               loading={setRole.isPending}
               disabled={!userId.trim()}
               onClick={() =>
-                run(() => setRole.mutateAsync({ userId: userId.trim(), role }), t('profile.saved'))
+                run(
+                  () => setRole.mutateAsync({ userId: userId.trim(), role }),
+                  t('profile.saved'),
+                )
               }
             >
               {t('admin.setRole')}
@@ -231,7 +236,7 @@ export function ChatAdminPanel({
           </Button>
         </section>
 
-        {message && <p className="text-sm text-success">{message}</p>}
+        {message && <p className="text-success text-sm">{message}</p>}
         {error && <ErrorNote>{error}</ErrorNote>}
       </div>
     </Modal>

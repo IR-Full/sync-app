@@ -41,13 +41,13 @@ export function ThreadPanel({
       <div className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto">
         <MessageBubble message={root} senderLabel={senderLabel(root.senderId)} showSender />
 
-        <div className="border-t border-line pt-2">
+        <div className="border-line border-t pt-2">
           {thread.isLoading ? (
             <div className="flex justify-center py-4">
               <Spinner className="size-4" />
             </div>
           ) : replies.length === 0 ? (
-            <p className="py-4 text-center text-sm text-ink-faint">{t('thread.empty')}</p>
+            <p className="text-ink-faint py-4 text-center text-sm">{t('thread.empty')}</p>
           ) : (
             <div className="flex flex-col gap-1">
               {replies.map((reply) => (

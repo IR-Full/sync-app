@@ -8,7 +8,12 @@ import { ProtocolError } from '@/shared/api'
 import { useTranslate } from '@/shared/i18n'
 import { Avatar, Button, EmptyState, ErrorNote, Spinner, TextField } from '@/shared/ui'
 
-import { useAddContact, useBlockUser, useContacts, useRemoveContact } from '../model/use-contacts'
+import {
+  useAddContact,
+  useBlockUser,
+  useContacts,
+  useRemoveContact,
+} from '../model/use-contacts'
 
 /**
  * The address book.
@@ -50,8 +55,8 @@ export function ContactsPanel() {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
-      <section className="rounded-2xl border border-line bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink">{t('contacts.add')}</h2>
+      <section className="border-line bg-surface rounded-2xl border p-4">
+        <h2 className="text-ink mb-3 text-sm font-semibold">{t('contacts.add')}</h2>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <TextField
             label={t('contacts.target')}
@@ -75,7 +80,7 @@ export function ContactsPanel() {
         {error && <ErrorNote className="mt-2">{error}</ErrorNote>}
       </section>
 
-      <section className="rounded-2xl border border-line bg-surface p-2">
+      <section className="border-line bg-surface rounded-2xl border p-2">
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner />
@@ -99,7 +104,7 @@ export function ContactsPanel() {
               return (
                 <li
                   key={contact.userId}
-                  className="flex items-center gap-3 border-b border-line px-2 py-2.5 last:border-0"
+                  className="border-line flex items-center gap-3 border-b px-2 py-2.5 last:border-0"
                 >
                   <Avatar
                     seed={contact.userId}
@@ -107,18 +112,18 @@ export function ContactsPanel() {
                     size="small"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-ink">
+                    <span className="text-ink block truncate text-sm">
                       {labelForUser(known, contact.userId)}
                     </span>
                     {contact.blocked && (
-                      <span className="text-xs text-danger">{t('contacts.blocked')}</span>
+                      <span className="text-danger text-xs">{t('contacts.blocked')}</span>
                     )}
                   </span>
 
                   {handle && !contact.blocked && (
                     <Link
                       href={`/chats/new?to=${encodeURIComponent(handle)}`}
-                      className="rounded-lg px-2 py-1 text-xs text-accent hover:bg-surface-hover"
+                      className="text-accent hover:bg-surface-hover rounded-lg px-2 py-1 text-xs"
                     >
                       {t('compose.open')}
                     </Link>

@@ -32,7 +32,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 async function main() {
   const a = new SynapseClient({ url: URL_ })
   a.setDeviceId('feat-alice')
-  const aliceSession = await a.connect({
+  await a.connect({
     kind: 'password',
     username: alice,
     password: 'correct horse battery',
@@ -78,19 +78,19 @@ async function main() {
   })
 
   // --- PIN / PIN_LIST
-  await a.request<Body.Pinned>(
-    MsgType.PIN,
-    { chatId, messageId },
-    { expect: MsgType.PINNED },
-  )
+  await a.request<Body.Pinned>(MsgType.PIN, { chatId, messageId }, { expect: MsgType.PINNED })
   const pins = await a.request<Body.Pinned>(
     MsgType.PIN_LIST,
     { chatId, messageId: '' },
     { expect: MsgType.PINNED },
   )
-  check('PIN -> PINNED lists the pin', pins.body.pins.some((p) => p.messageId === messageId), {
-    pins: pins.body.pins.length,
-  })
+  check(
+    'PIN -> PINNED lists the pin',
+    pins.body.pins.some((p) => p.messageId === messageId),
+    {
+      pins: pins.body.pins.length,
+    },
+  )
 
   // --- DRAFT_SET is fire-and-forget; DRAFT_SYNC reads it back
   a.send(MsgType.DRAFT_SET, { chatId, text: 'unsent thought', replyTo: '' })
