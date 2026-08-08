@@ -24,14 +24,20 @@ public actor ChangeBroker {
     /// A stream that yields once immediately (so a consumer renders the current
     /// state without waiting for the first change) and then on every change.
     public func stream(_ topic: Topic) -> AsyncStream<Void> {
-        AsyncStream { continuation in
-            let id = UUID()
-            subscribers[topic, default: [:]][id] = continuation
-            continuation.onTermination = { [weak self] _ in
-                Task { await self?.remove(id, from: topic) }
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+
+        subscribers[topic, default: [:]][id] = continuation
+
+        continuation.onTermination = { [weak self, topic, id] _ in
+            Task { [weak self, topic, id] in
+                await self?.remove(id, from: topic)
             }
-            continuation.yield(())
         }
+
+        continuation.yield(())
+
+        return stream
     }
 
     public func notify(_ topic: Topic) {
