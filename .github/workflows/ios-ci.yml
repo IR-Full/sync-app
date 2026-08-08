@@ -29,6 +29,7 @@ jobs:
         run: |
           xcodebuild -version
           swift --version
+          xcrun simctl list runtimes
           xcrun simctl list devicetypes | grep -i iphone | tail -5
 
       - name: Run unit tests
@@ -36,7 +37,7 @@ jobs:
         run: |
           xcodebuild test \
             -scheme Synapse-Package \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
 
@@ -53,7 +54,7 @@ jobs:
           xcodebuild build \
             -project Synapse.xcodeproj \
             -scheme 'Synapse Dev' \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             CODE_SIGNING_ALLOWED=NO \
             -quiet
 
@@ -63,29 +64,28 @@ jobs:
           set -euo pipefail
 
           UDID=$(
-            python3 - <<'PY'
+            xcrun simctl list devices available -j |
+              python3 -c "
           import json
-          import subprocess
+          import sys
 
-          data = json.loads(
-              subprocess.check_output(
-                  ["xcrun", "simctl", "list", "devices", "available", "-j"],
-                  text=True,
-              )
-          )
+          devices = json.load(sys.stdin)['devices']
 
           iphones = [
-              device["udid"]
-              for device_list in data["devices"].values()
+              device['udid']
+              for runtime, device_list in devices.items()
               for device in device_list
-              if device["name"] == "iPhone 15"
+              if runtime.endswith('iOS-17-5')
+              and device['name'] == 'iPhone 15'
           ]
 
           if not iphones:
-              raise SystemExit("iPhone 15 simulator not found")
+              raise SystemExit(
+                  'iPhone 15 with iOS 17.5 simulator not found'
+              )
 
           print(iphones[0])
-          PY
+          "
           )
 
           xcrun simctl boot "$UDID" || true
