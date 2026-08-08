@@ -20,6 +20,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.2"
+
       - name: Toolchain versions
         run: |
           xcodebuild -version
@@ -29,8 +34,6 @@ jobs:
       - name: Run unit tests
         working-directory: ios
         run: |
-          set -o pipefail
-
           xcodebuild test \
             -scheme Synapse-Package \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
@@ -47,8 +50,6 @@ jobs:
       - name: Build the app
         working-directory: ios
         run: |
-          set -o pipefail
-
           xcodebuild build \
             -project Synapse.xcodeproj \
             -scheme 'Synapse Dev' \
@@ -62,25 +63,29 @@ jobs:
           set -euo pipefail
 
           UDID=$(
-            xcrun simctl list devices available -j |
-              python3 -c "
+            python3 - <<'PY'
           import json
-          import sys
+          import subprocess
 
-          devices = json.load(sys.stdin)['devices']
+          data = json.loads(
+              subprocess.check_output(
+                  ["xcrun", "simctl", "list", "devices", "available", "-j"],
+                  text=True,
+              )
+          )
 
           iphones = [
-              device['udid']
-              for device_list in devices.values()
+              device["udid"]
+              for device_list in data["devices"].values()
               for device in device_list
-              if 'iPhone 15' in device['name']
+              if device["name"] == "iPhone 15"
           ]
 
           if not iphones:
-              raise SystemExit('iPhone 15 simulator not found')
+              raise SystemExit("iPhone 15 simulator not found")
 
           print(iphones[0])
-          "
+          PY
           )
 
           xcrun simctl boot "$UDID" || true
@@ -90,8 +95,8 @@ jobs:
             find "$HOME/Library/Developer/Xcode/DerivedData" \
               -name '*.app' \
               -type d \
-              -path '*Debug-iphonesimulator*' |
-              head -1
+              -path '*Debug-iphonesimulator*' \
+              | head -1
           )
 
           if [ -z "$APP" ]; then
