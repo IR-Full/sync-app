@@ -81,13 +81,14 @@ private final class OpenDelegate: NSObject, URLSessionWebSocketDelegate, @unchec
     private var continuation: CheckedContinuation<Void, Error>?
     private var pendingTaskID: Int?
 
-    func expectOpen(for task: URLSessionWebSocketTask) async throws {
-        try await withCheckedThrowingContinuation { continuation in
-            lock.lock()
-            self.continuation = continuation
-            self.pendingTaskID = task.taskIdentifier
-            lock.unlock()
-        }
+    func expectOpen(
+        for task: URLSessionWebSocketTask,
+        continuation: CheckedContinuation<Void, Error>
+    ) {
+        lock.lock()
+        self.continuation = continuation
+        self.pendingTaskID = task.taskIdentifier
+        lock.unlock()
     }
 
     func cancelPending() {
