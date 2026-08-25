@@ -3,8 +3,8 @@ package postgres
 import (
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 // The batcher implements GROUP COMMIT for message writes. Load testing showed the

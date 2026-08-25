@@ -1,6 +1,6 @@
 package sharded
 
-import "github.com/synapse-chat/synapse/internal/store"
+import "github.com/SyncApp-chat/SyncApp/internal/store"
 
 // --- Optional capabilities ---
 //

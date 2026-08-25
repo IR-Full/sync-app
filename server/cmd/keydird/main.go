@@ -12,9 +12,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/synapse-chat/synapse/internal/keydir"
-	"github.com/synapse-chat/synapse/internal/platform"
-	"github.com/synapse-chat/synapse/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/keydir"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/rpc"
 )
 
 func main() {
@@ -39,8 +39,8 @@ func main() {
 		b.Log.Info("keydir: in-memory")
 	}
 
-	addr := platform.Env("SYNAPSE_KEYDIRD_ADDR", ":9005")
-	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNAPSE_KEYDIRD_METRICS", ":9105"), b.Log,
+	addr := platform.Env("SyncApp_KEYDIRD_ADDR", ":9005")
+	if err := platform.ServeGRPC(ctx, addr, platform.Env("SyncApp_KEYDIRD_METRICS", ":9105"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterKeyDir(s, dir) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)

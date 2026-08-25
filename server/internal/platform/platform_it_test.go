@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/internal/store/sharded"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/store/sharded"
 )
 
 // Sharding is switched on by an environment variable, and everything downstream
@@ -19,19 +19,19 @@ import (
 // behaviour, so it is worth asserting on directly rather than inferring from a
 // running fleet.
 //
-// Runs only when SYNAPSE_TEST_SHARD_DSNS is set to two or more DSNs.
+// Runs only when SyncApp_TEST_SHARD_DSNS is set to two or more DSNs.
 func TestLoadBuildsAShardedStoreWithAnOutboxPerShard(t *testing.T) {
-	dsns := os.Getenv("SYNAPSE_TEST_SHARD_DSNS")
+	dsns := os.Getenv("SyncApp_TEST_SHARD_DSNS")
 	if dsns == "" || len(strings.Split(dsns, ",")) < 2 {
-		t.Skip("set SYNAPSE_TEST_SHARD_DSNS (2+ comma-separated DSNs) to run the sharded platform test")
+		t.Skip("set SyncApp_TEST_SHARD_DSNS (2+ comma-separated DSNs) to run the sharded platform test")
 	}
 	want := len(strings.Split(dsns, ","))
 
 	// Load reads the environment; point the primary at the first shard so the run
 	// needs nothing beyond the shards themselves.
 	first := strings.TrimSpace(strings.Split(dsns, ",")[0])
-	t.Setenv("SYNAPSE_PG_DSN", first)
-	t.Setenv("SYNAPSE_MESSAGE_SHARD_DSNS", dsns)
+	t.Setenv("SyncApp_PG_DSN", first)
+	t.Setenv("SyncApp_MESSAGE_SHARD_DSNS", dsns)
 
 	b, err := Load(context.Background(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {

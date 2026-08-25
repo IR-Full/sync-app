@@ -3,7 +3,7 @@ package wire
 import (
 	"fmt"
 
-	pb "github.com/synapse-chat/synapse/internal/wirepb"
+	pb "github.com/SyncApp-chat/SyncApp/internal/wirepb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -134,6 +134,10 @@ func toProto(v any) proto.Message {
 		return &pb.ProfileSet{DisplayName: b.DisplayName, AvatarRef: b.AvatarRef, ClearAvatar: b.ClearAvatar}
 	case ProfileBody:
 		return &pb.Profile{UserId: b.UserID, Username: b.Username, DisplayName: b.DisplayName, AvatarRef: b.AvatarRef}
+	case AccountDeleteBody:
+		return &pb.AccountDelete{Password: b.Password, Reason: b.Reason}
+	case AccountDeletedBody:
+		return &pb.AccountDeleted{UserId: b.UserID, DeletedAt: b.DeletedAt}
 	case FanoutShardBody:
 		return &pb.FanoutShard{Body: newMessageToProto(b.Body), Members: b.Members}
 	case InvitesBody:
@@ -367,6 +371,12 @@ func protoTarget(v any) (proto.Message, func()) {
 		return m, func() {
 			*t = ProfileBody{UserID: m.UserId, Username: m.Username, DisplayName: m.DisplayName, AvatarRef: m.AvatarRef}
 		}
+	case *AccountDeleteBody:
+		m := &pb.AccountDelete{}
+		return m, func() { *t = AccountDeleteBody{Password: m.Password, Reason: m.Reason} }
+	case *AccountDeletedBody:
+		m := &pb.AccountDeleted{}
+		return m, func() { *t = AccountDeletedBody{UserID: m.UserId, DeletedAt: m.DeletedAt} }
 	case *FanoutShardBody:
 		m := &pb.FanoutShard{}
 		return m, func() {

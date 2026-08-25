@@ -1,5 +1,5 @@
 /**
- * Live protocol check against a real Synapse gateway.
+ * Live protocol check against a real SyncApp gateway.
  *
  * This exercises the client's wire layer end to end — framing, varint envelope,
  * protobuf bodies, handshake, auth, send/ack, history paging, receipts — against
@@ -10,9 +10,9 @@
  *   1. start the gateway:  server.exe            (defaults to :8080 for /ws)
  *   2. node scripts/e2e-protocol.mts [ws://localhost:8080/ws]
  */
-import { SynapseClient } from '../src/shared/api/protocol/client.ts'
-import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
+import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
 import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
+import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
 
 const URL_ = process.argv[2] ?? 'ws://localhost:8080/ws'
 const stamp = Date.now()
@@ -29,7 +29,7 @@ function check(label: string, ok: boolean, detail?: unknown) {
 
 async function main() {
   // --- register two accounts over the binary protocol (there is no REST signup)
-  const a = new SynapseClient({ url: URL_ })
+  const a = new SyncAppClient({ url: URL_ })
   a.setDeviceId('e2e-alice')
   const aliceSession = await a.connect({
     kind: 'password',
@@ -42,7 +42,7 @@ async function main() {
     hasResume: !!aliceSession.resumeToken,
   })
 
-  const b = new SynapseClient({ url: URL_ })
+  const b = new SyncAppClient({ url: URL_ })
   b.setDeviceId('e2e-bob')
   const bobSession = await b.connect({
     kind: 'password',
@@ -170,7 +170,7 @@ async function main() {
   check('CONTACT_ADD + CONTACT_SYNC', contacts.body.contacts.length > 0, contacts.body.contacts)
 
   // --- token re-auth on a fresh connection (what "auto login" will do)
-  const c = new SynapseClient({ url: URL_ })
+  const c = new SyncAppClient({ url: URL_ })
   c.setDeviceId('e2e-alice')
   const resumed = await c.connect({ kind: 'token', token: aliceSession.token })
   check('re-auth with stored token', resumed.userId === aliceSession.userId, {

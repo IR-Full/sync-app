@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 // fakeShard is a minimal store.MessageStore that records which chats it received

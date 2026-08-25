@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/internal/tracing"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/tracing"
 )
 
 // NewBroker builds the message broker over the message service.

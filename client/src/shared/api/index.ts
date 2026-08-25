@@ -1,9 +1,10 @@
+export * from './protocol'
 export { queryKeys } from './query-keys'
 export {
-  SynapseProvider,
+  SyncAppProvider,
   useConnectionState,
   useIsConnected,
-  useSynapse,
-  useSynapseClient,
-} from './synapse/context'
-export * from './protocol'
+  useSyncApp,
+  useSyncAppClient
+} from './syncapp/context'
+

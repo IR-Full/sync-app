@@ -2,7 +2,7 @@
  * Generates the client's protobuf runtime artifacts from the SERVER's schema.
  *
  * The Go gateway encodes every envelope body as protobuf (pkg/wire/protocodec.go
- * installs protoCodec in its package init), so `server/proto/synapse/v1/body.proto`
+ * installs protoCodec in its package init), so `server/proto/SyncApp/v1/body.proto`
  * is the single source of truth for body shapes. Rather than hand-copying 80
  * message definitions into TypeScript — where they would silently drift from the
  * server — we parse the .proto at build time and emit:
@@ -13,13 +13,13 @@
  *
  * Run with:  npm run proto:gen
  */
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import protobuf from 'protobufjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const PROTO = resolve(here, '../../server/proto/synapse/v1/body.proto')
+const PROTO = resolve(here, '../../server/proto/SyncApp/v1/body.proto')
 const OUT_DIR = resolve(here, '../src/shared/api/protocol/generated')
 
 /** proto scalar -> TS type. 64-bit fields arrive as numbers because the codec
@@ -45,7 +45,7 @@ const SCALARS = {
 const root = protobuf.loadSync(PROTO)
 root.resolveAll()
 
-const ns = root.lookup('synapse.v1')
+const ns = root.lookup('SyncApp.v1')
 const types = ns.nestedArray.filter((t) => t instanceof protobuf.Type)
 
 mkdirSync(OUT_DIR, { recursive: true })
@@ -56,7 +56,7 @@ writeFileSync(
   resolve(OUT_DIR, 'descriptor.ts'),
   [
     '// GENERATED FILE — do not edit by hand.',
-    '// Source: server/proto/synapse/v1/body.proto (regenerate: npm run proto:gen)',
+    '// Source: server/proto/SyncApp/v1/body.proto (regenerate: npm run proto:gen)',
     '',
     `export const descriptor = ${JSON.stringify(root.toJSON(), null, 2)} as const`,
     '',
@@ -75,7 +75,7 @@ const tsType = (field) => {
 
 const lines = [
   '// GENERATED FILE — do not edit by hand.',
-  '// Source: server/proto/synapse/v1/body.proto (regenerate: npm run proto:gen)',
+  '// Source: server/proto/SyncApp/v1/body.proto (regenerate: npm run proto:gen)',
   '//',
   '// Every field is required here because the codec decodes with `defaults: true`,',
   '// so proto3 scalars are always materialised. Use `Encodable<T>` when building a',

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/redis/go-redis/v9"
-	"github.com/synapse-chat/synapse/internal/model"
 )
 
 // NewRedisBackend connects to Redis (e.g. "localhost:6379").

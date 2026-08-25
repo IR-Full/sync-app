@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/invite"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/invite"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // --- Chat creation ---

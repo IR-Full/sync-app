@@ -163,7 +163,7 @@ func skKey(dhPub []byte, n uint32) string {
 // kdfRK derives (newRootKey, chainKey) from the root key and a DH output.
 func kdfRK(rk, dhOut []byte) (newRK, ck []byte) {
 	out := make([]byte, 64)
-	r := hkdf.New(sha256.New, dhOut, rk, []byte("Synapse-Ratchet-RK"))
+	r := hkdf.New(sha256.New, dhOut, rk, []byte("SyncApp-Ratchet-RK"))
 	_, _ = io.ReadFull(r, out)
 	return out[:32], out[32:]
 }
@@ -205,7 +205,7 @@ func aeadFor(mk []byte) (aead interface {
 	// Derive an AEAD key + nonce from the message key via HKDF so the message key
 	// itself is never used directly as the cipher key.
 	buf := make([]byte, chacha20poly1305.KeySize+chacha20poly1305.NonceSize)
-	r := hkdf.New(sha256.New, mk, nil, []byte("Synapse-Ratchet-Msg"))
+	r := hkdf.New(sha256.New, mk, nil, []byte("SyncApp-Ratchet-Msg"))
 	if _, err = io.ReadFull(r, buf); err != nil {
 		return nil, nil, err
 	}

@@ -14,9 +14,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // New builds a relay.

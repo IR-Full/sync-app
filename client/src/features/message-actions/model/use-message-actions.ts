@@ -11,7 +11,7 @@ import {
   type ChatMessage,
 } from '@/entities/message'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useSyncAppClient, type Wire } from '@/shared/api'
 import { createDedupKey } from '@/shared/lib/id'
 
 /**
@@ -27,7 +27,7 @@ import { createDedupKey } from '@/shared/lib/id'
  * the authoritative version lands a moment later.
  */
 export function useMessageActions(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 
@@ -81,7 +81,7 @@ export function useMessageActions(chatId: string) {
  * send — so it needs its own dedup key for the same idempotency guarantee.
  */
 export function useForwardMessage() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const upsertChat = useChatStore((store) => store.upsert)
 
   return useCallback(

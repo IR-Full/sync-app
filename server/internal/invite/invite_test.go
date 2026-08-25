@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
 )
 
 // fakeChats is an in-memory chat with a mutable member roster.

@@ -11,8 +11,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // New builds the search service over a backend.

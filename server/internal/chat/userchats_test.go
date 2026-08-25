@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
 )
 
 // TestUserChatsPagesInNumericIDOrder pins the cursor's ordering. Chat ids are

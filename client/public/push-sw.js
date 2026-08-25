@@ -7,7 +7,7 @@
  * raw text so a differently-shaped payload still surfaces something.
  */
 self.addEventListener('push', (event) => {
-  let title = 'Synapse'
+  let title = 'SyncApp'
   let body = ''
   let tag
 

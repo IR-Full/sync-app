@@ -2,8 +2,7 @@
 
 import { create } from 'zustand'
 
-import { readStorage, writeStorage } from '@/shared/lib/storage'
-import { toBase64, fromBase64 } from '@/shared/lib/e2e/codec'
+import { fromBase64, toBase64 } from '@/shared/lib/e2e/codec'
 import {
   generateKeyPair,
   generateSigningKeyPair,
@@ -11,6 +10,7 @@ import {
   type SigningKeyPair,
 } from '@/shared/lib/e2e/keys'
 import type { SerializedSession } from '@/shared/lib/e2e/ratchet'
+import { readStorage, writeStorage } from '@/shared/lib/storage'
 
 /** How many one-time prekeys we publish per device. */
 export const ONE_TIME_PREKEY_COUNT = 8
@@ -69,13 +69,13 @@ const decodePair = (pair: { privateKey: string; publicKey: string }): KeyPair =>
 })
 
 function identityKey(ownerId: string) {
-  return `synapse:e2e-identity:${ownerId}`
+  return `SyncApp:e2e-identity:${ownerId}`
 }
 function sessionsKey(ownerId: string) {
-  return `synapse:e2e-sessions:${ownerId}`
+  return `SyncApp:e2e-sessions:${ownerId}`
 }
 function transcriptsKey(ownerId: string) {
-  return `synapse:e2e-transcripts:${ownerId}`
+  return `SyncApp:e2e-transcripts:${ownerId}`
 }
 
 function createIdentity(): SecretIdentity {

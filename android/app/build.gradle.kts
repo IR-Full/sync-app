@@ -27,11 +27,11 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.synapse.messenger"
+    namespace = "com.syncapp.messenger"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.synapse.messenger"
+        applicationId = "com.syncapp.messenger"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -66,25 +66,25 @@ android {
             buildConfigField("String", "MEDIA_BASE_URL", "\"http://10.0.2.2:8080\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"development\"")
             buildConfigField("boolean", "ALLOW_ENDPOINT_OVERRIDE", "true")
-            resValue("string", "app_name", "Synapse Dev")
+            resValue("string", "app_name", "syncapp Dev")
         }
         create("staging") {
             dimension = "environment"
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
-            buildConfigField("String", "GATEWAY_URL", "\"wss://staging.synapse.example/ws\"")
-            buildConfigField("String", "MEDIA_BASE_URL", "\"https://staging.synapse.example\"")
+            buildConfigField("String", "GATEWAY_URL", "\"wss://staging.syncapp.example/ws\"")
+            buildConfigField("String", "MEDIA_BASE_URL", "\"https://staging.syncapp.example\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"staging\"")
             buildConfigField("boolean", "ALLOW_ENDPOINT_OVERRIDE", "true")
-            resValue("string", "app_name", "Synapse Staging")
+            resValue("string", "app_name", "syncapp Staging")
         }
         create("production") {
             dimension = "environment"
-            buildConfigField("String", "GATEWAY_URL", "\"wss://synapse.example/ws\"")
-            buildConfigField("String", "MEDIA_BASE_URL", "\"https://synapse.example\"")
+            buildConfigField("String", "GATEWAY_URL", "\"wss://syncapp.example/ws\"")
+            buildConfigField("String", "MEDIA_BASE_URL", "\"https://syncapp.example\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"production\"")
             buildConfigField("boolean", "ALLOW_ENDPOINT_OVERRIDE", "false")
-            resValue("string", "app_name", "Synapse")
+            resValue("string", "app_name", "syncapp")
         }
     }
 

@@ -3,7 +3,7 @@ package rpc
 import (
 	"log/slog"
 
-	pb "github.com/synapse-chat/synapse/internal/rpc/pb"
+	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
 )
 
 // AuthClient satisfies gateway.AuthService against a remote auth service.

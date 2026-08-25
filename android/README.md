@@ -1,6 +1,6 @@
-# Synapse Android
+# SyncApp Android
 
-Native Android client for the **Synapse** gateway (`../server`) — Kotlin, Jetpack
+Native Android client for the **SyncApp** gateway (`../server`) — Kotlin, Jetpack
 Compose, clean architecture, offline-first.
 
 The server is not REST. It speaks a **custom binary protocol** with protobuf
@@ -44,7 +44,7 @@ frame, so no symmetry is required.
   and that is the only thing distinguishing a backfilled history message from live
   fanout** — both arrive as `NEW` frames.
 
-**Bodies are protobuf** (`proto/synapse/v1/body.proto`). `pkg/wire/protocodec.go`
+**Bodies are protobuf** (`proto/syncapp/v1/body.proto`). `pkg/wire/protocodec.go`
 installs the protobuf codec in its package `init()`, unconditionally — there is no
 JSON to negotiate. Mapped by hand in `protocol/Bodies.kt` with `@ProtoNumber`, via
 `kotlinx-serialization-protobuf`, so the build needs no `protoc` and the schema
@@ -52,7 +52,7 @@ stays readable next to the code. Two rules keep it compatible: every property ha
 default (proto3 omits zero values), and `uint64` maps to `Long` (both varints; ids
 travel as decimal strings, so nothing that could overflow arrives as an integer).
 
-**Lifecycle** (`network/SynapseGateway.kt`):
+**Lifecycle** (`network/SyncAppGateway.kt`):
 
 ```
 dial -> HELLO/WELCOME  (capability negotiation, heartbeat_ms, max_inflight)
@@ -67,7 +67,7 @@ watchdog force-recycles the socket after 3 missed heartbeats — a suspended pho
 a cell handover leaves a socket that looks open and is not.
 
 **Paged replies are streams.** `HISTORY` answers with N `NEW` frames sharing the
-request id, then `HISTORY_OK` carrying `next_before`. `SynapseGateway.requestStream`
+request id, then `HISTORY_OK` carrying `next_before`. `SyncAppGateway.requestStream`
 hides the correlation; `HistoryFetcher` owns the paging.
 
 **Idempotency.** Every send carries a client `dedup_key`; the gateway maps
@@ -92,6 +92,7 @@ were already there.
 | **Delivery receipts (added)** | `DELIVERED` (128) | The step between "stored" and "read", which previously had no source at all: fanout pushed a message and told the sender nothing. Raised by the gateway that **actually wrote the frame to a recipient's socket** — `route()` returning a node count would only have meant "a node was notified", which stays true when that node's connection dies with the frame still queued. See `internal/gateway/delivered.go`: `delivery.Delivery.OnWritten` fires from the connection's writer, and one reporter goroutine per node routes the receipt back to the sender (bounded queue, dropped under load rather than blocking a writer). The body reuses `ReadUpdate` — `(chat_id, user_id, up_to_chat_seq)` *is* a delivery cursor, and reusing a body under a distinct type is this protocol's own convention. |
 | **Presence (added)** | `MsgPresence` (14) | `user.presence` was published from day one and **nothing subscribed**, so the frame existed and never travelled. `fanout.onPresence` now delivers it to the peers of the user's **direct** chats. That audience is the design decision: presence flips on every connect and disconnect, so "everyone who shares any chat" would turn one flaky mobile link into a membership-sized multiplication of frames across every group — for a decoration. A 1:1 chat is where "last seen" is shown, and its audience is exactly one person. Rides the droppable QoS lane, and a lost transition is corrected by the next one (or by the TTL behind it). |
 | Registration name | `AUTH.display_name` | Honoured on registration only; afterwards `PROFILE_SET` is the single writer, so a stale client cannot revert a name changed elsewhere. |
+| Page terminators name the real chat | `HISTORY_OK`, `THREAD_OK` | They carry the **resolved** chat id, not an echo of what was sent. This client addresses a new direct chat as `"@username"` and lets the gateway create it, so the terminator is the frame that could have handed back a string that is not an id. `HistoryFetcher` reads only `done`/`next_before` from it, so nothing here depended on the old behaviour. |
 
 Still not expressible, and handled honestly:
 
@@ -101,6 +102,8 @@ Still not expressible, and handled honestly:
 | **Unread counts** | Not served. | Counted locally from messages against our read cursor, so a stored counter cannot drift from the messages it claims to count. |
 | **Per-chat mute** | `ChatMember.Muted` gates push server-side, but no message sets it. | Not offered. Notifications are global, and turning them off clears the push token at the source. |
 | Type/title of a chat learned from a `NEW` frame | A `NEW` frame carries a chat id and nothing else. | Recorded as `unknown` and labelled from who writes in it until the next `CHAT_LIST` page corrects it authoritatively. |
+| **Server-side logout** | No message revokes a session. `auth.Service.Revoke` exists and nothing calls it, so a token stays valid until `expires_at`. | Logging out clears the push token at the source, then wipes the local session and database. The session itself survives on the server — worth knowing before treating "log out" as a remote kill switch for a lost device. |
+| **Chat membership** | No message lists a chat's members; `CHAT_EXPORT` is owner/admin only. | Group screens name people from what has been seen writing, plus the address book. |
 
 ### Server-side changes made for the two added features
 
@@ -121,12 +124,12 @@ gained tests for the audience rule and for surviving a failed audience lookup.
 ## Architecture
 
 ```
-app/src/main/java/com/synapse/messenger/
+app/src/main/java/com/SyncApp/messenger/
 ├── core/          Outcome/AppError, DI qualifiers
 ├── network/       protocol/  Frame, Envelope, MsgType, Cap, ErrorCode, Bodies, BodyCodec
-│                  SynapseGateway  — connection lifecycle, request/reply, streams
+│                  SyncAppGateway  — connection lifecycle, request/reply, streams
 │                  media/          — signed-URL upload over HTTP
-├── database/      Room: entities, DAOs, SynapseDatabase
+├── database/      Room: entities, DAOs, SyncAppDatabase
 ├── datastore/     SessionStore (tokens, device id), SettingsStore (theme/lang/push/endpoint)
 ├── data/          mapper/     wire ↔ storage ↔ domain
 │                  repository/ Auth, Chat, Message, User, Media
@@ -203,8 +206,8 @@ applies on the next connection.
 | Flavor | Gateway | Endpoint override |
 |---|---|---|
 | `development` | `ws://10.0.2.2:8080/ws` | allowed |
-| `staging` | `wss://staging.synapse.example/ws` | allowed |
-| `production` | `wss://synapse.example/ws` | **refused** |
+| `staging` | `wss://staging.SyncApp.example/ws` | allowed |
+| `production` | `wss://SyncApp.example/ws` | **refused** |
 
 Production ignores the stored override so a stray preference can never send a user's
 messages somewhere unintended. Point the flavors at your real hosts in
@@ -225,7 +228,7 @@ not talk to FCM**. It POSTs
  "body": "...", "chat_id": "...", "message_id": "..."}
 ```
 
-to `SYNAPSE_PUSH_ENDPOINT` with `Authorization: Bearer $SYNAPSE_PUSH_KEY`. A
+to `SyncApp_PUSH_ENDPOINT` with `Authorization: Bearer $SyncApp_PUSH_KEY`. A
 deployment therefore needs a small relay that forwards those keys to FCM **as a data
 message** (data-only, so this client decides whether to show anything — notifications
 off, or a chat already open).
@@ -235,12 +238,12 @@ To enable:
 1. Put `app/google-services.json` in place. The Google Services plugin is applied
    only when that file exists, so the project builds without it and
    `BuildConfig.PUSH_ENABLED` reflects the truth.
-2. Run the relay and set `SYNAPSE_PUSH_ENDPOINT` / `SYNAPSE_PUSH_KEY` on the server.
+2. Run the relay and set `SyncApp_PUSH_ENDPOINT` / `SyncApp_PUSH_KEY` on the server.
 
 The client registers its token with `PUSH_TOKEN` on every successful connect and on
 FCM rotation, and clears it (empty token) on logout or when notifications are turned
 off — stopping pushes at the source rather than discarding them on arrival. A tap
-opens `synapse://chat/<chat_id>` and lands in the conversation.
+opens `SyncApp://chat/<chat_id>` and lands in the conversation.
 
 ---
 
@@ -260,7 +263,7 @@ the server that has to agree:
 
 ```bash
 cd ../server && go run ./cmd/server            # terminal 1
-SYNAPSE_TEST_WS=ws://localhost:8080/ws ./gradlew testDevelopmentDebugUnitTest   # terminal 2
+SyncApp_TEST_WS=ws://localhost:8080/ws ./gradlew testDevelopmentDebugUnitTest   # terminal 2
 ```
 
 `GatewayInteropTest` then drives a live handshake: HELLO/WELCOME capability

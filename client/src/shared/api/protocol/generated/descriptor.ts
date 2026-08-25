@@ -1,13 +1,13 @@
 // GENERATED FILE — do not edit by hand.
-// Source: server/proto/synapse/v1/body.proto (regenerate: npm run proto:gen)
+// Source: server/proto/SyncApp/v1/body.proto (regenerate: npm run proto:gen)
 
 export const descriptor = {
   "nested": {
-    "synapse": {
+    "SyncApp": {
       "nested": {
         "v1": {
           "options": {
-            "go_package": "github.com/synapse-chat/synapse/internal/wirepb;wirepb"
+            "go_package": "github.com/SyncApp-chat/SyncApp/internal/wirepb;wirepb"
           },
           "nested": {
             "Hello": {
@@ -87,6 +87,11 @@ export const descriptor = {
                 "register": {
                   "type": "bool",
                   "id": 4
+                },
+                "displayName": {
+                  "type": "string",
+                  "id": 5,
+                  "protoName": "display_name"
                 }
               }
             },
@@ -115,6 +120,20 @@ export const descriptor = {
                   "type": "string",
                   "id": 5,
                   "protoName": "resume_token"
+                },
+                "username": {
+                  "type": "string",
+                  "id": 6
+                },
+                "displayName": {
+                  "type": "string",
+                  "id": 7,
+                  "protoName": "display_name"
+                },
+                "avatarRef": {
+                  "type": "string",
+                  "id": 8,
+                  "protoName": "avatar_ref"
                 }
               }
             },
@@ -1625,6 +1644,127 @@ export const descriptor = {
                 "token": {
                   "type": "string",
                   "id": 1
+                }
+              }
+            },
+            "ChatList": {
+              "fields": {
+                "after": {
+                  "type": "string",
+                  "id": 1
+                },
+                "limit": {
+                  "type": "int32",
+                  "id": 2
+                }
+              }
+            },
+            "ChatSummary": {
+              "fields": {
+                "chatId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "chat_id"
+                },
+                "type": {
+                  "type": "string",
+                  "id": 2
+                },
+                "title": {
+                  "type": "string",
+                  "id": 3
+                },
+                "ownerId": {
+                  "type": "string",
+                  "id": 4,
+                  "protoName": "owner_id"
+                },
+                "username": {
+                  "type": "string",
+                  "id": 5
+                },
+                "lastSeq": {
+                  "type": "uint64",
+                  "id": 6,
+                  "protoName": "last_seq"
+                },
+                "myRole": {
+                  "type": "string",
+                  "id": 7,
+                  "protoName": "my_role"
+                },
+                "peerId": {
+                  "type": "string",
+                  "id": 8,
+                  "protoName": "peer_id"
+                }
+              }
+            },
+            "Chats": {
+              "fields": {
+                "chats": {
+                  "rule": "repeated",
+                  "type": "ChatSummary",
+                  "id": 1
+                },
+                "nextAfter": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "next_after"
+                },
+                "done": {
+                  "type": "bool",
+                  "id": 3
+                }
+              }
+            },
+            "ProfileGet": {
+              "fields": {
+                "target": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "ProfileSet": {
+              "fields": {
+                "displayName": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "display_name"
+                },
+                "avatarRef": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "avatar_ref"
+                },
+                "clearAvatar": {
+                  "type": "bool",
+                  "id": 3,
+                  "protoName": "clear_avatar"
+                }
+              }
+            },
+            "Profile": {
+              "fields": {
+                "userId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "user_id"
+                },
+                "username": {
+                  "type": "string",
+                  "id": 2
+                },
+                "displayName": {
+                  "type": "string",
+                  "id": 3,
+                  "protoName": "display_name"
+                },
+                "avatarRef": {
+                  "type": "string",
+                  "id": 4,
+                  "protoName": "avatar_ref"
                 }
               }
             }

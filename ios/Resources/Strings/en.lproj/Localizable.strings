@@ -1,5 +1,5 @@
 /* Common */
-"app.name" = "Synapse";
+"app.name" = "SyncApp";
 "common.ok" = "OK";
 "common.cancel" = "Cancel";
 "common.done" = "Done";
@@ -113,7 +113,12 @@
 "profile.display.name" = "Display name";
 "profile.user.id" = "User ID";
 "profile.device.id" = "Device";
-"profile.local.only.footer" = "Your name and symbol are stored on this device only — the server has no profile API, so other people see your username.";
+"profile.visible.footer" = "Your name and picture are visible to everyone you talk to, and stay in step across your devices.";
+"profile.avatar.change" = "Change picture";
+"profile.avatar.remove" = "Remove";
+"profile.avatar.failed" = "Could not read that image";
+"profile.save" = "Save";
+"profile.save.failed" = "Could not save";
 "profile.theme" = "Theme";
 "profile.theme.system" = "System";
 "profile.theme.light" = "Light";

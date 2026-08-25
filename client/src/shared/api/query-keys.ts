@@ -11,4 +11,6 @@ export const queryKeys = {
   pins: (chatId: string) => ['pins', chatId] as const,
   drafts: () => ['drafts'] as const,
   search: (query: string) => ['search', query] as const,
+  /** `target` is a user id, "@username", or "" for our own profile. */
+  profile: (target: string) => ['profile', target] as const,
 } as const

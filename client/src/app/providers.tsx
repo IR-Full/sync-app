@@ -6,18 +6,17 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useChatStore } from '@/entities/chat'
 import { useSessionStore } from '@/entities/session'
 import { useSettingsStore } from '@/entities/settings'
-import { useOutboxStore } from '@/features/send-message'
 import { useRestoreSession, useSessionExpiryWatcher } from '@/features/auth'
 import { CallOverlay, useCallEngine } from '@/features/calls'
 import { useDraftSync } from '@/features/drafts'
 import { useMessageNotifications } from '@/features/notifications'
+import { useReceiptReset } from '@/features/read-receipts'
 import { useRealtimeSync } from '@/features/realtime-sync'
 import { useSecretChatEngine, useSecretKeyPublisher } from '@/features/secret-chats'
-import { useOutboxFlush } from '@/features/send-message'
-import { ProtocolError, SynapseProvider, useIsConnected } from '@/shared/api'
+import { useOutboxFlush, useOutboxStore } from '@/features/send-message'
+import { ProtocolError, SyncAppProvider, useIsConnected } from '@/shared/api'
 import { useLocaleStore } from '@/shared/i18n'
 import { useThemeStore } from '@/shared/theme/model'
-import { useReceiptReset } from '@/features/read-receipts'
 
 function createQueryClient() {
   return new QueryClient({
@@ -94,9 +93,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SynapseProvider>
+      <SyncAppProvider>
         <AppBootstrap>{children}</AppBootstrap>
-      </SynapseProvider>
+      </SyncAppProvider>
     </QueryClientProvider>
   )
 }

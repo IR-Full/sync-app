@@ -3,14 +3,14 @@ package rpc
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/internal/auth"
-	"github.com/synapse-chat/synapse/internal/chat"
-	"github.com/synapse-chat/synapse/internal/keydir"
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/presence"
-	pb "github.com/synapse-chat/synapse/internal/rpc/pb"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/keydir"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/presence"
+	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"google.golang.org/grpc"
 )
 

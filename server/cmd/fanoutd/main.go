@@ -11,9 +11,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/synapse-chat/synapse/internal/fanout"
-	"github.com/synapse-chat/synapse/internal/platform"
-	"github.com/synapse-chat/synapse/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/fanout"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/rpc"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	}
 	defer b.Close()
 
-	chatConn, err := platform.Dial(platform.Env("SYNAPSE_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
+	chatConn, err := platform.Dial(platform.Env("SyncApp_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
 	if err != nil {
 		b.Log.Error("dial chatd", "err", err)
 		os.Exit(1)
@@ -40,5 +40,5 @@ func main() {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
-	platform.RunWorker(ctx, platform.Env("SYNAPSE_FANOUTD_METRICS", ":9106"), b.Log)
+	platform.RunWorker(ctx, platform.Env("SyncApp_FANOUTD_METRICS", ":9106"), b.Log)
 }

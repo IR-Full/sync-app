@@ -14,10 +14,10 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/outbox"
-	"github.com/synapse-chat/synapse/internal/platform"
-	"github.com/synapse-chat/synapse/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/outbox"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/rpc"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	defer b.Close()
 
 	// Authorize writes/reads against the remote chat service.
-	chatConn, err := platform.Dial(platform.Env("SYNAPSE_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
+	chatConn, err := platform.Dial(platform.Env("SyncApp_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
 	if err != nil {
 		b.Log.Error("dial chatd", "err", err)
 		os.Exit(1)
@@ -41,7 +41,7 @@ func main() {
 	defer func() { _ = chatConn.Close() }()
 	chats := rpc.NewChatClient(chatConn)
 
-	// b.MessageStore is chat_id-sharded when SYNAPSE_MESSAGE_SHARD_DSNS is set,
+	// b.MessageStore is chat_id-sharded when SyncApp_MESSAGE_SHARD_DSNS is set,
 	// else the single primary. Read-state stays central (small, not the bottleneck).
 	svc := message.New(b.MessageStore, b.Stores.Reads, chats, b.Bus, b.IDs)
 	broker := message.NewBroker(svc, b.Log)
@@ -52,8 +52,8 @@ func main() {
 		go outbox.New(ob, b.Bus, b.Log).Run(ctx)
 	}
 
-	addr := platform.Env("SYNAPSE_MESSAGED_ADDR", ":9003")
-	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNAPSE_MESSAGED_METRICS", ":9103"), b.Log,
+	addr := platform.Env("SyncApp_MESSAGED_ADDR", ":9003")
+	if err := platform.ServeGRPC(ctx, addr, platform.Env("SyncApp_MESSAGED_METRICS", ":9103"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterMessage(s, broker, svc) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)

@@ -3,10 +3,10 @@ package message
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 // Chats is the chat-authorization dependency the message service needs. It is an

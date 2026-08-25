@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // New builds the moderation service. bannedTerms are matched case-insensitively.

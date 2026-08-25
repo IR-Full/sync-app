@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/synapse-chat/synapse/internal/moderation"
-	"github.com/synapse-chat/synapse/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/moderation"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
 )
 
 func main() {
@@ -27,11 +27,11 @@ func main() {
 	}
 	defer b.Close()
 
-	banned := strings.Split(platform.Env("SYNAPSE_BANNED_TERMS", "spamword,scamlink"), ",")
+	banned := strings.Split(platform.Env("SyncApp_BANNED_TERMS", "spamword,scamlink"), ",")
 	svc := moderation.New(b.Bus, banned, b.Log)
 	if err := svc.Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
-	platform.RunWorker(ctx, platform.Env("SYNAPSE_MODERATIOND_METRICS", ":9108"), b.Log)
+	platform.RunWorker(ctx, platform.Env("SyncApp_MODERATIOND_METRICS", ":9108"), b.Log)
 }

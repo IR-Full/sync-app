@@ -9,7 +9,7 @@ package store
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
 )
 
 // UserStore owns accounts and devices (User Service data).
@@ -23,6 +23,22 @@ type UserStore interface {
 	// caller has already read the user to decide what "leave unchanged" means,
 	// and a store that guessed from empty strings could never clear a field.
 	UpdateProfile(ctx context.Context, userID, displayName, avatarRef string) error
+
+	// DeleteAccount erases an account and everything that belongs to it, in one
+	// transaction: sessions, devices (and their push tokens), the address book on
+	// both sides of every entry, drafts, read cursors, reactions, votes, pending
+	// sends, invite links, pins, call participation, chat memberships, and the
+	// users row itself.
+	//
+	// Messages are ANONYMISED rather than dropped. A message is content in
+	// somebody else's conversation: deleting the rows outright would silently
+	// rewrite chats belonging to people who did not ask for anything, and leaving
+	// the sender id would keep the account identifiable after its row is gone.
+	// So the text, media and sender are erased in place and the row is
+	// tombstoned — the conversation keeps its shape, the person disappears from
+	// it. This is the split the privacy policy has to describe, so it is stated
+	// here rather than left to whichever backend implements it.
+	DeleteAccount(ctx context.Context, userID string) error
 
 	UpsertDevice(ctx context.Context, d *model.Device) error
 	GetDevice(ctx context.Context, id string) (*model.Device, error)

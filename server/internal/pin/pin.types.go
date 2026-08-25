@@ -3,8 +3,8 @@ package pin
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // Chats authorizes pinning and membership.

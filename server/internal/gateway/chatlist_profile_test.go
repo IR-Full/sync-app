@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // connectWithName registers an account WITH a display name and returns the

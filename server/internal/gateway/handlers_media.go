@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/reaction"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/reaction"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // --- Search: full-text query, permission-filtered to the user's chats. ---

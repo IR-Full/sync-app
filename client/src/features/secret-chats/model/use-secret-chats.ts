@@ -4,7 +4,7 @@ import { useCallback, useEffect } from 'react'
 
 import { useSecretStore, type SecretMessage } from '@/entities/secret-chat'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 import { fromBase64, toBase64, toUtf8 } from '@/shared/lib/e2e/codec'
 import { generateKeyPair, signPreKey } from '@/shared/lib/e2e/keys'
 import { marshalHeader, RatchetSession } from '@/shared/lib/e2e/ratchet'
@@ -25,7 +25,7 @@ function sessionKey(userId: string, deviceId: string): string {
  * directory upserts, so republishing is harmless.
  */
 export function useSecretKeyPublisher(): void {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
   const userId = useSessionStore((state) => state.session?.userId ?? '')
   const published = useSecretStore((state) => state.published)
@@ -62,7 +62,7 @@ export function useSecretKeyPublisher(): void {
  * each message, so deferring the work would reorder the chain.
  */
 export function useSecretChatEngine(): void {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function useSecretChatEngine(): void {
  * ratchet.
  */
 export function useSecretChat(peerUserId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 

@@ -4,7 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 
 import { fromWire, type ChatMessage } from '@/entities/message'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 interface ThreadPage {
   messages: ChatMessage[]
@@ -23,7 +23,7 @@ interface ThreadPage {
  * read rather than a walk up the reply chain.
  */
 export function useThread(chatId: string, rootId: string, pageSize = 50) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 

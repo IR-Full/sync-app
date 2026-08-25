@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/auth"
-	"github.com/synapse-chat/synapse/internal/chat"
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/presence"
-	"github.com/synapse-chat/synapse/internal/router"
-	"github.com/synapse-chat/synapse/internal/store/memory"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/id"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/presence"
+	"github.com/SyncApp-chat/SyncApp/internal/router"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // scriptedTransport feeds a connection a fixed sequence of inbound frames and

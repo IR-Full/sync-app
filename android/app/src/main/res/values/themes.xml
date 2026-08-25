@@ -5,7 +5,7 @@
       MaterialTheme (see presentation/theme/Theme.kt), so duplicating them in XML would
       only create a second source of truth that drifts.
     -->
-    <style name="Theme.Synapse" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.SyncApp" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">@color/window_background</item>

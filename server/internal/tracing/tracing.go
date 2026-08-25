@@ -1,7 +1,7 @@
 // Package tracing sets up OpenTelemetry distributed tracing (Section 13). Spans
 // propagate through context.Context (already threaded everywhere), so a request
 // can be followed across the gateway, services, and — once split — across the
-// network. The exporter is chosen by env: SYNAPSE_TRACE=stdout prints spans
+// network. The exporter is chosen by env: SYNCAPP_TRACE=stdout prints spans
 // (dev); unset installs a no-op provider (zero overhead). An OTLP exporter to a
 // collector (Tempo/Jaeger) is a drop-in swap for production.
 package tracing
@@ -22,8 +22,8 @@ import (
 
 // Init installs the global tracer provider and returns a shutdown function.
 // Exporter selection by env:
-//   - SYNAPSE_OTLP_ENDPOINT=host:4318 → OTLP/HTTP to a collector (Tempo/Jaeger);
-//   - else SYNAPSE_TRACE=stdout       → print spans (dev);
+//   - SyncApp_OTLP_ENDPOINT=host:4318 → OTLP/HTTP to a collector (Tempo/Jaeger);
+//   - else SYNCAPP_TRACE=stdout       → print spans (dev);
 //   - else                            → no-op (zero overhead).
 func Init(ctx context.Context) (func(context.Context) error, error) {
 	// W3C trace-context propagation so spans continue across the event bus.
@@ -47,13 +47,13 @@ func Init(ctx context.Context) (func(context.Context) error, error) {
 }
 
 func chooseExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
-	if ep := os.Getenv("SYNAPSE_OTLP_ENDPOINT"); ep != "" {
+	if ep := os.Getenv("SYNCAPP_OTLP_ENDPOINT"); ep != "" {
 		return otlptracehttp.New(ctx,
 			otlptracehttp.WithEndpoint(ep),
 			otlptracehttp.WithInsecure(), // TLS terminated by the collector/mesh in prod
 		)
 	}
-	if os.Getenv("SYNAPSE_TRACE") == "stdout" {
+	if os.Getenv("SYNCAPP_TRACE") == "stdout" {
 		return stdouttrace.New(stdouttrace.WithoutTimestamps())
 	}
 	return nil, nil

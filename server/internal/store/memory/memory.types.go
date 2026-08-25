@@ -3,8 +3,8 @@ package memory
 import (
 	"sync"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 // Store implements all store interfaces over in-memory maps.

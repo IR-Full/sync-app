@@ -33,7 +33,7 @@ export class BadPreKeySignatureError extends Error {
 function rootFromDH(dhConcat: Uint8Array): Uint8Array {
   // The 32-byte 0xFF prefix is the X3DH spec's domain separator.
   const prefix = new Uint8Array(32).fill(0xff)
-  return hkdf(sha256, concatBytes(prefix, dhConcat), undefined, toUtf8('Synapse-X3DH'), 32)
+  return hkdf(sha256, concatBytes(prefix, dhConcat), undefined, toUtf8('SyncApp-X3DH'), 32)
 }
 
 /**

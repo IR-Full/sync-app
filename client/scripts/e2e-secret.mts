@@ -12,9 +12,10 @@
  *   2. start the Go peer:  e2epeer.exe -user gopeerN
  *   3. npm run test:secret -- <gopeer-user-id> <gopeer-device-id>
  */
-import { SynapseClient } from '../src/shared/api/protocol/client.ts'
+import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
+import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
 import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
-import { fromBase64, toBase64, toUtf8, fromUtf8 } from '../src/shared/lib/e2e/codec.ts'
+import { fromBase64, fromUtf8, toBase64, toUtf8 } from '../src/shared/lib/e2e/codec.ts'
 import { generateKeyPair } from '../src/shared/lib/e2e/keys.ts'
 import {
   marshalHeader,
@@ -22,7 +23,6 @@ import {
   unmarshalHeader,
 } from '../src/shared/lib/e2e/ratchet.ts'
 import { x3dhInitiator } from '../src/shared/lib/e2e/x3dh.ts'
-import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
 
 const url = process.argv[2] ?? 'ws://localhost:8080/ws'
 const peerUserId = process.argv[3]
@@ -44,7 +44,7 @@ function check(label: string, ok: boolean, detail?: unknown) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function main() {
-  const alice = new SynapseClient({ url })
+  const alice = new SyncAppClient({ url })
   alice.setDeviceId('ts-alice-device')
   await alice.connect({
     kind: 'password',

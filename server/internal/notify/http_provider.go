@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 )
 
 // The push path is where a messenger's reliability becomes visible to someone

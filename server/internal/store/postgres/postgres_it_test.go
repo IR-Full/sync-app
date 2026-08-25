@@ -9,23 +9,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 // TestPostgresRoundTrip exercises the durable store against a real Postgres. It
-// runs only when SYNAPSE_TEST_PG_DSN is set (so `go test ./...` stays green
+// runs only when SyncApp_TEST_PG_DSN is set (so `go test ./...` stays green
 // without Docker), e.g.:
 //
-//	SYNAPSE_TEST_PG_DSN="postgres://synapse:synapse@localhost:5432/synapse?sslmode=disable" \
+//	SyncApp_TEST_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp?sslmode=disable" \
 //	  go test ./internal/store/postgres/ -run TestPostgres
 //
 // Bring the DB up first with `docker compose up -d postgres`.
 func TestPostgresRoundTrip(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the Postgres integration test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the Postgres integration test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)
@@ -117,9 +117,9 @@ func TestPostgresRoundTrip(t *testing.T) {
 // row, so a chat_id-sharded message shard (holding only messages + chat_seq +
 // outbox for its chats) can allocate a gap-free per-chat seq locally.
 func TestInsertMessageWithoutChatRow(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the Postgres integration test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the Postgres integration test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)
@@ -163,9 +163,9 @@ func TestInsertMessageWithoutChatRow(t *testing.T) {
 // TestOutboxConcurrentClaim proves the FOR UPDATE SKIP LOCKED claim: two relays
 // polling at once never receive the same record (no double-publish).
 func TestOutboxConcurrentClaim(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the outbox claim test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the outbox claim test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)
@@ -236,9 +236,9 @@ func TestOutboxConcurrentClaim(t *testing.T) {
 // chat where userA == userB must create cleanly (one member), not fail on a
 // duplicate chat_members insert.
 func TestSelfChatCreate(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the self-chat test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the self-chat test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)
@@ -281,11 +281,11 @@ func idsOf(recs []store.OutboxRecord) []string {
 // TestPostgresDeviceOwnership exercises the ownership scoping on the device
 // upsert against real SQL: the ON CONFLICT ... WHERE and the push-token CASE are
 // the parts that cannot be checked against the in-memory store. Runs only with
-// SYNAPSE_TEST_PG_DSN set.
+// SyncApp_TEST_PG_DSN set.
 func TestPostgresDeviceOwnership(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the Postgres integration test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the Postgres integration test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)
@@ -346,11 +346,11 @@ func TestPostgresDeviceOwnership(t *testing.T) {
 // transaction, and the batcher must isolate it by halving rather than by
 // retrying every job on its own. All jobs must still resolve — the duplicate as
 // a duplicate (same message id, no new seq), its neighbours as fresh writes with
-// distinct sequence numbers. Runs only with SYNAPSE_TEST_PG_DSN set.
+// distinct sequence numbers. Runs only with SyncApp_TEST_PG_DSN set.
 func TestPostgresBatchSurvivesDuplicate(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the Postgres integration test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the Postgres integration test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)
@@ -438,11 +438,11 @@ func TestPostgresBatchSurvivesDuplicate(t *testing.T) {
 // TestPostgresRetentionJanitors exercises the two DELETE statements against real
 // SQL. Both use a subselect with LIMIT because an unbounded DELETE on the outbox
 // — the hottest table in the system — would hold locks long enough to be felt on
-// the write path it exists to serve. Runs only with SYNAPSE_TEST_PG_DSN set.
+// the write path it exists to serve. Runs only with SyncApp_TEST_PG_DSN set.
 func TestPostgresRetentionJanitors(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SyncApp_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the Postgres integration test")
+		t.Skip("set SyncApp_TEST_PG_DSN to run the Postgres integration test")
 	}
 	ctx := context.Background()
 	st, err := Connect(ctx, dsn)

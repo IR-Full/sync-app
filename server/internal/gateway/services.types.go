@@ -3,14 +3,14 @@ package gateway
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/internal/auth"
-	"github.com/synapse-chat/synapse/internal/media"
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/poll"
-	"github.com/synapse-chat/synapse/internal/schedule"
-	"github.com/synapse-chat/synapse/internal/search"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/media"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/poll"
+	"github.com/SyncApp-chat/SyncApp/internal/schedule"
+	"github.com/SyncApp-chat/SyncApp/internal/search"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // These interfaces are the seam between the realtime gateway and the domain

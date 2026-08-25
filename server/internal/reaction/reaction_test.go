@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/synapse-chat/synapse/internal/store/memory"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 type allowChats struct{ member bool }

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef } from 'react'
 
 import { selectPeerReadSeq, useChatStore, useReceiptStore } from '@/entities/chat'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, useConnectionState, useSynapseClient } from '@/shared/api'
 import { useSettingsStore } from '@/entities/settings'
+import { MsgType, useConnectionState, useSyncAppClient } from '@/shared/api'
 
 /**
  * Marks a chat read up to a sequence.
@@ -15,7 +15,7 @@ import { useSettingsStore } from '@/entities/settings'
  * optimistically — it is the only copy this client will ever see.
  */
 export function useMarkRead(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const state = useConnectionState()
   const markRead = useChatStore((store) => store.markRead)
   const sendReceipts = useSettingsStore((settings) => settings.sendReadReceipts)

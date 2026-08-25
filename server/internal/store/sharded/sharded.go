@@ -17,8 +17,8 @@ import (
 	"context"
 	"hash/fnv"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 // New builds a sharded message store over one or more backends. Ordering of the

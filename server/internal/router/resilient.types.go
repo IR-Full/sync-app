@@ -3,7 +3,7 @@ package router
 import (
 	"log/slog"
 
-	"github.com/synapse-chat/synapse/pkg/breaker"
+	"github.com/SyncApp-chat/SyncApp/pkg/breaker"
 )
 
 // resilientRouter wraps a shared (Redis) router with a circuit breaker and a

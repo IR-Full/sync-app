@@ -16,7 +16,7 @@ import {
   MsgType,
   ProtocolError,
   useConnectionState,
-  useSynapseClient,
+  useSyncAppClient,
   type Wire,
 } from '@/shared/api'
 import { createDedupKey } from '@/shared/lib/id'
@@ -78,7 +78,7 @@ function toWireSend(item: OutboxItem): Record<string, unknown> {
  * delivery impossible.
  */
 export function useSendMessage(target: string, onChatResolved?: (chatId: string) => void) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const state = useConnectionState()
   const queryClient = useQueryClient()
   const selfId = useSessionStore((session) => session.session?.userId ?? '')
@@ -215,7 +215,7 @@ export function useSendMessage(target: string, onChatResolved?: (chatId: string)
  * in.
  */
 export function useOutboxFlush(): void {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const state = useConnectionState()
   const queryClient = useQueryClient()
   const selfId = useSessionStore((session) => session.session?.userId ?? '')

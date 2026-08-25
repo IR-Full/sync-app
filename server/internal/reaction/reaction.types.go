@@ -3,8 +3,8 @@ package reaction
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // Chats is the membership check the service needs (interface so it works against

@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/shallow'
 
 import { selectTypingUserIds, useTypingStore } from '@/entities/chat'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, useConnectionState, useSynapseClient } from '@/shared/api'
+import { MsgType, useConnectionState, useSyncAppClient } from '@/shared/api'
 import { config } from '@/shared/config/env'
 
 /**
@@ -17,7 +17,7 @@ import { config } from '@/shared/config/env'
  * alive on the receiving side with the fewest frames that will actually pass.
  */
 export function useTypingNotifier(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const state = useConnectionState()
   const lastSentAt = useRef(0)
 

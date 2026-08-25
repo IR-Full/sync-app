@@ -6,7 +6,7 @@ package gateway
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // --- E2E secret chats: the server relays opaque bytes and stores public keys. ---

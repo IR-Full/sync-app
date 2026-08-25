@@ -70,13 +70,15 @@ export function ChatList() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-        <TextField
-          placeholder={t('chats.search')}
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          className="h-9"
-        />
+      <div className="flex justify-between gap-2 px-3 pt-3 pb-2">
+        <div className="flex-1 min-w-0">
+          <TextField
+            placeholder={t('chats.search')}
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="h-9"
+          />
+        </div>
         <Button
           size="small"
           onClick={() => setDialogOpen(true)}

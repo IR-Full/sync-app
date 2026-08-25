@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/synapse-chat/synapse/internal/chat"
-	"github.com/synapse-chat/synapse/internal/store/memory"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 func newTestBroker(t *testing.T) (*Broker, string, string) {

@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 // randSuffix returns 128 bits of URL-safe crypto-random for capability refs.

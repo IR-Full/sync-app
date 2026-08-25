@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import { useUserDirectory } from '@/entities/user'
-import { MsgType, queryKeys, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, queryKeys, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 export interface Contact {
   userId: string
@@ -23,7 +23,7 @@ export interface Contact {
  * incremental path is there to grow into if a contact list ever gets large.
  */
 export function useContacts() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
 
   const query = useQuery({
@@ -62,7 +62,7 @@ export function useContacts() {
 }
 
 export function useAddContact() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -80,7 +80,7 @@ export function useAddContact() {
 }
 
 export function useRemoveContact() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -103,7 +103,7 @@ export function useRemoveContact() {
  * you cannot read their replies by reopening the chat.
  */
 export function useBlockUser() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({

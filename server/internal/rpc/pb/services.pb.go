@@ -1,4 +1,4 @@
-// gRPC service contracts for the Synapse microservice split. Each domain service
+// gRPC service contracts for the SyncApp microservice split. Each domain service
 // (auth, chat, message, presence, key directory) is exposed here so it can run as
 // a standalone process; the gateway calls them as gRPC clients that satisfy the
 // same Go interfaces the in-process services do (internal/gateway/services.go).
@@ -9,9 +9,9 @@
 // versions:
 // 	protoc-gen-go v1.34.2
 // 	protoc        v7.35.1
-// source: proto/synapse/v1/services.proto
+// source: proto/SyncApp/v1/services.proto
 
-// Distinct proto package from body.proto (synapse.v1): both are linked into the
+// Distinct proto package from body.proto (SyncApp.v1): both are linked into the
 // same binaries (the gateway/daemons use the wire bodies AND these RPCs), and a
 // shared proto package + duplicate message names (e.g. KeyBundle) would collide
 // in the global protobuf registry at init.
@@ -36,11 +36,11 @@ func (x Op) String() string {
 }
 
 func (Op) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_synapse_v1_services_proto_enumTypes[0].Descriptor()
+	return file_proto_SyncApp_v1_services_proto_enumTypes[0].Descriptor()
 }
 
 func (Op) Type() protoreflect.EnumType {
-	return &file_proto_synapse_v1_services_proto_enumTypes[0]
+	return &file_proto_SyncApp_v1_services_proto_enumTypes[0]
 }
 
 func (x Op) Number() protoreflect.EnumNumber {
@@ -49,13 +49,13 @@ func (x Op) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Op.Descriptor instead.
 func (Op) EnumDescriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{0}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *User) Reset() {
 	*x = User{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[0]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -68,7 +68,7 @@ func (x *User) String() string {
 func (*User) ProtoMessage() {}
 
 func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[0]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -81,7 +81,7 @@ func (x *User) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use User.ProtoReflect.Descriptor instead.
 func (*User) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{0}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *User) GetId() string {
@@ -122,7 +122,7 @@ func (x *User) GetAvatarRef() string {
 func (x *Session) Reset() {
 	*x = Session{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[1]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -135,7 +135,7 @@ func (x *Session) String() string {
 func (*Session) ProtoMessage() {}
 
 func (x *Session) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[1]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +148,7 @@ func (x *Session) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Session.ProtoReflect.Descriptor instead.
 func (*Session) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{1}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Session) GetId() string {
@@ -210,7 +210,7 @@ func (x *Session) GetRevokedAt() int64 {
 func (x *Chat) Reset() {
 	*x = Chat{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[2]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -223,7 +223,7 @@ func (x *Chat) String() string {
 func (*Chat) ProtoMessage() {}
 
 func (x *Chat) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[2]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +236,7 @@ func (x *Chat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Chat.ProtoReflect.Descriptor instead.
 func (*Chat) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{2}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Chat) GetId() string {
@@ -291,7 +291,7 @@ func (x *Chat) GetUsername() string {
 func (x *ChatMember) Reset() {
 	*x = ChatMember{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[3]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -304,7 +304,7 @@ func (x *ChatMember) String() string {
 func (*ChatMember) ProtoMessage() {}
 
 func (x *ChatMember) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[3]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,7 +317,7 @@ func (x *ChatMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMember.ProtoReflect.Descriptor instead.
 func (*ChatMember) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{3}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ChatMember) GetChatId() string {
@@ -358,7 +358,7 @@ func (x *ChatMember) GetMuted() bool {
 func (x *Attachment) Reset() {
 	*x = Attachment{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[4]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -371,7 +371,7 @@ func (x *Attachment) String() string {
 func (*Attachment) ProtoMessage() {}
 
 func (x *Attachment) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[4]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -384,7 +384,7 @@ func (x *Attachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Attachment.ProtoReflect.Descriptor instead.
 func (*Attachment) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{4}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Attachment) GetKind() string {
@@ -460,7 +460,7 @@ func (x *Attachment) GetThumbRef() string {
 func (x *ForwardOrigin) Reset() {
 	*x = ForwardOrigin{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[5]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -473,7 +473,7 @@ func (x *ForwardOrigin) String() string {
 func (*ForwardOrigin) ProtoMessage() {}
 
 func (x *ForwardOrigin) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[5]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -486,7 +486,7 @@ func (x *ForwardOrigin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForwardOrigin.ProtoReflect.Descriptor instead.
 func (*ForwardOrigin) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{5}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ForwardOrigin) GetChatId() string {
@@ -513,7 +513,7 @@ func (x *ForwardOrigin) GetSenderId() string {
 func (x *Message) Reset() {
 	*x = Message{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[6]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -526,7 +526,7 @@ func (x *Message) String() string {
 func (*Message) ProtoMessage() {}
 
 func (x *Message) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[6]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -539,7 +539,7 @@ func (x *Message) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Message.ProtoReflect.Descriptor instead.
 func (*Message) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{6}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Message) GetId() string {
@@ -657,7 +657,7 @@ func (x *Message) GetExpiresAt() int64 {
 func (x *RegisterRequest) Reset() {
 	*x = RegisterRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[7]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -670,7 +670,7 @@ func (x *RegisterRequest) String() string {
 func (*RegisterRequest) ProtoMessage() {}
 
 func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[7]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -683,7 +683,7 @@ func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{7}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RegisterRequest) GetUsername() string {
@@ -724,7 +724,7 @@ func (x *RegisterRequest) GetPlatform() string {
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[8]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -737,7 +737,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[8]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -750,7 +750,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{8}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LoginRequest) GetUsername() string {
@@ -784,7 +784,7 @@ func (x *LoginRequest) GetPlatform() string {
 func (x *SessionUser) Reset() {
 	*x = SessionUser{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[9]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -797,7 +797,7 @@ func (x *SessionUser) String() string {
 func (*SessionUser) ProtoMessage() {}
 
 func (x *SessionUser) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[9]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -810,7 +810,7 @@ func (x *SessionUser) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionUser.ProtoReflect.Descriptor instead.
 func (*SessionUser) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{9}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SessionUser) GetSession() *Session {
@@ -830,7 +830,7 @@ func (x *SessionUser) GetUser() *User {
 func (x *TokenRequest) Reset() {
 	*x = TokenRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[10]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -843,7 +843,7 @@ func (x *TokenRequest) String() string {
 func (*TokenRequest) ProtoMessage() {}
 
 func (x *TokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[10]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -856,7 +856,7 @@ func (x *TokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenRequest.ProtoReflect.Descriptor instead.
 func (*TokenRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{10}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TokenRequest) GetToken() string {
@@ -869,7 +869,7 @@ func (x *TokenRequest) GetToken() string {
 func (x *ResumeRequest) Reset() {
 	*x = ResumeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[11]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -882,7 +882,7 @@ func (x *ResumeRequest) String() string {
 func (*ResumeRequest) ProtoMessage() {}
 
 func (x *ResumeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[11]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -895,7 +895,7 @@ func (x *ResumeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeRequest.ProtoReflect.Descriptor instead.
 func (*ResumeRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{11}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ResumeRequest) GetResumeToken() string {
@@ -908,7 +908,7 @@ func (x *ResumeRequest) GetResumeToken() string {
 func (x *Identity) Reset() {
 	*x = Identity{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[12]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -921,7 +921,7 @@ func (x *Identity) String() string {
 func (*Identity) ProtoMessage() {}
 
 func (x *Identity) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[12]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -934,7 +934,7 @@ func (x *Identity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Identity.ProtoReflect.Descriptor instead.
 func (*Identity) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{12}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Identity) GetSession() *Session {
@@ -954,7 +954,7 @@ func (x *Identity) GetUser() *User {
 func (x *DirectRequest) Reset() {
 	*x = DirectRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[13]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -967,7 +967,7 @@ func (x *DirectRequest) String() string {
 func (*DirectRequest) ProtoMessage() {}
 
 func (x *DirectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[13]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -980,7 +980,7 @@ func (x *DirectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectRequest.ProtoReflect.Descriptor instead.
 func (*DirectRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{13}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DirectRequest) GetUserA() string {
@@ -1000,7 +1000,7 @@ func (x *DirectRequest) GetUserB() string {
 func (x *ChatIDRequest) Reset() {
 	*x = ChatIDRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[14]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1013,7 +1013,7 @@ func (x *ChatIDRequest) String() string {
 func (*ChatIDRequest) ProtoMessage() {}
 
 func (x *ChatIDRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[14]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1026,7 +1026,7 @@ func (x *ChatIDRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatIDRequest.ProtoReflect.Descriptor instead.
 func (*ChatIDRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{14}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ChatIDRequest) GetChatId() string {
@@ -1039,7 +1039,7 @@ func (x *ChatIDRequest) GetChatId() string {
 func (x *CreateGroupRequest) Reset() {
 	*x = CreateGroupRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[15]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1052,7 +1052,7 @@ func (x *CreateGroupRequest) String() string {
 func (*CreateGroupRequest) ProtoMessage() {}
 
 func (x *CreateGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[15]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1065,7 +1065,7 @@ func (x *CreateGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateGroupRequest.ProtoReflect.Descriptor instead.
 func (*CreateGroupRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{15}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CreateGroupRequest) GetOwnerId() string {
@@ -1099,7 +1099,7 @@ func (x *CreateGroupRequest) GetMemberIds() []string {
 func (x *MembersReply) Reset() {
 	*x = MembersReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[16]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1112,7 +1112,7 @@ func (x *MembersReply) String() string {
 func (*MembersReply) ProtoMessage() {}
 
 func (x *MembersReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[16]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1125,7 +1125,7 @@ func (x *MembersReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MembersReply.ProtoReflect.Descriptor instead.
 func (*MembersReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{16}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *MembersReply) GetMembers() []*ChatMember {
@@ -1138,7 +1138,7 @@ func (x *MembersReply) GetMembers() []*ChatMember {
 func (x *MemberIDsReply) Reset() {
 	*x = MemberIDsReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[17]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1151,7 +1151,7 @@ func (x *MemberIDsReply) String() string {
 func (*MemberIDsReply) ProtoMessage() {}
 
 func (x *MemberIDsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[17]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1164,7 +1164,7 @@ func (x *MemberIDsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MemberIDsReply.ProtoReflect.Descriptor instead.
 func (*MemberIDsReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{17}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *MemberIDsReply) GetUserIds() []string {
@@ -1177,7 +1177,7 @@ func (x *MemberIDsReply) GetUserIds() []string {
 func (x *MemberPageRequest) Reset() {
 	*x = MemberPageRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[18]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1190,7 +1190,7 @@ func (x *MemberPageRequest) String() string {
 func (*MemberPageRequest) ProtoMessage() {}
 
 func (x *MemberPageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[18]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1203,7 +1203,7 @@ func (x *MemberPageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MemberPageRequest.ProtoReflect.Descriptor instead.
 func (*MemberPageRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{18}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *MemberPageRequest) GetChatId() string {
@@ -1230,7 +1230,7 @@ func (x *MemberPageRequest) GetLimit() int32 {
 func (x *ChatUserRequest) Reset() {
 	*x = ChatUserRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[19]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1243,7 +1243,7 @@ func (x *ChatUserRequest) String() string {
 func (*ChatUserRequest) ProtoMessage() {}
 
 func (x *ChatUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[19]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1256,7 +1256,7 @@ func (x *ChatUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatUserRequest.ProtoReflect.Descriptor instead.
 func (*ChatUserRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{19}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ChatUserRequest) GetChatId() string {
@@ -1276,7 +1276,7 @@ func (x *ChatUserRequest) GetUserId() string {
 func (x *BoolReply) Reset() {
 	*x = BoolReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[20]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1289,7 +1289,7 @@ func (x *BoolReply) String() string {
 func (*BoolReply) ProtoMessage() {}
 
 func (x *BoolReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[20]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1302,7 +1302,7 @@ func (x *BoolReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BoolReply.ProtoReflect.Descriptor instead.
 func (*BoolReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{20}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *BoolReply) GetOk() bool {
@@ -1315,7 +1315,7 @@ func (x *BoolReply) GetOk() bool {
 func (x *UserChatsRequest) Reset() {
 	*x = UserChatsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[21]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1328,7 +1328,7 @@ func (x *UserChatsRequest) String() string {
 func (*UserChatsRequest) ProtoMessage() {}
 
 func (x *UserChatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[21]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1341,7 +1341,7 @@ func (x *UserChatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserChatsRequest.ProtoReflect.Descriptor instead.
 func (*UserChatsRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{21}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *UserChatsRequest) GetUserId() string {
@@ -1368,7 +1368,7 @@ func (x *UserChatsRequest) GetLimit() int32 {
 func (x *ChatSummary) Reset() {
 	*x = ChatSummary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[22]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1381,7 +1381,7 @@ func (x *ChatSummary) String() string {
 func (*ChatSummary) ProtoMessage() {}
 
 func (x *ChatSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[22]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1394,7 +1394,7 @@ func (x *ChatSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatSummary.ProtoReflect.Descriptor instead.
 func (*ChatSummary) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{22}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ChatSummary) GetChat() *Chat {
@@ -1421,7 +1421,7 @@ func (x *ChatSummary) GetPeerId() string {
 func (x *ChatSummariesReply) Reset() {
 	*x = ChatSummariesReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[23]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1434,7 +1434,7 @@ func (x *ChatSummariesReply) String() string {
 func (*ChatSummariesReply) ProtoMessage() {}
 
 func (x *ChatSummariesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[23]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1447,7 +1447,7 @@ func (x *ChatSummariesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatSummariesReply.ProtoReflect.Descriptor instead.
 func (*ChatSummariesReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{23}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ChatSummariesReply) GetChats() []*ChatSummary {
@@ -1460,7 +1460,7 @@ func (x *ChatSummariesReply) GetChats() []*ChatSummary {
 func (x *SubmitRequest) Reset() {
 	*x = SubmitRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[24]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1473,7 +1473,7 @@ func (x *SubmitRequest) String() string {
 func (*SubmitRequest) ProtoMessage() {}
 
 func (x *SubmitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[24]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1486,7 +1486,7 @@ func (x *SubmitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitRequest.ProtoReflect.Descriptor instead.
 func (*SubmitRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{24}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SubmitRequest) GetOp() Op {
@@ -1562,7 +1562,7 @@ func (x *SubmitRequest) GetTtlSeconds() int32 {
 func (x *SubmitReply) Reset() {
 	*x = SubmitReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[25]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1575,7 +1575,7 @@ func (x *SubmitReply) String() string {
 func (*SubmitReply) ProtoMessage() {}
 
 func (x *SubmitReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[25]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1588,7 @@ func (x *SubmitReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitReply.ProtoReflect.Descriptor instead.
 func (*SubmitReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{25}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SubmitReply) GetMessage() *Message {
@@ -1608,7 +1608,7 @@ func (x *SubmitReply) GetDuplicate() bool {
 func (x *HistoryRequest) Reset() {
 	*x = HistoryRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[26]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1621,7 +1621,7 @@ func (x *HistoryRequest) String() string {
 func (*HistoryRequest) ProtoMessage() {}
 
 func (x *HistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[26]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1634,7 +1634,7 @@ func (x *HistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HistoryRequest.ProtoReflect.Descriptor instead.
 func (*HistoryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{26}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *HistoryRequest) GetUserId() string {
@@ -1668,7 +1668,7 @@ func (x *HistoryRequest) GetLimit() int32 {
 func (x *HistoryReply) Reset() {
 	*x = HistoryReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[27]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1681,7 +1681,7 @@ func (x *HistoryReply) String() string {
 func (*HistoryReply) ProtoMessage() {}
 
 func (x *HistoryReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[27]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1694,7 +1694,7 @@ func (x *HistoryReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HistoryReply.ProtoReflect.Descriptor instead.
 func (*HistoryReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{27}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *HistoryReply) GetMessages() []*Message {
@@ -1707,7 +1707,7 @@ func (x *HistoryReply) GetMessages() []*Message {
 func (x *ThreadRequest) Reset() {
 	*x = ThreadRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[28]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1720,7 +1720,7 @@ func (x *ThreadRequest) String() string {
 func (*ThreadRequest) ProtoMessage() {}
 
 func (x *ThreadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[28]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1733,7 +1733,7 @@ func (x *ThreadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadRequest.ProtoReflect.Descriptor instead.
 func (*ThreadRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{28}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ThreadRequest) GetUserId() string {
@@ -1774,7 +1774,7 @@ func (x *ThreadRequest) GetLimit() int32 {
 func (x *ForwardRequest) Reset() {
 	*x = ForwardRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[29]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1787,7 +1787,7 @@ func (x *ForwardRequest) String() string {
 func (*ForwardRequest) ProtoMessage() {}
 
 func (x *ForwardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[29]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1800,7 +1800,7 @@ func (x *ForwardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForwardRequest.ProtoReflect.Descriptor instead.
 func (*ForwardRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{29}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ForwardRequest) GetUserId() string {
@@ -1841,7 +1841,7 @@ func (x *ForwardRequest) GetDedupKey() string {
 func (x *MarkReadRequest) Reset() {
 	*x = MarkReadRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[30]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1854,7 +1854,7 @@ func (x *MarkReadRequest) String() string {
 func (*MarkReadRequest) ProtoMessage() {}
 
 func (x *MarkReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[30]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1867,7 +1867,7 @@ func (x *MarkReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkReadRequest.ProtoReflect.Descriptor instead.
 func (*MarkReadRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{30}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *MarkReadRequest) GetUserId() string {
@@ -1894,7 +1894,7 @@ func (x *MarkReadRequest) GetUpToSeq() uint64 {
 func (x *Empty) Reset() {
 	*x = Empty{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[31]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1907,7 +1907,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[31]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1920,13 +1920,13 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Empty.ProtoReflect.Descriptor instead.
 func (*Empty) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{31}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UserRequest) Reset() {
 	*x = UserRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[32]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1939,7 +1939,7 @@ func (x *UserRequest) String() string {
 func (*UserRequest) ProtoMessage() {}
 
 func (x *UserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[32]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1952,7 +1952,7 @@ func (x *UserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserRequest.ProtoReflect.Descriptor instead.
 func (*UserRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{32}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *UserRequest) GetUserId() string {
@@ -1965,7 +1965,7 @@ func (x *UserRequest) GetUserId() string {
 func (x *TypingRequest) Reset() {
 	*x = TypingRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[33]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1978,7 +1978,7 @@ func (x *TypingRequest) String() string {
 func (*TypingRequest) ProtoMessage() {}
 
 func (x *TypingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[33]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1991,7 +1991,7 @@ func (x *TypingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TypingRequest.ProtoReflect.Descriptor instead.
 func (*TypingRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{33}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *TypingRequest) GetChatId() string {
@@ -2018,7 +2018,7 @@ func (x *TypingRequest) GetActive() bool {
 func (x *PublishRequest) Reset() {
 	*x = PublishRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[34]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2031,7 +2031,7 @@ func (x *PublishRequest) String() string {
 func (*PublishRequest) ProtoMessage() {}
 
 func (x *PublishRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[34]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2044,7 +2044,7 @@ func (x *PublishRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishRequest.ProtoReflect.Descriptor instead.
 func (*PublishRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{34}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *PublishRequest) GetUserId() string {
@@ -2099,7 +2099,7 @@ func (x *PublishRequest) GetPrekeys() []string {
 func (x *FetchRequest) Reset() {
 	*x = FetchRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[35]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2112,7 +2112,7 @@ func (x *FetchRequest) String() string {
 func (*FetchRequest) ProtoMessage() {}
 
 func (x *FetchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[35]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2125,7 +2125,7 @@ func (x *FetchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchRequest.ProtoReflect.Descriptor instead.
 func (*FetchRequest) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{35}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *FetchRequest) GetUserId() string {
@@ -2145,7 +2145,7 @@ func (x *FetchRequest) GetDeviceId() string {
 func (x *KeyBundle) Reset() {
 	*x = KeyBundle{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[36]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[36]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2158,7 +2158,7 @@ func (x *KeyBundle) String() string {
 func (*KeyBundle) ProtoMessage() {}
 
 func (x *KeyBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[36]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[36]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2171,7 +2171,7 @@ func (x *KeyBundle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyBundle.ProtoReflect.Descriptor instead.
 func (*KeyBundle) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{36}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *KeyBundle) GetUserId() string {
@@ -2226,7 +2226,7 @@ func (x *KeyBundle) GetOneTimePrekey() string {
 func (x *FetchReply) Reset() {
 	*x = FetchReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[37]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2239,7 +2239,7 @@ func (x *FetchReply) String() string {
 func (*FetchReply) ProtoMessage() {}
 
 func (x *FetchReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[37]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2252,7 +2252,7 @@ func (x *FetchReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchReply.ProtoReflect.Descriptor instead.
 func (*FetchReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{37}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *FetchReply) GetBundle() *KeyBundle {
@@ -2272,7 +2272,7 @@ func (x *FetchReply) GetFound() bool {
 func (x *FetchAllReply) Reset() {
 	*x = FetchAllReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_synapse_v1_services_proto_msgTypes[38]
+		mi := &file_proto_SyncApp_v1_services_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2285,7 +2285,7 @@ func (x *FetchAllReply) String() string {
 func (*FetchAllReply) ProtoMessage() {}
 
 func (x *FetchAllReply) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_synapse_v1_services_proto_msgTypes[38]
+	mi := &file_proto_SyncApp_v1_services_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2298,7 +2298,7 @@ func (x *FetchAllReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchAllReply.ProtoReflect.Descriptor instead.
 func (*FetchAllReply) Descriptor() ([]byte, []int) {
-	return file_proto_synapse_v1_services_proto_rawDescGZIP(), []int{38}
+	return file_proto_SyncApp_v1_services_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *FetchAllReply) GetBundles() []*KeyBundle {
@@ -2308,21 +2308,21 @@ func (x *FetchAllReply) GetBundles() []*KeyBundle {
 	return nil
 }
 
-func file_proto_synapse_v1_services_proto_rawDescGZIP() []byte {
-	file_proto_synapse_v1_services_proto_rawDescOnce.Do(func() {
-		file_proto_synapse_v1_services_proto_rawDescData = protoimpl.X.CompressGZIP(file_proto_synapse_v1_services_proto_rawDescData)
+func file_proto_SyncApp_v1_services_proto_rawDescGZIP() []byte {
+	file_proto_SyncApp_v1_services_proto_rawDescOnce.Do(func() {
+		file_proto_SyncApp_v1_services_proto_rawDescData = protoimpl.X.CompressGZIP(file_proto_SyncApp_v1_services_proto_rawDescData)
 	})
-	return file_proto_synapse_v1_services_proto_rawDescData
+	return file_proto_SyncApp_v1_services_proto_rawDescData
 }
 
-func init() { file_proto_synapse_v1_services_proto_init() }
+func init() { file_proto_SyncApp_v1_services_proto_init() }
 
-func file_proto_synapse_v1_services_proto_init() {
-	if File_proto_synapse_v1_services_proto != nil {
+func file_proto_SyncApp_v1_services_proto_init() {
+	if File_proto_SyncApp_v1_services_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_proto_synapse_v1_services_proto_msgTypes[0].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*User); i {
 			case 0:
 				return &v.state
@@ -2334,7 +2334,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[1].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*Session); i {
 			case 0:
 				return &v.state
@@ -2346,7 +2346,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[2].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[2].Exporter = func(v any, i int) any {
 			switch v := v.(*Chat); i {
 			case 0:
 				return &v.state
@@ -2358,7 +2358,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[3].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[3].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatMember); i {
 			case 0:
 				return &v.state
@@ -2370,7 +2370,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[4].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[4].Exporter = func(v any, i int) any {
 			switch v := v.(*Attachment); i {
 			case 0:
 				return &v.state
@@ -2382,7 +2382,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[5].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[5].Exporter = func(v any, i int) any {
 			switch v := v.(*ForwardOrigin); i {
 			case 0:
 				return &v.state
@@ -2394,7 +2394,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[6].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[6].Exporter = func(v any, i int) any {
 			switch v := v.(*Message); i {
 			case 0:
 				return &v.state
@@ -2406,7 +2406,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[7].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[7].Exporter = func(v any, i int) any {
 			switch v := v.(*RegisterRequest); i {
 			case 0:
 				return &v.state
@@ -2418,7 +2418,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[8].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[8].Exporter = func(v any, i int) any {
 			switch v := v.(*LoginRequest); i {
 			case 0:
 				return &v.state
@@ -2430,7 +2430,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[9].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[9].Exporter = func(v any, i int) any {
 			switch v := v.(*SessionUser); i {
 			case 0:
 				return &v.state
@@ -2442,7 +2442,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[10].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[10].Exporter = func(v any, i int) any {
 			switch v := v.(*TokenRequest); i {
 			case 0:
 				return &v.state
@@ -2454,7 +2454,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[11].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[11].Exporter = func(v any, i int) any {
 			switch v := v.(*ResumeRequest); i {
 			case 0:
 				return &v.state
@@ -2466,7 +2466,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[12].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[12].Exporter = func(v any, i int) any {
 			switch v := v.(*Identity); i {
 			case 0:
 				return &v.state
@@ -2478,7 +2478,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[13].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[13].Exporter = func(v any, i int) any {
 			switch v := v.(*DirectRequest); i {
 			case 0:
 				return &v.state
@@ -2490,7 +2490,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[14].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[14].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatIDRequest); i {
 			case 0:
 				return &v.state
@@ -2502,7 +2502,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[15].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[15].Exporter = func(v any, i int) any {
 			switch v := v.(*CreateGroupRequest); i {
 			case 0:
 				return &v.state
@@ -2514,7 +2514,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[16].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[16].Exporter = func(v any, i int) any {
 			switch v := v.(*MembersReply); i {
 			case 0:
 				return &v.state
@@ -2526,7 +2526,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[17].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[17].Exporter = func(v any, i int) any {
 			switch v := v.(*MemberIDsReply); i {
 			case 0:
 				return &v.state
@@ -2538,7 +2538,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[18].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[18].Exporter = func(v any, i int) any {
 			switch v := v.(*MemberPageRequest); i {
 			case 0:
 				return &v.state
@@ -2550,7 +2550,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[19].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[19].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatUserRequest); i {
 			case 0:
 				return &v.state
@@ -2562,7 +2562,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[20].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[20].Exporter = func(v any, i int) any {
 			switch v := v.(*BoolReply); i {
 			case 0:
 				return &v.state
@@ -2574,7 +2574,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[21].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[21].Exporter = func(v any, i int) any {
 			switch v := v.(*UserChatsRequest); i {
 			case 0:
 				return &v.state
@@ -2586,7 +2586,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[22].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[22].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatSummary); i {
 			case 0:
 				return &v.state
@@ -2598,7 +2598,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[23].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[23].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatSummariesReply); i {
 			case 0:
 				return &v.state
@@ -2610,7 +2610,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[24].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[24].Exporter = func(v any, i int) any {
 			switch v := v.(*SubmitRequest); i {
 			case 0:
 				return &v.state
@@ -2622,7 +2622,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[25].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[25].Exporter = func(v any, i int) any {
 			switch v := v.(*SubmitReply); i {
 			case 0:
 				return &v.state
@@ -2634,7 +2634,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[26].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[26].Exporter = func(v any, i int) any {
 			switch v := v.(*HistoryRequest); i {
 			case 0:
 				return &v.state
@@ -2646,7 +2646,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[27].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[27].Exporter = func(v any, i int) any {
 			switch v := v.(*HistoryReply); i {
 			case 0:
 				return &v.state
@@ -2658,7 +2658,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[28].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[28].Exporter = func(v any, i int) any {
 			switch v := v.(*ThreadRequest); i {
 			case 0:
 				return &v.state
@@ -2670,7 +2670,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[29].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[29].Exporter = func(v any, i int) any {
 			switch v := v.(*ForwardRequest); i {
 			case 0:
 				return &v.state
@@ -2682,7 +2682,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[30].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[30].Exporter = func(v any, i int) any {
 			switch v := v.(*MarkReadRequest); i {
 			case 0:
 				return &v.state
@@ -2694,7 +2694,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[31].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[31].Exporter = func(v any, i int) any {
 			switch v := v.(*Empty); i {
 			case 0:
 				return &v.state
@@ -2706,7 +2706,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[32].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[32].Exporter = func(v any, i int) any {
 			switch v := v.(*UserRequest); i {
 			case 0:
 				return &v.state
@@ -2718,7 +2718,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[33].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[33].Exporter = func(v any, i int) any {
 			switch v := v.(*TypingRequest); i {
 			case 0:
 				return &v.state
@@ -2730,7 +2730,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[34].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[34].Exporter = func(v any, i int) any {
 			switch v := v.(*PublishRequest); i {
 			case 0:
 				return &v.state
@@ -2742,7 +2742,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[35].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[35].Exporter = func(v any, i int) any {
 			switch v := v.(*FetchRequest); i {
 			case 0:
 				return &v.state
@@ -2754,7 +2754,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[36].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[36].Exporter = func(v any, i int) any {
 			switch v := v.(*KeyBundle); i {
 			case 0:
 				return &v.state
@@ -2766,7 +2766,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[37].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[37].Exporter = func(v any, i int) any {
 			switch v := v.(*FetchReply); i {
 			case 0:
 				return &v.state
@@ -2778,7 +2778,7 @@ func file_proto_synapse_v1_services_proto_init() {
 				return nil
 			}
 		}
-		file_proto_synapse_v1_services_proto_msgTypes[38].Exporter = func(v any, i int) any {
+		file_proto_SyncApp_v1_services_proto_msgTypes[38].Exporter = func(v any, i int) any {
 			switch v := v.(*FetchAllReply); i {
 			case 0:
 				return &v.state
@@ -2795,19 +2795,19 @@ func file_proto_synapse_v1_services_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_proto_synapse_v1_services_proto_rawDesc,
+			RawDescriptor: file_proto_SyncApp_v1_services_proto_rawDesc,
 			NumEnums:      1,
 			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   5,
 		},
-		GoTypes:           file_proto_synapse_v1_services_proto_goTypes,
-		DependencyIndexes: file_proto_synapse_v1_services_proto_depIdxs,
-		EnumInfos:         file_proto_synapse_v1_services_proto_enumTypes,
-		MessageInfos:      file_proto_synapse_v1_services_proto_msgTypes,
+		GoTypes:           file_proto_SyncApp_v1_services_proto_goTypes,
+		DependencyIndexes: file_proto_SyncApp_v1_services_proto_depIdxs,
+		EnumInfos:         file_proto_SyncApp_v1_services_proto_enumTypes,
+		MessageInfos:      file_proto_SyncApp_v1_services_proto_msgTypes,
 	}.Build()
-	File_proto_synapse_v1_services_proto = out.File
-	file_proto_synapse_v1_services_proto_rawDesc = nil
-	file_proto_synapse_v1_services_proto_goTypes = nil
-	file_proto_synapse_v1_services_proto_depIdxs = nil
+	File_proto_SyncApp_v1_services_proto = out.File
+	file_proto_SyncApp_v1_services_proto_rawDesc = nil
+	file_proto_SyncApp_v1_services_proto_goTypes = nil
+	file_proto_SyncApp_v1_services_proto_depIdxs = nil
 }

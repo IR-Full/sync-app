@@ -14,9 +14,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-var File_proto_synapse_v1_body_proto protoreflect.FileDescriptor
+var File_proto_SyncApp_v1_body_proto protoreflect.FileDescriptor
 
-var file_proto_synapse_v1_body_proto_rawDesc = []byte{
+var file_proto_SyncApp_v1_body_proto_rawDesc = []byte{
 	0x0a, 0x1b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2f,
 	0x76, 0x31, 0x2f, 0x62, 0x6f, 0x64, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0a, 0x73,
 	0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2e, 0x76, 0x31, 0x22, 0x9e, 0x01, 0x0a, 0x05, 0x48, 0x65,
@@ -635,129 +635,140 @@ var file_proto_synapse_v1_body_proto_rawDesc = []byte{
 	0x79, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x64, 0x69,
 	0x73, 0x70, 0x6c, 0x61, 0x79, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x76, 0x61,
 	0x74, 0x61, 0x72, 0x5f, 0x72, 0x65, 0x66, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61,
-	0x76, 0x61, 0x74, 0x61, 0x72, 0x52, 0x65, 0x66, 0x42, 0x38, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2d, 0x63,
-	0x68, 0x61, 0x74, 0x2f, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2f, 0x69, 0x6e, 0x74, 0x65,
-	0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x77, 0x69, 0x72, 0x65, 0x70, 0x62, 0x3b, 0x77, 0x69, 0x72, 0x65,
-	0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x76, 0x61, 0x74, 0x61, 0x72, 0x52, 0x65, 0x66, 0x22, 0x43, 0x0a, 0x0d, 0x41, 0x63, 0x63, 0x6f,
+	0x75, 0x6e, 0x74, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61, 0x73,
+	0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x61, 0x73,
+	0x73, 0x77, 0x6f, 0x72, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18,
+	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x22, 0x48, 0x0a,
+	0x0e, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x12,
+	0x17, 0x0a, 0x07, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x75, 0x73, 0x65, 0x72, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x64, 0x65, 0x6c, 0x65,
+	0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x09, 0x64, 0x65,
+	0x6c, 0x65, 0x74, 0x65, 0x64, 0x41, 0x74, 0x42, 0x38, 0x5a, 0x36, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2d, 0x63, 0x68,
+	0x61, 0x74, 0x2f, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72,
+	0x6e, 0x61, 0x6c, 0x2f, 0x77, 0x69, 0x72, 0x65, 0x70, 0x62, 0x3b, 0x77, 0x69, 0x72, 0x65, 0x70,
+	0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
-	file_proto_synapse_v1_body_proto_rawDescOnce sync.Once
-	file_proto_synapse_v1_body_proto_rawDescData = file_proto_synapse_v1_body_proto_rawDesc
+	file_proto_SyncApp_v1_body_proto_rawDescOnce sync.Once
+	file_proto_SyncApp_v1_body_proto_rawDescData = file_proto_SyncApp_v1_body_proto_rawDesc
 )
 
-var file_proto_synapse_v1_body_proto_msgTypes = make([]protoimpl.MessageInfo, 87)
+var file_proto_SyncApp_v1_body_proto_msgTypes = make([]protoimpl.MessageInfo, 89)
 
-var file_proto_synapse_v1_body_proto_goTypes = []any{
-	(*Hello)(nil),            // 0: synapse.v1.Hello
-	(*Welcome)(nil),          // 1: synapse.v1.Welcome
-	(*Auth)(nil),             // 2: synapse.v1.Auth
-	(*AuthOK)(nil),           // 3: synapse.v1.AuthOK
-	(*Send)(nil),             // 4: synapse.v1.Send
-	(*Attachment)(nil),       // 5: synapse.v1.Attachment
-	(*SendAck)(nil),          // 6: synapse.v1.SendAck
-	(*NewMessage)(nil),       // 7: synapse.v1.NewMessage
-	(*Thread)(nil),           // 8: synapse.v1.Thread
-	(*ThreadOK)(nil),         // 9: synapse.v1.ThreadOK
-	(*Read)(nil),             // 10: synapse.v1.Read
-	(*ReadUpdate)(nil),       // 11: synapse.v1.ReadUpdate
-	(*Typing)(nil),           // 12: synapse.v1.Typing
-	(*React)(nil),            // 13: synapse.v1.React
-	(*ReactUpdate)(nil),      // 14: synapse.v1.ReactUpdate
-	(*Presence)(nil),         // 15: synapse.v1.Presence
-	(*Edit)(nil),             // 16: synapse.v1.Edit
-	(*Delete)(nil),           // 17: synapse.v1.Delete
-	(*History)(nil),          // 18: synapse.v1.History
-	(*HistoryOK)(nil),        // 19: synapse.v1.HistoryOK
-	(*Resume)(nil),           // 20: synapse.v1.Resume
-	(*ResumeOK)(nil),         // 21: synapse.v1.ResumeOK
-	(*Error)(nil),            // 22: synapse.v1.Error
-	(*MediaInit)(nil),        // 23: synapse.v1.MediaInit
-	(*MediaTicket)(nil),      // 24: synapse.v1.MediaTicket
-	(*MediaFetch)(nil),       // 25: synapse.v1.MediaFetch
-	(*MediaURL)(nil),         // 26: synapse.v1.MediaURL
-	(*Search)(nil),           // 27: synapse.v1.Search
-	(*SearchHit)(nil),        // 28: synapse.v1.SearchHit
-	(*SearchResults)(nil),    // 29: synapse.v1.SearchResults
-	(*KeyPublish)(nil),       // 30: synapse.v1.KeyPublish
-	(*KeyFetch)(nil),         // 31: synapse.v1.KeyFetch
-	(*KeyBundle)(nil),        // 32: synapse.v1.KeyBundle
-	(*KeyBundles)(nil),       // 33: synapse.v1.KeyBundles
-	(*SecretMsg)(nil),        // 34: synapse.v1.SecretMsg
-	(*ChatExport)(nil),       // 35: synapse.v1.ChatExport
-	(*ChatMember)(nil),       // 36: synapse.v1.ChatMember
-	(*ChatExportResult)(nil), // 37: synapse.v1.ChatExportResult
-	(*CallInvite)(nil),       // 38: synapse.v1.CallInvite
-	(*CallAction)(nil),       // 39: synapse.v1.CallAction
-	(*CallParticipant)(nil),  // 40: synapse.v1.CallParticipant
-	(*CallState)(nil),        // 41: synapse.v1.CallState
-	(*CallSignal)(nil),       // 42: synapse.v1.CallSignal
-	(*PollCreate)(nil),       // 43: synapse.v1.PollCreate
-	(*PollVote)(nil),         // 44: synapse.v1.PollVote
-	(*PollClose)(nil),        // 45: synapse.v1.PollClose
-	(*PollOption)(nil),       // 46: synapse.v1.PollOption
-	(*PollState)(nil),        // 47: synapse.v1.PollState
-	(*ContactAdd)(nil),       // 48: synapse.v1.ContactAdd
-	(*ContactRemove)(nil),    // 49: synapse.v1.ContactRemove
-	(*ContactSync)(nil),      // 50: synapse.v1.ContactSync
-	(*Contact)(nil),          // 51: synapse.v1.Contact
-	(*ContactList)(nil),      // 52: synapse.v1.ContactList
-	(*Block)(nil),            // 53: synapse.v1.Block
-	(*ForwardOrigin)(nil),    // 54: synapse.v1.ForwardOrigin
-	(*Forward)(nil),          // 55: synapse.v1.Forward
-	(*Schedule)(nil),         // 56: synapse.v1.Schedule
-	(*ScheduleList)(nil),     // 57: synapse.v1.ScheduleList
-	(*ScheduleCancel)(nil),   // 58: synapse.v1.ScheduleCancel
-	(*ScheduledItem)(nil),    // 59: synapse.v1.ScheduledItem
-	(*Scheduled)(nil),        // 60: synapse.v1.Scheduled
-	(*Pin)(nil),              // 61: synapse.v1.Pin
-	(*PinAction)(nil),        // 62: synapse.v1.PinAction
-	(*Pinned)(nil),           // 63: synapse.v1.Pinned
-	(*Draft)(nil),            // 64: synapse.v1.Draft
-	(*DraftSync)(nil),        // 65: synapse.v1.DraftSync
-	(*DraftItem)(nil),        // 66: synapse.v1.DraftItem
-	(*Drafts)(nil),           // 67: synapse.v1.Drafts
-	(*SetUsername)(nil),      // 68: synapse.v1.SetUsername
-	(*InviteCreate)(nil),     // 69: synapse.v1.InviteCreate
-	(*InviteRevoke)(nil),     // 70: synapse.v1.InviteRevoke
-	(*InviteList)(nil),       // 71: synapse.v1.InviteList
-	(*Join)(nil),             // 72: synapse.v1.Join
-	(*SetRole)(nil),          // 73: synapse.v1.SetRole
-	(*InviteLink)(nil),       // 74: synapse.v1.InviteLink
-	(*Invites)(nil),          // 75: synapse.v1.Invites
-	(*FanoutShard)(nil),      // 76: synapse.v1.FanoutShard
-	(*ChatCreate)(nil),       // 77: synapse.v1.ChatCreate
-	(*ChatInfo)(nil),         // 78: synapse.v1.ChatInfo
-	(*PushToken)(nil),        // 79: synapse.v1.PushToken
-	(*ChatList)(nil),         // 80: synapse.v1.ChatList
-	(*ChatSummary)(nil),      // 81: synapse.v1.ChatSummary
-	(*Chats)(nil),            // 82: synapse.v1.Chats
-	(*ProfileGet)(nil),       // 83: synapse.v1.ProfileGet
-	(*ProfileSet)(nil),       // 84: synapse.v1.ProfileSet
-	(*Profile)(nil),          // 85: synapse.v1.Profile
-	nil,                      // 86: synapse.v1.ReactUpdate.CountsEntry
+var file_proto_SyncApp_v1_body_proto_goTypes = []any{
+	(*Hello)(nil),            // 0: SyncApp.v1.Hello
+	(*Welcome)(nil),          // 1: SyncApp.v1.Welcome
+	(*Auth)(nil),             // 2: SyncApp.v1.Auth
+	(*AuthOK)(nil),           // 3: SyncApp.v1.AuthOK
+	(*Send)(nil),             // 4: SyncApp.v1.Send
+	(*Attachment)(nil),       // 5: SyncApp.v1.Attachment
+	(*SendAck)(nil),          // 6: SyncApp.v1.SendAck
+	(*NewMessage)(nil),       // 7: SyncApp.v1.NewMessage
+	(*Thread)(nil),           // 8: SyncApp.v1.Thread
+	(*ThreadOK)(nil),         // 9: SyncApp.v1.ThreadOK
+	(*Read)(nil),             // 10: SyncApp.v1.Read
+	(*ReadUpdate)(nil),       // 11: SyncApp.v1.ReadUpdate
+	(*Typing)(nil),           // 12: SyncApp.v1.Typing
+	(*React)(nil),            // 13: SyncApp.v1.React
+	(*ReactUpdate)(nil),      // 14: SyncApp.v1.ReactUpdate
+	(*Presence)(nil),         // 15: SyncApp.v1.Presence
+	(*Edit)(nil),             // 16: SyncApp.v1.Edit
+	(*Delete)(nil),           // 17: SyncApp.v1.Delete
+	(*History)(nil),          // 18: SyncApp.v1.History
+	(*HistoryOK)(nil),        // 19: SyncApp.v1.HistoryOK
+	(*Resume)(nil),           // 20: SyncApp.v1.Resume
+	(*ResumeOK)(nil),         // 21: SyncApp.v1.ResumeOK
+	(*Error)(nil),            // 22: SyncApp.v1.Error
+	(*MediaInit)(nil),        // 23: SyncApp.v1.MediaInit
+	(*MediaTicket)(nil),      // 24: SyncApp.v1.MediaTicket
+	(*MediaFetch)(nil),       // 25: SyncApp.v1.MediaFetch
+	(*MediaURL)(nil),         // 26: SyncApp.v1.MediaURL
+	(*Search)(nil),           // 27: SyncApp.v1.Search
+	(*SearchHit)(nil),        // 28: SyncApp.v1.SearchHit
+	(*SearchResults)(nil),    // 29: SyncApp.v1.SearchResults
+	(*KeyPublish)(nil),       // 30: SyncApp.v1.KeyPublish
+	(*KeyFetch)(nil),         // 31: SyncApp.v1.KeyFetch
+	(*KeyBundle)(nil),        // 32: SyncApp.v1.KeyBundle
+	(*KeyBundles)(nil),       // 33: SyncApp.v1.KeyBundles
+	(*SecretMsg)(nil),        // 34: SyncApp.v1.SecretMsg
+	(*ChatExport)(nil),       // 35: SyncApp.v1.ChatExport
+	(*ChatMember)(nil),       // 36: SyncApp.v1.ChatMember
+	(*ChatExportResult)(nil), // 37: SyncApp.v1.ChatExportResult
+	(*CallInvite)(nil),       // 38: SyncApp.v1.CallInvite
+	(*CallAction)(nil),       // 39: SyncApp.v1.CallAction
+	(*CallParticipant)(nil),  // 40: SyncApp.v1.CallParticipant
+	(*CallState)(nil),        // 41: SyncApp.v1.CallState
+	(*CallSignal)(nil),       // 42: SyncApp.v1.CallSignal
+	(*PollCreate)(nil),       // 43: SyncApp.v1.PollCreate
+	(*PollVote)(nil),         // 44: SyncApp.v1.PollVote
+	(*PollClose)(nil),        // 45: SyncApp.v1.PollClose
+	(*PollOption)(nil),       // 46: SyncApp.v1.PollOption
+	(*PollState)(nil),        // 47: SyncApp.v1.PollState
+	(*ContactAdd)(nil),       // 48: SyncApp.v1.ContactAdd
+	(*ContactRemove)(nil),    // 49: SyncApp.v1.ContactRemove
+	(*ContactSync)(nil),      // 50: SyncApp.v1.ContactSync
+	(*Contact)(nil),          // 51: SyncApp.v1.Contact
+	(*ContactList)(nil),      // 52: SyncApp.v1.ContactList
+	(*Block)(nil),            // 53: SyncApp.v1.Block
+	(*ForwardOrigin)(nil),    // 54: SyncApp.v1.ForwardOrigin
+	(*Forward)(nil),          // 55: SyncApp.v1.Forward
+	(*Schedule)(nil),         // 56: SyncApp.v1.Schedule
+	(*ScheduleList)(nil),     // 57: SyncApp.v1.ScheduleList
+	(*ScheduleCancel)(nil),   // 58: SyncApp.v1.ScheduleCancel
+	(*ScheduledItem)(nil),    // 59: SyncApp.v1.ScheduledItem
+	(*Scheduled)(nil),        // 60: SyncApp.v1.Scheduled
+	(*Pin)(nil),              // 61: SyncApp.v1.Pin
+	(*PinAction)(nil),        // 62: SyncApp.v1.PinAction
+	(*Pinned)(nil),           // 63: SyncApp.v1.Pinned
+	(*Draft)(nil),            // 64: SyncApp.v1.Draft
+	(*DraftSync)(nil),        // 65: SyncApp.v1.DraftSync
+	(*DraftItem)(nil),        // 66: SyncApp.v1.DraftItem
+	(*Drafts)(nil),           // 67: SyncApp.v1.Drafts
+	(*SetUsername)(nil),      // 68: SyncApp.v1.SetUsername
+	(*InviteCreate)(nil),     // 69: SyncApp.v1.InviteCreate
+	(*InviteRevoke)(nil),     // 70: SyncApp.v1.InviteRevoke
+	(*InviteList)(nil),       // 71: SyncApp.v1.InviteList
+	(*Join)(nil),             // 72: SyncApp.v1.Join
+	(*SetRole)(nil),          // 73: SyncApp.v1.SetRole
+	(*InviteLink)(nil),       // 74: SyncApp.v1.InviteLink
+	(*Invites)(nil),          // 75: SyncApp.v1.Invites
+	(*FanoutShard)(nil),      // 76: SyncApp.v1.FanoutShard
+	(*ChatCreate)(nil),       // 77: SyncApp.v1.ChatCreate
+	(*ChatInfo)(nil),         // 78: SyncApp.v1.ChatInfo
+	(*PushToken)(nil),        // 79: SyncApp.v1.PushToken
+	(*ChatList)(nil),         // 80: SyncApp.v1.ChatList
+	(*ChatSummary)(nil),      // 81: SyncApp.v1.ChatSummary
+	(*Chats)(nil),            // 82: SyncApp.v1.Chats
+	(*ProfileGet)(nil),       // 83: SyncApp.v1.ProfileGet
+	(*ProfileSet)(nil),       // 84: SyncApp.v1.ProfileSet
+	(*Profile)(nil),          // 85: SyncApp.v1.Profile
+	(*AccountDelete)(nil),    // 86: SyncApp.v1.AccountDelete
+	(*AccountDeleted)(nil),   // 87: SyncApp.v1.AccountDeleted
+	nil,                      // 88: SyncApp.v1.ReactUpdate.CountsEntry
 }
 
-var file_proto_synapse_v1_body_proto_depIdxs = []int32{
-	5,  // 0: synapse.v1.Send.attachment:type_name -> synapse.v1.Attachment
-	5,  // 1: synapse.v1.NewMessage.attachment:type_name -> synapse.v1.Attachment
-	54, // 2: synapse.v1.NewMessage.forward:type_name -> synapse.v1.ForwardOrigin
-	86, // 3: synapse.v1.ReactUpdate.counts:type_name -> synapse.v1.ReactUpdate.CountsEntry
-	28, // 4: synapse.v1.SearchResults.hits:type_name -> synapse.v1.SearchHit
-	32, // 5: synapse.v1.KeyBundles.bundles:type_name -> synapse.v1.KeyBundle
-	36, // 6: synapse.v1.ChatExportResult.members:type_name -> synapse.v1.ChatMember
-	7,  // 7: synapse.v1.ChatExportResult.messages:type_name -> synapse.v1.NewMessage
-	40, // 8: synapse.v1.CallState.participants:type_name -> synapse.v1.CallParticipant
-	46, // 9: synapse.v1.PollState.options:type_name -> synapse.v1.PollOption
-	51, // 10: synapse.v1.ContactList.contacts:type_name -> synapse.v1.Contact
-	5,  // 11: synapse.v1.Schedule.attachment:type_name -> synapse.v1.Attachment
-	59, // 12: synapse.v1.Scheduled.items:type_name -> synapse.v1.ScheduledItem
-	61, // 13: synapse.v1.Pinned.pins:type_name -> synapse.v1.Pin
-	66, // 14: synapse.v1.Drafts.drafts:type_name -> synapse.v1.DraftItem
-	74, // 15: synapse.v1.Invites.links:type_name -> synapse.v1.InviteLink
-	7,  // 16: synapse.v1.FanoutShard.body:type_name -> synapse.v1.NewMessage
-	81, // 17: synapse.v1.Chats.chats:type_name -> synapse.v1.ChatSummary
+var file_proto_SyncApp_v1_body_proto_depIdxs = []int32{
+	5,  // 0: SyncApp.v1.Send.attachment:type_name -> SyncApp.v1.Attachment
+	5,  // 1: SyncApp.v1.NewMessage.attachment:type_name -> SyncApp.v1.Attachment
+	54, // 2: SyncApp.v1.NewMessage.forward:type_name -> SyncApp.v1.ForwardOrigin
+	88, // 3: SyncApp.v1.ReactUpdate.counts:type_name -> SyncApp.v1.ReactUpdate.CountsEntry
+	28, // 4: SyncApp.v1.SearchResults.hits:type_name -> SyncApp.v1.SearchHit
+	32, // 5: SyncApp.v1.KeyBundles.bundles:type_name -> SyncApp.v1.KeyBundle
+	36, // 6: SyncApp.v1.ChatExportResult.members:type_name -> SyncApp.v1.ChatMember
+	7,  // 7: SyncApp.v1.ChatExportResult.messages:type_name -> SyncApp.v1.NewMessage
+	40, // 8: SyncApp.v1.CallState.participants:type_name -> SyncApp.v1.CallParticipant
+	46, // 9: SyncApp.v1.PollState.options:type_name -> SyncApp.v1.PollOption
+	51, // 10: SyncApp.v1.ContactList.contacts:type_name -> SyncApp.v1.Contact
+	5,  // 11: SyncApp.v1.Schedule.attachment:type_name -> SyncApp.v1.Attachment
+	59, // 12: SyncApp.v1.Scheduled.items:type_name -> SyncApp.v1.ScheduledItem
+	61, // 13: SyncApp.v1.Pinned.pins:type_name -> SyncApp.v1.Pin
+	66, // 14: SyncApp.v1.Drafts.drafts:type_name -> SyncApp.v1.DraftItem
+	74, // 15: SyncApp.v1.Invites.links:type_name -> SyncApp.v1.InviteLink
+	7,  // 16: SyncApp.v1.FanoutShard.body:type_name -> SyncApp.v1.NewMessage
+	81, // 17: SyncApp.v1.Chats.chats:type_name -> SyncApp.v1.ChatSummary
 	18, // [18:18] is the sub-list for method output_type
 	18, // [18:18] is the sub-list for method input_type
 	18, // [18:18] is the sub-list for extension type_name

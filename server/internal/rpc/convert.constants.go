@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"github.com/synapse-chat/synapse/internal/message"
-	pb "github.com/synapse-chat/synapse/internal/rpc/pb"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
 )
 
 var opToPB = map[message.Op]pb.Op{

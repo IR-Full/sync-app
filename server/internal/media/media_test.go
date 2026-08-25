@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 func TestMediaUploadDownloadRoundTrip(t *testing.T) {
@@ -59,6 +59,94 @@ func TestMediaUploadDownloadRoundTrip(t *testing.T) {
 	_, _ = resp2.Body.Read(got)
 	if !bytes.Equal(got, payload) {
 		t.Fatalf("download mismatch: %q", got)
+	}
+}
+
+// TestDownloadRendersImagesAndNothingElse pins both halves of the same rule.
+// An image has to be displayable — a client cannot render an avatar or a photo
+// that arrives as an attachment — while everything else stays inert, because
+// serving user-uploaded bytes inline from our own origin is stored XSS.
+//
+// The type is decided by the CONTENT, so the two cases below differ only in
+// what the bytes actually are: the "image" that is really HTML must not be
+// rendered no matter what it was uploaded as.
+func TestDownloadRendersImagesAndNothingElse(t *testing.T) {
+	fs, err := NewFSStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids, _ := id.NewGenerator(1)
+	svc := New(fs, ids, []byte("test-secret"), "http://example")
+
+	mux := http.NewServeMux()
+	svc.RegisterHTTP(mux)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	svc.baseURL = srv.URL
+
+	// A real 1x1 PNG, and a page of HTML dressed up as one.
+	png := []byte{
+		0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+		'I', 'H', 'D', 'R', 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89,
+	}
+	html := []byte("<html><script>alert(document.domain)</script></html>")
+
+	cases := []struct {
+		name       string
+		filename   string
+		declared   string
+		payload    []byte
+		wantType   string
+		wantInline bool
+	}{
+		{"png", "avatar.png", "image/png", png, "image/png", true},
+		// Declared as an image and named like one; only the bytes disagree.
+		{"html posing as png", "avatar.png", "image/png", html, "application/octet-stream", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ticket, err := svc.InitUpload("user1", tc.filename, tc.declared, int64(len(tc.payload)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, _ := http.NewRequest(http.MethodPut, ticket.UploadURL, bytes.NewReader(tc.payload))
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusCreated {
+				t.Fatalf("upload status %d", resp.StatusCode)
+			}
+
+			dl, _, err := svc.DownloadURL("user1", ticket.MediaRef)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := http.Get(dl)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer got.Body.Close()
+
+			if ct := got.Header.Get("Content-Type"); ct != tc.wantType {
+				t.Fatalf("Content-Type = %q, want %q", ct, tc.wantType)
+			}
+			disposition := got.Header.Get("Content-Disposition")
+			if tc.wantInline && disposition != "inline" {
+				t.Fatalf("an image must be displayable, got Content-Disposition %q", disposition)
+			}
+			if !tc.wantInline && disposition != "attachment" {
+				t.Fatalf("non-image served as %q — it must stay an attachment", disposition)
+			}
+			// nosniff holds either way: it is what stops the browser from
+			// second-guessing the type we just decided.
+			if got.Header.Get("X-Content-Type-Options") != "nosniff" {
+				t.Fatal("nosniff missing")
+			}
+		})
 	}
 }
 

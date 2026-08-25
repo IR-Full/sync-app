@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/call"
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/poll"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/call"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/poll"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // --- Calls & conferences (signaling only) ---

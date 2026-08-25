@@ -3,7 +3,7 @@ package message
 import (
 	"log/slog"
 
-	"github.com/synapse-chat/synapse/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
 )
 
 // Op is a message-mutation kind.

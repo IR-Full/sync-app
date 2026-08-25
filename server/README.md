@@ -1,4 +1,4 @@
-# Synapse — a Telegram-class messenger backend (Go)
+# SyncApp — a Telegram-class messenger backend (Go)
 
 A production-shaped MVP of a real-time messaging platform: a **custom binary
 protocol** over TCP, WebSocket, and **QUIC**, a **multi-node realtime gateway**,
@@ -26,11 +26,22 @@ into separate deployables later, but it runs today as one process.
   page instead of materializing it, and authorization above a size threshold is a
   primary-key probe rather than a cached copy of every member's role
 - Fanout delivery to multi-device recipients; offline → push job
-- Read receipts, typing indicators, presence/last-seen
+- Read receipts, typing indicators, presence/last-seen — presence is fanned out to
+  the peers of a user's **direct** chats (the audience where "last seen" is actually
+  read, and the one that does not multiply a flaky mobile link by group size)
+- **Delivery receipts** (`DELIVERED`): raised by the gateway that actually wrote the
+  frame to a recipient's socket, so it means the bytes left the server rather than
+  "a node was notified"
 - Message edit/delete (tombstone), paged history + **paged chat export** (owner/admin)
 - **Full-text search** (permission-filtered), **media** upload/download (signed URLs, AV scan)
 - **Push notifications** worker, **moderation** (banned-terms + spam-velocity), **audit log**, **RBAC** roles
 - **Group/channel creation over the protocol**, with member lists resolved from `@username`
+- **Chat list** (`CHAT_LIST` → `CHATS`), keyset-paged, each row carrying the caller's
+  role and — for a 1:1, which has no title — the peer id, so a fresh install can
+  reconstruct what it belongs to instead of waiting for traffic
+- **Profiles** (`PROFILE_GET` / `PROFILE_SET`): display name and avatar (a `media_ref`
+  through the ordinary media pipeline), mirrored to the account's other devices;
+  `PROFILE_GET` also resolves `@username`, which is the user lookup
 - **Push notifications** per device, with jittered retries and dead-token removal
 - **Retention**: the outbox, fired scheduled sends and the replay buffer are collected, and
   media blobs are deleted with their message (or swept when nothing references them)
@@ -144,9 +155,9 @@ go run ./cmd/client -ws ws://localhost:8080/ws -user carol -pass secret123
 ```bash
 docker compose up -d          # Postgres, Redis, NATS
 
-SYNAPSE_PG_DSN="postgres://synapse:synapse@localhost:5432/synapse?sslmode=disable" \
-SYNAPSE_REDIS_ADDR="localhost:6379" \
-SYNAPSE_NATS_URL="nats://localhost:4222" \
+SyncApp_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp?sslmode=disable" \
+SyncApp_REDIS_ADDR="localhost:6379" \
+SyncApp_NATS_URL="nats://localhost:4222" \
 go run ./cmd/server
 ```
 
@@ -173,17 +184,17 @@ topology, the shared-state requirement, and the gRPC-hop latency tradeoff.
 ### Observability stack (optional)
 
 ```bash
-SYNAPSE_OTLP_ENDPOINT=localhost:4318 go run ./cmd/server   # ship traces via OTLP
+SyncApp_OTLP_ENDPOINT=localhost:4318 go run ./cmd/server   # ship traces via OTLP
 docker compose -f deploy/observability/docker-compose.yml up -d  # Prometheus + Tempo + Grafana
 ```
 
 Grafana at http://localhost:3000 (Explore → Prometheus / Tempo). `/metrics` exposes
-histograms for send→ack latency and fanout lag; `SYNAPSE_PPROF=1` mounts `/debug/pprof/`.
+histograms for send→ack latency and fanout lag; `SyncApp_PPROF=1` mounts `/debug/pprof/`.
 
 ### QUIC transport (optional)
 
 ```bash
-SYNAPSE_TLS_SELFSIGNED=1 SYNAPSE_QUIC=1 go run ./cmd/server
+SyncApp_TLS_SELFSIGNED=1 SyncApp_QUIC=1 go run ./cmd/server
 go run ./cmd/client -quic -insecure -addr localhost:7000 -register -user dave -pass secret123
 ```
 
@@ -194,32 +205,32 @@ WiFi↔LTE) and no head-of-line blocking.
 
 | Variable                  | Default        | Meaning                                  |
 |---------------------------|----------------|------------------------------------------|
-| `SYNAPSE_TCP_ADDR`        | `:7000`        | raw-TCP binary-protocol listener         |
-| `SYNAPSE_WS_ADDR`         | `:8080`        | WebSocket (`/ws`) + `/healthz`           |
-| `SYNAPSE_PG_DSN`          | *(unset)*      | Postgres DSN — enables durable storage   |
-| `SYNAPSE_PG_REPLICA_DSN`  | *(unset)*      | read-replica DSN — offloads history/read-receipt queries |
-| `SYNAPSE_MESSAGE_SHARD_DSNS` | *(unset)*   | comma list of Postgres DSNs — shard the message write path by chat_id |
-| `SYNAPSE_REDIS_ADDR`      | *(unset)*      | Redis addr — enables Redis presence      |
-| `SYNAPSE_REDIS_PASSWORD`  | *(unset)*      | Redis password                           |
-| `SYNAPSE_NATS_URL`        | *(unset)*      | NATS URL — enables NATS event bus        |
-| `SYNAPSE_NODE_ID`         | *(hostname)*   | snowflake node id (0–1023); set explicitly per instance |
-| `SYNAPSE_TLS_CERT`/`_KEY` | *(unset)*      | enable TLS 1.3 with a cert/key pair      |
-| `SYNAPSE_TLS_SELFSIGNED`  | *(unset)*      | `1` = ephemeral self-signed TLS (dev)    |
-| `SYNAPSE_QUIC`            | *(unset)*      | `1` = also listen on QUIC (UDP; requires TLS) |
-| `SYNAPSE_REQUIRE_TLS`     | *(unset)*      | `1` = refuse to start without TLS (no silent plaintext) |
-| `SYNAPSE_MAX_CONNS_PER_IP`| *(unset)*      | cap concurrent connections per source IP (flood guard) |
-| `SYNAPSE_ACCEPT_RATE_PER_IP`| *(unset)*    | cap new connections/sec per source IP (storm guard) |
-| `SYNAPSE_ALLOWED_ORIGINS` | *(unset)*      | comma list of allowed WebSocket origins  |
-| `SYNAPSE_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs          |
-| `SYNAPSE_ADMIN_USERS`     | *(unset)*      | comma list of platform-admin user ids (RBAC) |
-| `SYNAPSE_MODERATOR_USERS` | *(unset)*      | comma list of moderator user ids (RBAC)  |
-| `SYNAPSE_TRACE`           | *(unset)*      | `stdout` prints OpenTelemetry spans      |
-| `SYNAPSE_OTLP_ENDPOINT`   | *(unset)*      | OTLP/HTTP collector (e.g. `localhost:4318`) |
-| `SYNAPSE_PPROF`           | *(unset)*      | `1` mounts `/debug/pprof/`               |
-| `SYNAPSE_WRITE_BATCH`     | `on`           | `off` disables group-commit batching     |
-| `SYNAPSE_AUTH_HASH_CONCURRENCY` | *(NumCPU)* | max concurrent argon2id hashes (auth-flood guard) |
-| `SYNAPSE_SEND_RATE`       | `20`           | per-connection msgs/sec flood limit (raise for load tests) |
-| `SYNAPSE_REGION`          | `local`        | region label (multi-region hook)         |
+| `SyncApp_TCP_ADDR`        | `:7000`        | raw-TCP binary-protocol listener         |
+| `SyncApp_WS_ADDR`         | `:8080`        | WebSocket (`/ws`) + `/healthz`           |
+| `SyncApp_PG_DSN`          | *(unset)*      | Postgres DSN — enables durable storage   |
+| `SyncApp_PG_REPLICA_DSN`  | *(unset)*      | read-replica DSN — offloads history/read-receipt queries |
+| `SyncApp_MESSAGE_SHARD_DSNS` | *(unset)*   | comma list of Postgres DSNs — shard the message write path by chat_id |
+| `SyncApp_REDIS_ADDR`      | *(unset)*      | Redis addr — enables Redis presence      |
+| `SyncApp_REDIS_PASSWORD`  | *(unset)*      | Redis password                           |
+| `SyncApp_NATS_URL`        | *(unset)*      | NATS URL — enables NATS event bus        |
+| `SyncApp_NODE_ID`         | *(hostname)*   | snowflake node id (0–1023); set explicitly per instance |
+| `SyncApp_TLS_CERT`/`_KEY` | *(unset)*      | enable TLS 1.3 with a cert/key pair      |
+| `SyncApp_TLS_SELFSIGNED`  | *(unset)*      | `1` = ephemeral self-signed TLS (dev)    |
+| `SyncApp_QUIC`            | *(unset)*      | `1` = also listen on QUIC (UDP; requires TLS) |
+| `SyncApp_REQUIRE_TLS`     | *(unset)*      | `1` = refuse to start without TLS (no silent plaintext) |
+| `SyncApp_MAX_CONNS_PER_IP`| *(unset)*      | cap concurrent connections per source IP (flood guard) |
+| `SyncApp_ACCEPT_RATE_PER_IP`| *(unset)*    | cap new connections/sec per source IP (storm guard) |
+| `SyncApp_ALLOWED_ORIGINS` | *(unset)*      | comma list of allowed WebSocket origins  |
+| `SyncApp_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs          |
+| `SyncApp_ADMIN_USERS`     | *(unset)*      | comma list of platform-admin user ids (RBAC) |
+| `SyncApp_MODERATOR_USERS` | *(unset)*      | comma list of moderator user ids (RBAC)  |
+| `SyncApp_TRACE`           | *(unset)*      | `stdout` prints OpenTelemetry spans      |
+| `SyncApp_OTLP_ENDPOINT`   | *(unset)*      | OTLP/HTTP collector (e.g. `localhost:4318`) |
+| `SyncApp_PPROF`           | *(unset)*      | `1` mounts `/debug/pprof/`               |
+| `SyncApp_WRITE_BATCH`     | `on`           | `off` disables group-commit batching     |
+| `SyncApp_AUTH_HASH_CONCURRENCY` | *(NumCPU)* | max concurrent argon2id hashes (auth-flood guard) |
+| `SyncApp_SEND_RATE`       | `20`           | per-connection msgs/sec flood limit (raise for load tests) |
+| `SyncApp_REGION`          | `local`        | region label (multi-region hook)         |
 
 Any subset can be set; unset backends fall back to in-memory.
 
@@ -244,30 +255,30 @@ and `internal/gateway/fleet_integration_test.go` drives a gateway whose services
 are **all** remote — so the microservice split cannot quietly drop a field the
 monolith delivers.
 Integration tests needing infra skip unless their env DSN is set
-(`SYNAPSE_TEST_PG_DSN`, `SYNAPSE_TEST_REDIS_ADDR`).
+(`SyncApp_TEST_PG_DSN`, `SyncApp_TEST_REDIS_ADDR`).
 
-**Sharded message store.** `SYNAPSE_TEST_SHARD_DSNS` (two or more comma-separated
+**Sharded message store.** `SyncApp_TEST_SHARD_DSNS` (two or more comma-separated
 DSNs) runs `internal/store/sharded` and `internal/platform` against real shards:
 co-location and gap-free per-chat sequence on each backend, one outbox per shard,
 and the capabilities that cross shards — the self-destruct reaper and the media
 reference check — reaching data the hash placed in a shard nobody named.
 
-Give every DSN a database of its own, including versus `SYNAPSE_TEST_PG_DSN`. The
+Give every DSN a database of its own, including versus `SyncApp_TEST_PG_DSN`. The
 outbox is a global table that both suites drain, so two of them pointed at one
 database delete each other's staged events:
 
 ```bash
-SYNAPSE_TEST_PG_DSN="postgres://synapse:synapse@localhost:5432/synapse_primary?sslmode=disable" SYNAPSE_TEST_SHARD_DSNS="postgres://synapse:synapse@localhost:5433/synapse?sslmode=disable,postgres://synapse:synapse@localhost:5434/synapse?sslmode=disable"   go test ./...
+SyncApp_TEST_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp_primary?sslmode=disable" SyncApp_TEST_SHARD_DSNS="postgres://SyncApp:SyncApp@localhost:5433/SyncApp?sslmode=disable,postgres://SyncApp:SyncApp@localhost:5434/SyncApp?sslmode=disable"   go test ./...
 ```
 
 ### Load test
 
 ```bash
-SYNAPSE_SEND_RATE=100000 go run ./cmd/server            # raise the flood cap
+SyncApp_SEND_RATE=100000 go run ./cmd/server            # raise the flood cap
 go run ./cmd/loadtest -addr localhost:7000 -conns 200 -msgs 50   # throughput mode
 
 # idle-scale mode: hold N connections open, report per-connection server cost
-SYNAPSE_PPROF=1 go run ./cmd/server
+SyncApp_PPROF=1 go run ./cmd/server
 go run ./cmd/loadtest -addr localhost:7000 -conns 5000 -idle 30s
 ```
 

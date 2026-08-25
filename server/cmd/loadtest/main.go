@@ -36,7 +36,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 func main() {
@@ -45,7 +45,7 @@ func main() {
 	msgs := flag.Int("msgs", 50, "messages per connection")
 	idle := flag.Duration("idle", 0, "idle-scale mode: hold connections open for this long and report per-conn server cost (e.g. 30s)")
 	metricsURL := flag.String("metrics", "http://localhost:8080/metrics", "server /metrics endpoint (idle mode)")
-	gcURL := flag.String("gc", "http://localhost:8080/debug/pprof/heap?gc=1", "pprof heap URL used to force a server GC before the loaded scrape (needs SYNAPSE_PPROF=1); empty to skip")
+	gcURL := flag.String("gc", "http://localhost:8080/debug/pprof/heap?gc=1", "pprof heap URL used to force a server GC before the loaded scrape (needs SyncApp_PPROF=1); empty to skip")
 	flag.Parse()
 
 	if *idle > 0 {

@@ -20,7 +20,7 @@ function readEnv(): AppEnv {
  * (wss:// under https://), which is what a browser requires on a secure page.
  */
 function resolveGatewayUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SYNAPSE_WS_URL
+  const configured = process.env.NEXT_PUBLIC_SYNCAPP_WS_URL
   if (configured) return configured
   if (typeof window !== 'undefined') {
     const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -47,7 +47,7 @@ function readIceServers(): RTCIceServer[] {
     const parsed: unknown = JSON.parse(raw)
     return Array.isArray(parsed) ? (parsed as RTCIceServer[]) : []
   } catch {
-    console.warn('[synapse] NEXT_PUBLIC_ICE_SERVERS is not valid JSON; falling back to none')
+    console.warn('[SyncApp] NEXT_PUBLIC_ICE_SERVERS is not valid JSON; falling back to none')
     return []
   }
 }
@@ -57,7 +57,7 @@ export const appEnv: AppEnv = readEnv()
 export const config = {
   env: appEnv,
   isProduction: appEnv === 'production',
-  /** WebSocket endpoint of the Synapse gateway (`/ws` in cmd/server/main.go). */
+  /** WebSocket endpoint of the SyncApp gateway (`/ws` in cmd/server/main.go). */
   get gatewayUrl(): string {
     return resolveGatewayUrl()
   },

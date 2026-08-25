@@ -5,15 +5,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/internal/audit"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/keydir"
+	"github.com/SyncApp-chat/SyncApp/internal/replay"
+	"github.com/SyncApp-chat/SyncApp/internal/router"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 	"github.com/gorilla/websocket"
-	"github.com/synapse-chat/synapse/internal/audit"
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/internal/keydir"
-	"github.com/synapse-chat/synapse/internal/replay"
-	"github.com/synapse-chat/synapse/internal/router"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
 )
 
 // Services bundles the domain dependencies the gateway routes to. Every domain

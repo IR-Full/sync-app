@@ -13,14 +13,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/internal/audit"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/router"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"github.com/gorilla/websocket"
-	"github.com/synapse-chat/synapse/internal/audit"
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/internal/router"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
-	"github.com/synapse-chat/synapse/pkg/wire"
 )
 
 // pickUserLimits falls back to a node-local shared limiter. Node-local is still

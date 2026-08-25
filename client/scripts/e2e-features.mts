@@ -10,9 +10,9 @@
  *   1. start the gateway:  go run ./cmd/server
  *   2. npm run test:features
  */
-import { SynapseClient } from '../src/shared/api/protocol/client.ts'
-import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
+import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
 import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
+import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
 
 const URL_ = process.argv[2] ?? 'ws://localhost:8080/ws'
 const stamp = Date.now()
@@ -30,7 +30,7 @@ function check(label: string, ok: boolean, detail?: unknown) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function main() {
-  const a = new SynapseClient({ url: URL_ })
+  const a = new SyncAppClient({ url: URL_ })
   a.setDeviceId('feat-alice')
   await a.connect({
     kind: 'password',
@@ -39,7 +39,7 @@ async function main() {
     register: true,
   })
 
-  const b = new SynapseClient({ url: URL_ })
+  const b = new SyncAppClient({ url: URL_ })
   b.setDeviceId('feat-bob')
   const bobSession = await b.connect({
     kind: 'password',

@@ -1,6 +1,6 @@
 package notify
 
-import "github.com/synapse-chat/synapse/internal/store"
+import "github.com/SyncApp-chat/SyncApp/internal/store"
 
 // StoreDevices adapts the user store to the push path's device lookup. It lives
 // here rather than in the store so the notification service depends on the two

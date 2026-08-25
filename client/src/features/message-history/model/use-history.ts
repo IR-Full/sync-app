@@ -4,7 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 
 import { fromWire, type ChatMessage } from '@/entities/message'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, queryKeys, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, queryKeys, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 import { config } from '@/shared/config/env'
 
 import type { HistoryPage } from '@/entities/message'
@@ -19,7 +19,7 @@ import type { HistoryPage } from '@/entities/message'
  * written into this same cache by the realtime bridge.
  */
 export function useChatHistory(chatId: string, fetchEnabled = true) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 

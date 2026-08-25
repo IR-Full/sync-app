@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/breaker"
+	"github.com/SyncApp-chat/SyncApp/pkg/breaker"
 )
 
 // NewResilient wraps primary with a breaker + local fallback.

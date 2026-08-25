@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 // TestAuthCacheIsBounded pins the two ways the authorization cache is kept from

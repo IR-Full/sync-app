@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- app_name comes from the product flavor (Synapse / Synapse Dev / Synapse Staging). -->
-    <string name="app_title">Synapse</string>
-    <string name="auth_subtitle">Sign in to the Synapse gateway</string>
+    <!-- app_name comes from the product flavor (SyncApp / SyncApp Dev / SyncApp Staging). -->
+    <string name="app_title">SyncApp</string>
+    <string name="auth_subtitle">Sign in to the SyncApp gateway</string>
 
     <!-- Auth -->
     <string name="auth_login">Sign in</string>

@@ -1,4 +1,4 @@
-# One image containing every Synapse daemon; each compose service runs a different
+# One image containing every SyncApp daemon; each compose service runs a different
 # binary. Multi-stage: build static binaries, ship them on distroless.
 FROM golang:1.26 AS build
 WORKDIR /src

@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"github.com/quic-go/quic-go"
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/pkg/wire"
 )
 
 // ServeQUIC accepts clients over QUIC/HTTP-3-style transport. QUIC is a better

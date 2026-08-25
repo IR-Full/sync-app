@@ -11,7 +11,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 )
 
 // NewMemory returns an in-process replay buffer.

@@ -11,8 +11,15 @@ export interface StoredSession {
   sessionId: string
   token: string
   resumeToken: string
-  /** local-only display name; the protocol has no profile-update message */
+  /**
+   * The profile as the SERVER knows it. It arrives in AUTH_OK, is written by
+   * PROFILE_SET, and is refreshed by the PROFILE frame the gateway mirrors from
+   * this account's other devices — so what is cached here is a copy of server
+   * state, not a browser-local setting.
+   */
   displayName?: string
+  /** media_ref of the avatar; empty when the user has none. */
+  avatarRef?: string
 }
 
 export type AuthStatus = 'unknown' | 'anonymous' | 'authenticated'

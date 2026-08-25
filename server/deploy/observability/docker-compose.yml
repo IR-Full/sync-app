@@ -1,6 +1,6 @@
-# Observability stack for Synapse: Prometheus (metrics), Tempo (traces via OTLP),
+# Observability stack for SyncApp: Prometheus (metrics), Tempo (traces via OTLP),
 # Grafana (dashboards). Run the server with:
-#   SYNAPSE_OTLP_ENDPOINT=localhost:4318 SYNAPSE_WS_ADDR=:8080 go run ./cmd/server
+#   SYNCAPP_OTLP_ENDPOINT=localhost:4318 SyncApp_WS_ADDR=:8080 go run ./cmd/server
 # then `docker compose -f deploy/observability/docker-compose.yml up -d` and open
 # Grafana at http://localhost:3000 (Explore → Prometheus / Tempo).
 services:
@@ -17,7 +17,7 @@ services:
     command: ["-config.file=/etc/tempo.yaml"]
     ports:
       - "3200:3200" # tempo query
-      - "4318:4318" # OTLP/HTTP ingest (SYNAPSE_OTLP_ENDPOINT)
+      - "4318:4318" # OTLP/HTTP ingest (SYNCAPP_OTLP_ENDPOINT)
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml:ro
 

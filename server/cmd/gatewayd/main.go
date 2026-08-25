@@ -25,17 +25,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 
-	"github.com/synapse-chat/synapse/internal/audit"
-	"github.com/synapse-chat/synapse/internal/call"
-	"github.com/synapse-chat/synapse/internal/contact"
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/internal/gateway"
-	"github.com/synapse-chat/synapse/internal/media"
-	"github.com/synapse-chat/synapse/internal/platform"
-	"github.com/synapse-chat/synapse/internal/poll"
-	"github.com/synapse-chat/synapse/internal/reaction"
-	"github.com/synapse-chat/synapse/internal/rpc"
-	"github.com/synapse-chat/synapse/internal/search"
+	"github.com/SyncApp-chat/SyncApp/internal/audit"
+	"github.com/SyncApp-chat/SyncApp/internal/call"
+	"github.com/SyncApp-chat/SyncApp/internal/contact"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/gateway"
+	"github.com/SyncApp-chat/SyncApp/internal/media"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/poll"
+	"github.com/SyncApp-chat/SyncApp/internal/reaction"
+	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/search"
 )
 
 func main() {
@@ -68,11 +68,11 @@ func run(log *slog.Logger) error {
 	}
 	conns := map[string]*grpc.ClientConn{}
 	for _, d := range []struct{ env, def, name string }{
-		{"SYNAPSE_AUTHD_ADDR", "localhost:9001", "authd"},
-		{"SYNAPSE_CHATD_ADDR", "localhost:9002", "chatd"},
-		{"SYNAPSE_MESSAGED_ADDR", "localhost:9003", "messaged"},
-		{"SYNAPSE_PRESENCED_ADDR", "localhost:9004", "presenced"},
-		{"SYNAPSE_KEYDIRD_ADDR", "localhost:9005", "keydird"},
+		{"SyncApp_AUTHD_ADDR", "localhost:9001", "authd"},
+		{"SyncApp_CHATD_ADDR", "localhost:9002", "chatd"},
+		{"SyncApp_MESSAGED_ADDR", "localhost:9003", "messaged"},
+		{"SyncApp_PRESENCED_ADDR", "localhost:9004", "presenced"},
+		{"SyncApp_KEYDIRD_ADDR", "localhost:9005", "keydird"},
 	} {
 		conn, err := dial(d.env, d.def, d.name)
 		if err != nil {
@@ -87,20 +87,20 @@ func run(log *slog.Logger) error {
 
 	// Local edge pieces: connection hub, media signing, search query, audit.
 	hub := delivery.NewHub()
-	wsAddr := platform.Env("SYNAPSE_WS_ADDR", ":8080")
-	tcpAddr := platform.Env("SYNAPSE_TCP_ADDR", ":7000")
+	wsAddr := platform.Env("SyncApp_WS_ADDR", ":8080")
+	tcpAddr := platform.Env("SyncApp_TCP_ADDR", ":7000")
 
-	mediaDir := platform.Env("SYNAPSE_MEDIA_DIR", "./data/media")
+	mediaDir := platform.Env("SyncApp_MEDIA_DIR", "./data/media")
 	fsStore, err := media.NewFSStore(mediaDir)
 	if err != nil {
 		return err
 	}
-	publicBase := platform.Env("SYNAPSE_PUBLIC_URL", "http://localhost"+wsAddr)
+	publicBase := platform.Env("SyncApp_PUBLIC_URL", "http://localhost"+wsAddr)
 	mediaSvc := media.New(fsStore, b.IDs, platform.MediaSecret(), publicBase)
 
 	// Search QUERY path reads the shared index; indexing runs in searchd.
 	var searchBackend search.Backend
-	if dsn := os.Getenv("SYNAPSE_PG_DSN"); dsn != "" {
+	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
 		searchBackend, err = search.NewPostgresBackend(ctx, dsn)
 		if err != nil {
 			return err
@@ -125,15 +125,18 @@ func run(log *slog.Logger) error {
 		Calls:    call.New(b.Stores.Calls, chatClient, b.Bus, b.IDs),
 		Polls:    poll.New(b.Stores.Polls, chatClient, b.Bus, b.IDs),
 		Contacts: contact.New(b.Stores.Contacts, b.Stores.Users),
-		Users:    b.Stores.Users, // @username → user (read; a user-directory RPC is a follow-up)
-		Hub:      hub,
-		KeyDir:   rpc.NewKeyDirClient(conns["keydird"], log),
-		Media:    mediaSvc,
-		Search:   searchSvc,
-		Audit:    audit.NewLogSink(log),
-		Bus:      b.Bus,
-		Router:   b.Router,
-		Replay:   b.Replay,
+		// @username → user, plus the profile read/write behind PROFILE_GET/SET.
+		// A user-directory RPC on authd is the follow-up that would take the edge
+		// out of the account table.
+		Users:  b.Stores.Users,
+		Hub:    hub,
+		KeyDir: rpc.NewKeyDirClient(conns["keydird"], log),
+		Media:  mediaSvc,
+		Search: searchSvc,
+		Audit:  audit.NewLogSink(log),
+		Bus:    b.Bus,
+		Router: b.Router,
+		Replay: b.Replay,
 	}, gwCfg, log)
 	if err := gw.StartDelivery(); err != nil {
 		return err
@@ -143,8 +146,8 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	if os.Getenv("SYNAPSE_REQUIRE_TLS") == "1" && tlsConf == nil {
-		return errors.New("SYNAPSE_REQUIRE_TLS=1 but TLS is not configured")
+	if os.Getenv("SyncApp_REQUIRE_TLS") == "1" && tlsConf == nil {
+		return errors.New("SyncApp_REQUIRE_TLS=1 but TLS is not configured")
 	}
 
 	ln, err := net.Listen("tcp", tcpAddr)
@@ -160,7 +163,7 @@ func run(log *slog.Logger) error {
 			log.Error("tcp serve", "err", err)
 		}
 	}()
-	if tlsConf != nil && os.Getenv("SYNAPSE_QUIC") == "1" {
+	if tlsConf != nil && os.Getenv("SyncApp_QUIC") == "1" {
 		go func() {
 			if err := gw.ServeQUIC(ctx, tcpAddr, tlsConf); err != nil {
 				log.Error("quic serve", "err", err)
@@ -173,7 +176,7 @@ func run(log *slog.Logger) error {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
 	mux.Handle("/metrics", promhttp.Handler())
 	mediaSvc.RegisterHTTP(mux)
-	if os.Getenv("SYNAPSE_PPROF") == "1" {
+	if os.Getenv("SyncApp_PPROF") == "1" {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	}
@@ -205,28 +208,28 @@ func run(log *slog.Logger) error {
 func buildGatewayConfig(nodeID int64, log *slog.Logger) gateway.Config {
 	cfg := gateway.DefaultConfig()
 	cfg.NodeID = strconv.FormatInt(nodeID, 10)
-	if v := os.Getenv("SYNAPSE_SEND_RATE"); v != "" {
+	if v := os.Getenv("SyncApp_SEND_RATE"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			cfg.SendRate, cfg.SendBurst = f, f*2
 		}
 	}
-	if origins := os.Getenv("SYNAPSE_ALLOWED_ORIGINS"); origins != "" {
+	if origins := os.Getenv("SyncApp_ALLOWED_ORIGINS"); origins != "" {
 		cfg.AllowedOrigins = strings.Split(origins, ",")
 	}
-	if v := os.Getenv("SYNAPSE_MAX_CONNS_PER_IP"); v != "" {
+	if v := os.Getenv("SyncApp_MAX_CONNS_PER_IP"); v != "" {
 		if n, e := strconv.Atoi(v); e == nil {
 			cfg.MaxConnsPerIP = n
 		}
 	}
-	if v := os.Getenv("SYNAPSE_ACCEPT_RATE_PER_IP"); v != "" {
+	if v := os.Getenv("SyncApp_ACCEPT_RATE_PER_IP"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			cfg.AcceptRatePerIP = f
 		}
 	}
-	if admins := os.Getenv("SYNAPSE_ADMIN_USERS"); admins != "" {
+	if admins := os.Getenv("SyncApp_ADMIN_USERS"); admins != "" {
 		cfg.AdminUsers = strings.Split(admins, ",")
 	}
-	if mods := os.Getenv("SYNAPSE_MODERATOR_USERS"); mods != "" {
+	if mods := os.Getenv("SyncApp_MODERATOR_USERS"); mods != "" {
 		cfg.ModeratorUsers = strings.Split(mods, ",")
 	}
 	return cfg

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // Backend stores ephemeral presence. Implementations: memoryBackend, redisBackend.

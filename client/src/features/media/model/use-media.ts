@@ -4,12 +4,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 
 import type { MessageAttachment } from '@/entities/message'
-import { MsgType, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 /**
  * Rewrites a gateway-issued absolute URL onto this app's origin.
  *
- * The server builds upload/download URLs from SYNAPSE_PUBLIC_URL, so they point
+ * The server builds upload/download URLs from SYNCAPP_PUBLIC_URL, so they point
  * straight at the gateway (e.g. http://localhost:8080/media/...). Since the
  * gateway sends no CORS headers, the browser must talk to its own origin
  * instead; `next.config.ts` proxies /media/* through to the gateway. Keeping
@@ -67,7 +67,7 @@ async function imageDimensions(file: File): Promise<{ width: number; height: num
  * body that is even one byte off, so the file must be sent exactly as measured.
  */
 export function useMediaUpload() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const [progress, setProgress] = useState<number | null>(null)
 
   const upload = useCallback(
@@ -127,7 +127,7 @@ export function useMediaUpload() {
  * expires rather than after it has already 403'd.
  */
 export function useMediaUrl(mediaRef: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
 
   return useQuery({

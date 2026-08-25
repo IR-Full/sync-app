@@ -72,7 +72,7 @@ func releaseSlot(rdb *redis.Client, key, owner string) error {
 	return rdb.Eval(context.Background(), lua, []string{key}, owner).Err()
 }
 
-func slotKey(n int) string { return fmt.Sprintf("synapse:nodeid:%d", n) }
+func slotKey(n int) string { return fmt.Sprintf("SyncApp:nodeid:%d", n) }
 
 func hostname() string {
 	h, err := os.Hostname()

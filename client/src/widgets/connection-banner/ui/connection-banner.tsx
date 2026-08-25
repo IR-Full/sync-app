@@ -1,9 +1,9 @@
 'use client'
 
-import { useSynapse } from '@/shared/api'
+import { selectPendingCount, useOutboxStore } from '@/features/send-message'
+import { useSyncApp } from '@/shared/api'
 import { useTranslate } from '@/shared/i18n'
 import { cn } from '@/shared/lib/cn'
-import { selectPendingCount, useOutboxStore } from '@/features/send-message'
 
 /**
  * Surfaces connection trouble, and only connection trouble.
@@ -15,7 +15,7 @@ import { selectPendingCount, useOutboxStore } from '@/features/send-message'
  */
 export function ConnectionBanner() {
   const t = useTranslate()
-  const { state, online } = useSynapse()
+  const { state, online } = useSyncApp()
   const queued = useOutboxStore(selectPendingCount)
 
   const problem = !online

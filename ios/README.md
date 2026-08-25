@@ -1,6 +1,6 @@
-# Synapse iOS
+# SyncApp iOS
 
-A native SwiftUI client for the Synapse gateway — the Go server in [`../server`](../server).
+A native SwiftUI client for the SyncApp gateway — the Go server in [`../server`](../server).
 
 The server is **not REST**. It speaks a custom binary protocol over one long-lived
 connection, and this client implements that protocol from scratch: framing,
@@ -26,7 +26,7 @@ Russian version: [README.ru.md](README.ru.md).
 The magic is a sync word so the gateway can reject port scans cheaply; `LENGTH`
 is capped at 16 MiB so a hostile prefix cannot make either side reserve
 gigabytes. Both checks are mirrored client-side — a client parsing a hostile
-*server* is the same problem in a mirror. → [`Sources/Network/Wire/Frame.swift`](Sources/Network/Wire/Frame.swift)
+*server* is the same problem in a mirror. → [`SyncAppKit/Sources/Network/Wire/Frame.swift`](SyncAppKit/Sources/Network/Wire/Frame.swift)
 
 Flags carry gzip (bit 0) and zstd (bit 1). **We advertise neither**, and that is
 a decision, not an omission: the gateway only compresses when the negotiated
@@ -51,14 +51,14 @@ Type, Seq, Ack, RequestID, len(Body), Body
 - `RequestID` — correlation, independent of ordering, so many requests can be in
   flight at once. `0` means "unsolicited push".
 
-→ [`Sources/Network/Wire/Envelope.swift`](Sources/Network/Wire/Envelope.swift)
+→ [`SyncAppKit/Sources/Network/Wire/Envelope.swift`](SyncAppKit/Sources/Network/Wire/Envelope.swift)
 
 ### 3. Bodies — protobuf, not JSON
 
 `server/pkg/wire/protocodec.go` installs the protobuf codec in the package
 `init()`, unconditionally. There is no JSON fallback and nothing to negotiate;
 the `wire.*Body` structs with their JSON tags are the *Go-side* API, and the
-bytes on the wire are protobuf per `server/proto/synapse/v1/body.proto`.
+bytes on the wire are protobuf per `server/proto/SyncApp/v1/body.proto`.
 
 The codec is hand-written — a proto3 reader/writer plus one conformance per body
 — rather than generated with SwiftProtobuf. The bodies are ~40 flat messages of
@@ -69,7 +69,7 @@ that nobody can run from the repo as checked out).
 The rule that matters is implemented in `ProtoReader`: **unknown fields are
 skipped by wire type, never rejected.** A server that adds a field tomorrow must
 not break a client shipped today.
-→ [`Sources/Network/Proto/`](Sources/Network/Proto/)
+→ [`SyncAppKit/Sources/Network/Proto/`](SyncAppKit/Sources/Network/Proto)
 
 ### 4. Connection lifecycle — `server/internal/gateway/conn.go`
 
@@ -99,7 +99,7 @@ during the handshake, not opportunistically later.
   to a full `AUTH` with the bearer token we still hold. A 2xxx auth error does
   not: retrying cannot help, so the app goes to the login screen.
 
-→ [`Sources/Network/Client/SynapseClient.swift`](Sources/Network/Client/SynapseClient.swift)
+→ [`SyncAppKit/Sources/Network/Client/SyncAppClient.swift`](SyncAppKit/Sources/Network/Client/SyncAppClient.swift)
 
 ### 5. Streamed pages
 
@@ -136,53 +136,77 @@ Both are implemented; the choice is a config value, not a code change.
 | **WebSocket** (`URLSession`, `/ws`) — default | Traverses proxies and captive portals that drop unknown TCP ports; system TLS, cellular fallback |
 | **TCP** (`Network.framework`, `:7000`) | No HTTP upgrade or WS masking; `NWConnection` reports Wi-Fi↔LTE changes directly |
 
-QUIC (ALPN `synapse-quic`) is not implemented: `Network.framework` exposes QUIC
+QUIC (ALPN `SyncApp-quic`) is not implemented: `Network.framework` exposes QUIC
 streams on iOS 15+, but the gateway requires TLS for it, and the connection
 migration it buys matters most on a network we do not yet run. The `Transport`
 protocol is where it would go — one file, no other changes.
 
 ---
 
-## Two things the protocol does not have
+## Profiles, the chat list, and what is still local
 
-These are stated up front because the app is built *around* them rather than
-pretending otherwise.
+`MsgType` in this client now runs to `delivered = 128`, so everything the
+gateway speaks is at least decoded. What differs is how far each one has been
+carried into the app.
 
-### There is no "list my chats" message
+### Profiles are server-owned
 
-`store.ListUserChats` exists server-side (`internal/store/store.go:71`) but was
-never given a wire type. So the chat list is **assembled locally** from
-everything that mentions a chat — inbound `NEW`, `SEND_ACK`, `CHAT_INFO` from a
-create, `INVITES.joined_chat` from a join, and handles we resolved — and
-persisted in SQLite.
+`PROFILE_GET` (125) / `PROFILE_SET` (126) → `PROFILE` (127) are wired end to
+end. The name and picture are written server-side, `AUTH_OK` returns them on
+every connect — which is the only way a token login learns who it is — and a
+change made on another device arrives as an unsolicited `PROFILE` that
+`SyncEngine` folds into the stored account, so an open Settings screen updates
+itself.
 
-Consequence: **a fresh install on a new device starts with an empty list** and
-fills in as traffic arrives. Two honest ways to close that gap, in order of
-preference:
+Two rules are easy to get wrong and are pinned by tests:
 
-1. Add `MsgChatList`/`MsgChats` to the gateway (~40 lines: `ListUserChats` plus
-   `Chat.Get` per id). The client change is one method.
-2. Have the gateway push a `CHAT_INFO` per chat right after `AUTH_OK`.
+- **An empty field means "leave as is"** (proto3 cannot tell absent from
+  empty), so removing a picture is the explicit `clear_avatar` flag rather than
+  an empty ref.
+- **The name field follows the server until it is edited.** A captured initial
+  value would sit stale through a mirrored change.
 
-### There is no profile API
+An avatar is an ordinary `media_ref`: picked with `PhotosPicker`, uploaded
+through the media pipeline, and only then published — a ref whose upload failed
+must never reach a profile. `Avatar` falls back to its coloured monogram
+whenever there is no picture, which is still the common case.
 
-`display_name` can only be supplied at registration — and `handlers.go:43` passes
-an empty string — with no message type to update it afterwards, and no avatar
-anywhere in the protocol. So the display name and avatar symbol in Settings are
-**device-local**, and the screen says so in as many words rather than implying
-they are visible to anyone else. Avatars are coloured monograms derived from the
-user id.
+### User lookup: `PROFILE_GET`, but `resolveDirectChat` has not moved
 
-Related: `AUTH_OK` returns ids and tokens but no username, and nothing can ask
-for one later — so the app remembers the username the person typed at login.
+`PROFILE_GET` takes a user id **or** `@username`, which makes it the intended
+lookup: `NOT_FOUND` means no such user, `FORBIDDEN` a block in either direction.
 
-### Also worth knowing
+`SyncAppClient.resolveDirectChat` still resolves a handle through `PIN_LIST`,
+which is read-only and exempt from the flood budget, whereas `PROFILE_GET` is
+deliberately metered (an unmetered handle lookup is a username-enumeration
+primitive). The old *second* reason for preferring it is gone, though:
+`HISTORY_OK` and `THREAD_OK` now return the **resolved** chat id instead of
+echoing back the string we sent.
 
-**User search is exact-handle only.** There is no directory and no prefix query.
-The resolve rides `PIN_LIST`: it is read-only, exempt from the flood budget, and
-its reply carries the *resolved* snowflake — whereas `HISTORY_OK` echoes back
-whatever string we sent. `NOT_FOUND` means no such user; `FORBIDDEN` means a
-block in either direction. (`SynapseClient.resolveDirectChat`.)
+There is still no directory and no prefix query — an exact handle remains the
+only way to find someone.
+
+### The chat list is fetched, but not yet the source of truth
+
+`chatList(after:limit:)` and `allChats()` are implemented and tested against the
+fake gateway, so the enumeration a fresh install needs is available: each row
+carries type, title, public handle, `last_seq`, this account's role, and — for a
+1:1, which has no title — the peer id.
+
+The cache is still populated the old way, from everything that mentions a chat
+(inbound `NEW`, `SEND_ACK`, `CHAT_INFO` from a create, `INVITES.joined_chat`
+from a join, resolved handles). So **a fresh install still starts with an empty
+list** until the sync engine calls `allChats()` on connect and upserts the
+result. That is the one step left, and it is a call plus an upsert — the local
+assembly stays either way, since it is what keeps the list current between
+reconnects.
+
+### `DELIVERED` is decoded, not shown
+
+`DELIVERED` (128) is raised by the gateway that actually wrote a message to a
+recipient's socket — the step between "stored" and "read". It is decoded and
+surfaced as a client event; there is no delivered tick in the UI yet, so the app
+still shows sent and read only.
 
 ---
 
@@ -190,7 +214,7 @@ block in either direction. (`SynapseClient.resolveDirectChat`.)
 
 ```
 ios/
-├── SynapseKit/            the SPM package — all the code lives here
+├── SyncAppKit/            the SPM package — all the code lives here
 │   ├── Package.swift
 │   ├── Sources/
 │   │   ├── Network/       frames, envelope, proto3 codec, transports, client
@@ -198,7 +222,7 @@ ios/
 │   │   ├── Persistence/   SQLite cache, sync engine, repository implementations
 │   │   ├── Presentation/  ViewModels + SwiftUI screens               (Domain only)
 │   │   └── DI/            composition root
-│   └── Tests/             NetworkTests, DomainTests, PersistenceTests
+│   └── Tests/             Network, Domain, Persistence, Presentation
 ├── App/                   the app shell (@main, AppDelegate, Info.plist)
 ├── Config/                Dev / Stage / Prod .xcconfig
 ├── Resources/
@@ -218,7 +242,7 @@ the **compiler**, not by convention: `Presentation` cannot reach the wire
 protocol, and `Domain` depends on nothing at all. `ErrorMapping` is the single
 file that knows both vocabularies — it converts `ProtocolError` into `AppError`
 at the repository boundary, which is why no view model needs
-`import SynapseNetwork` just to read a status code.
+`import SyncAppNetwork` just to read a status code.
 
 ### Offline-first
 
@@ -265,12 +289,12 @@ So: the SQLite that ships with iOS, one `actor` for serialised access (SQLite's
 own threading modes are a way to get subtle corruption for free), WAL mode, and
 forward-only migrations keyed on `PRAGMA user_version` — the schema version
 travels inside the file it describes.
-→ [`Sources/Persistence/Database/`](Sources/Persistence/Database/)
+→ [`SyncAppKit/Sources/Persistence/Database/`](SyncAppKit/Sources/Persistence/Database)
 
 ### Concurrency
 
 `async`/`await` throughout; `actor` for the three things with shared mutable
-state (`SynapseClient`, `Database`, `SyncEngine`); `AsyncStream` for every
+state (`SyncAppClient`, `Database`, `SyncEngine`); `AsyncStream` for every
 observation. View models are `@MainActor ObservableObject` — `@Observable` needs
 iOS 17 and the deployment target is 16.
 
@@ -318,12 +342,12 @@ cd ios && xcodegen generate
 ```
 
 ```bash
-open Synapse.xcodeproj
+open SyncApp.xcodeproj
 ```
 
-Pick the **Synapse Dev** scheme and run. If you would rather not install
+Pick the **SyncApp Dev** scheme and run. If you would rather not install
 XcodeGen: create an iOS App target in a new project, drag `ios/` in as a local
-package, add `SynapseDI` + `SynapsePresentation` to the target, and point the
+package, add `SyncAppDI` + `SyncAppPresentation` to the target, and point the
 three build configurations at the `.xcconfig` files.
 
 ### 3. Try it
@@ -341,16 +365,16 @@ time; replying from the app arrives in Bob's terminal.
 
 | Scheme | Config | Gateway |
 |---|---|---|
-| Synapse Dev | `Config/Dev.xcconfig` | `ws://localhost:8080/ws` |
-| Synapse Stage | `Config/Stage.xcconfig` | `wss://stage.synapse.example/ws` |
-| Synapse Prod | `Config/Prod.xcconfig` | `wss://synapse.example/ws` |
+| SyncApp Dev | `Config/Dev.xcconfig` | `ws://localhost:8080/ws` |
+| SyncApp Stage | `Config/Stage.xcconfig` | `wss://stage.SyncApp.example/ws` |
+| SyncApp Prod | `Config/Prod.xcconfig` | `wss://SyncApp.example/ws` |
 
 Every value reaches the app through `Info.plist` substitution and is read once by
 `ServerEnvironment.current` — no URL is hardcoded at a call site. Switching to
-the raw TCP transport is `SYNAPSE_TRANSPORT = tcp` in an `.xcconfig`.
+the raw TCP transport is `SyncApp_TRANSPORT = tcp` in an `.xcconfig`.
 
 `ServerEnvironment.current` additionally refuses to honour
-`SYNAPSE_ALLOWS_INSECURE_TLS` when the environment is `prod`, so a mistake in a
+`SyncApp_ALLOWS_INSECURE_TLS` when the environment is `prod`, so a mistake in a
 config file cannot silently disable certificate validation in a shipped build.
 
 ### Tests
@@ -359,12 +383,12 @@ config file cannot silently disable certificate validation in a shipped build.
 package rather than to the app project:
 
 ```bash
-cd ios/SynapseKit && xcodebuild test -scheme Synapse-Package -destination 'platform=iOS Simulator,name=iPhone 15'
+cd ios/SyncAppKit && xcodebuild test -scheme SyncApp-Package -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
 Not `swift test`: the package declares iOS as its only platform, so the tests
 have to be driven through a Simulator destination rather than the macOS host.
-`Synapse-Package` is the scheme Xcode generates for a `Package.swift`.
+`SyncApp-Package` is the scheme Xcode generates for a `Package.swift`.
 
 **No Mac?** `.github/workflows/ios.yml` runs the whole thing — tests, app build,
 and a screenshot of it launching in the Simulator — on a hosted macOS runner.
@@ -388,7 +412,7 @@ separate repos) and it runs on every push. Four suites:
   database must reach v2 *carrying its queued messages*, not be recreated.
 - **PresentationTests** — theme mapping, the missing-key fallback, chat-list
   timestamps, and `TaskBag` cancelling on release. Half its value is the
-  dependency edge: it pulls in `SynapseDI`, and therefore every other target, so
+  dependency edge: it pulls in `SyncAppDI`, and therefore every other target, so
   CI compiles the SwiftUI layer. Without it nothing did until the app target,
   where a failure appears as `no such module` against the app's first import and
   names nothing that is actually broken.
@@ -404,13 +428,13 @@ an **empty** token, which clears it server-side and stops the push at the source
 rather than at the device.
 
 The server side needs one thing you have to provide: `notify.ProviderFor` sends
-to a generic HTTP endpoint (`SYNAPSE_PUSH_ENDPOINT`), not to APNs directly, and
+to a generic HTTP endpoint (`SyncApp_PUSH_ENDPOINT`), not to APNs directly, and
 defaults to a logger when unset. So pushes only arrive once that endpoint points
 at an APNs bridge:
 
 ```bash
-SYNAPSE_PUSH_ENDPOINT=https://your-apns-bridge/notify \
-SYNAPSE_PUSH_KEY=... \
+SyncApp_PUSH_ENDPOINT=https://your-apns-bridge/notify \
+SyncApp_PUSH_KEY=... \
 go run ./cmd/server
 ```
 

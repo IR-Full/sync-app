@@ -1,6 +1,6 @@
 import SwiftUI
-import SynapseDI
-import SynapsePresentation
+import SyncAppDI
+import SyncAppPresentation
 import UIKit
 import UserNotifications
 
@@ -8,7 +8,7 @@ import UserNotifications
 /// and forwards the two things only an app delegate can receive — the APNs token
 /// and a notification tap.
 @main
-struct SynapseApp: App {
+struct SyncAppApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var container: AppContainer
 

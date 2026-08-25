@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 )
 
 // Blobs outlive nothing on their own: an upload is stored before the message

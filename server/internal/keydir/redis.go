@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"github.com/redis/go-redis/v9"
-	"github.com/synapse-chat/synapse/pkg/wire"
 )
 
 // NewRedis returns a Redis-backed directory.

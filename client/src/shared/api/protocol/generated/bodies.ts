@@ -1,5 +1,5 @@
 // GENERATED FILE — do not edit by hand.
-// Source: server/proto/synapse/v1/body.proto (regenerate: npm run proto:gen)
+// Source: server/proto/SyncApp/v1/body.proto (regenerate: npm run proto:gen)
 //
 // Every field is required here because the codec decodes with `defaults: true`,
 // so proto3 scalars are always materialised. Use `Encodable<T>` when building a
@@ -35,6 +35,7 @@ export interface Auth {
   username: string
   password: string
   register: boolean
+  displayName: string
 }
 
 export interface AuthOK {
@@ -43,6 +44,9 @@ export interface AuthOK {
   sessionId: string
   token: string
   resumeToken: string
+  username: string
+  displayName: string
+  avatarRef: string
 }
 
 export interface Send {
@@ -529,4 +533,43 @@ export interface ChatInfo {
 
 export interface PushToken {
   token: string
+}
+
+export interface ChatList {
+  after: string
+  limit: number
+}
+
+export interface ChatSummary {
+  chatId: string
+  type: string
+  title: string
+  ownerId: string
+  username: string
+  lastSeq: number
+  myRole: string
+  peerId: string
+}
+
+export interface Chats {
+  chats: ChatSummary[]
+  nextAfter: string
+  done: boolean
+}
+
+export interface ProfileGet {
+  target: string
+}
+
+export interface ProfileSet {
+  displayName: string
+  avatarRef: string
+  clearAvatar: boolean
+}
+
+export interface Profile {
+  userId: string
+  username: string
+  displayName: string
+  avatarRef: string
 }

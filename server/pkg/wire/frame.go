@@ -1,4 +1,4 @@
-// Package wire implements the Synapse custom binary application protocol
+// Package wire implements the SyncApp custom binary application protocol
 // spoken between clients and the realtime gateway over raw TCP and over
 // WebSocket (each WS binary message carries exactly one frame).
 //

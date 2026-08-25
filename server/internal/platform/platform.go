@@ -1,4 +1,4 @@
-// Package platform is the shared bootstrap for every Synapse process — the
+// Package platform is the shared bootstrap for every SyncApp process — the
 // gateway edge, each domain-service daemon, and the async workers. It builds the
 // common backends from the environment (the same selection cmd/server uses) and
 // provides gRPC serve/dial helpers with optional mTLS, so a service binary is
@@ -22,18 +22,18 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/synapse-chat/synapse/internal/nodeid"
-	"github.com/synapse-chat/synapse/internal/presence"
-	"github.com/synapse-chat/synapse/internal/replay"
-	"github.com/synapse-chat/synapse/internal/router"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/internal/store/memory"
-	"github.com/synapse-chat/synapse/internal/store/postgres"
-	"github.com/synapse-chat/synapse/internal/store/sharded"
-	"github.com/synapse-chat/synapse/internal/tracing"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/id"
-	"github.com/synapse-chat/synapse/pkg/mtls"
+	"github.com/SyncApp-chat/SyncApp/internal/nodeid"
+	"github.com/SyncApp-chat/SyncApp/internal/presence"
+	"github.com/SyncApp-chat/SyncApp/internal/replay"
+	"github.com/SyncApp-chat/SyncApp/internal/router"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/internal/store/postgres"
+	"github.com/SyncApp-chat/SyncApp/internal/store/sharded"
+	"github.com/SyncApp-chat/SyncApp/internal/tracing"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/pkg/mtls"
 )
 
 // Env reads an env var with a default.
@@ -68,11 +68,11 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.Region = Env("SYNAPSE_REGION", "local")
+	b.Region = Env("SyncApp_REGION", "local")
 	b.Log = log.With("region", b.Region, "node", b.NodeID)
 
 	// Storage.
-	if dsn := os.Getenv("SYNAPSE_PG_DSN"); dsn != "" {
+	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
 		pg, err := postgres.Connect(ctx, dsn)
 		if err != nil {
 			return nil, err
@@ -89,7 +89,7 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	}
 
 	// Event bus.
-	if url := os.Getenv("SYNAPSE_NATS_URL"); url != "" {
+	if url := os.Getenv("SyncApp_NATS_URL"); url != "" {
 		b.Bus, err = eventbus.NewNATS(url)
 		if err != nil {
 			return nil, err
@@ -102,12 +102,12 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	b.closers = append(b.closers, func() { _ = b.Bus.Close() })
 
 	// Redis-backed presence / router / resume.
-	if addr := os.Getenv("SYNAPSE_REDIS_ADDR"); addr != "" {
-		b.Presence, err = presence.NewRedisBackend(addr, os.Getenv("SYNAPSE_REDIS_PASSWORD"), 0)
+	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
+		b.Presence, err = presence.NewRedisBackend(addr, os.Getenv("SyncApp_REDIS_PASSWORD"), 0)
 		if err != nil {
 			return nil, err
 		}
-		b.Redis = redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SYNAPSE_REDIS_PASSWORD")})
+		b.Redis = redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
 		b.closers = append(b.closers, func() { _ = b.Redis.Close() })
 		b.Router = router.NewResilient(router.NewRedis(b.Redis, 60*time.Second), b.Log)
 		b.Replay = replay.NewRedis(b.Redis, 10*time.Minute)
@@ -119,14 +119,14 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 		b.Log.Info("presence+router+resume: in-memory (single-node)")
 	}
 
-	// Message write path: sharded by chat_id across SYNAPSE_MESSAGE_SHARD_DSNS when
+	// Message write path: sharded by chat_id across SyncApp_MESSAGE_SHARD_DSNS when
 	// set (each shard is a full Postgres, but only its messages/chat_seq/outbox are
 	// used — chat metadata stays in the primary store). Each shard allocates a
 	// gap-free per-chat seq locally (chat_seq), and each has its own outbox that a
 	// relay must drain. Default: the single primary store.
 	b.MessageStore = b.Stores.Messages
 	b.MsgOutbox = []store.OutboxStore{b.Stores.Outbox}
-	if dsns := os.Getenv("SYNAPSE_MESSAGE_SHARD_DSNS"); dsns != "" {
+	if dsns := os.Getenv("SyncApp_MESSAGE_SHARD_DSNS"); dsns != "" {
 		var msgShards []store.MessageStore
 		var obShards []store.OutboxStore
 		for _, d := range strings.Split(dsns, ",") {
@@ -153,15 +153,15 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 }
 
 func resolveNodeID(ctx context.Context, log *slog.Logger, b *Backends) int64 {
-	if v := os.Getenv("SYNAPSE_NODE_ID"); v != "" {
+	if v := os.Getenv("SyncApp_NODE_ID"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 && n <= 1023 {
 			return n
 		}
-		log.Warn("invalid SYNAPSE_NODE_ID; using 0", "value", v)
+		log.Warn("invalid SyncApp_NODE_ID; using 0", "value", v)
 		return 0
 	}
-	if addr := os.Getenv("SYNAPSE_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SYNAPSE_REDIS_PASSWORD")})
+	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
 		if n, release, err := nodeid.Lease(ctx, rdb, 30*time.Second); err == nil {
 			b.closers = append(b.closers, func() { release(); _ = rdb.Close() })
 			return n
@@ -177,12 +177,12 @@ func resolveNodeID(ctx context.Context, log *slog.Logger, b *Backends) int64 {
 	return int64(h % 1024)
 }
 
-// serverCreds returns mTLS transport credentials when SYNAPSE_MTLS_* is set, or
+// serverCreds returns mTLS transport credentials when SyncApp_MTLS_* is set, or
 // insecure credentials for local/dev.
 func serverCreds(log *slog.Logger) credentials.TransportCredentials {
-	ca, cert, key := os.Getenv("SYNAPSE_MTLS_CA"), os.Getenv("SYNAPSE_MTLS_CERT"), os.Getenv("SYNAPSE_MTLS_KEY")
+	ca, cert, key := os.Getenv("SyncApp_MTLS_CA"), os.Getenv("SyncApp_MTLS_CERT"), os.Getenv("SyncApp_MTLS_KEY")
 	if ca == "" || cert == "" || key == "" {
-		log.Warn("mTLS disabled between services — set SYNAPSE_MTLS_CA/CERT/KEY in production")
+		log.Warn("mTLS disabled between services — set SyncApp_MTLS_CA/CERT/KEY in production")
 		return insecure.NewCredentials()
 	}
 	tc, err := mtls.ServerConfig(ca, cert, key)
@@ -195,7 +195,7 @@ func serverCreds(log *slog.Logger) credentials.TransportCredentials {
 
 // clientCreds mirrors serverCreds for dialing a peer service.
 func clientCreds(serverName string, log *slog.Logger) credentials.TransportCredentials {
-	ca, cert, key := os.Getenv("SYNAPSE_MTLS_CA"), os.Getenv("SYNAPSE_MTLS_CERT"), os.Getenv("SYNAPSE_MTLS_KEY")
+	ca, cert, key := os.Getenv("SyncApp_MTLS_CA"), os.Getenv("SyncApp_MTLS_CERT"), os.Getenv("SyncApp_MTLS_KEY")
 	if ca == "" || cert == "" || key == "" {
 		return insecure.NewCredentials()
 	}

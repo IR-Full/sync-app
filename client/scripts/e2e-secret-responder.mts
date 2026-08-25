@@ -14,7 +14,8 @@
  *       -initiate-to <user>:<device>)
  */
 import { openSecretMessage } from '../src/features/secret-chats/model/decrypt.ts'
-import { SynapseClient } from '../src/shared/api/protocol/client.ts'
+import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
+import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
 import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
 import { toBase64 } from '../src/shared/lib/e2e/codec.ts'
 import {
@@ -22,7 +23,6 @@ import {
   generateSigningKeyPair,
   signPreKey,
 } from '../src/shared/lib/e2e/keys.ts'
-import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
 
 const url = process.argv[2] ?? 'ws://localhost:8080/ws'
 const expected = process.argv[3] ?? 'initiated from Go'
@@ -38,7 +38,7 @@ function check(label: string, ok: boolean, detail?: unknown) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function main() {
-  const client = new SynapseClient({ url })
+  const client = new SyncAppClient({ url })
   client.setDeviceId('ts-responder')
   const session = await client.connect({
     kind: 'password',

@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // Listener is an optional capability: a store that signals when new outbox rows

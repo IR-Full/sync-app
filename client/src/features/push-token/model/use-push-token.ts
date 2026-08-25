@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 
-import { MsgType, useIsConnected, useSynapseClient } from '@/shared/api'
+import { MsgType, useIsConnected, useSyncAppClient } from '@/shared/api'
 
 /**
  * Registers this browser's Web Push subscription with the gateway.
@@ -60,7 +60,7 @@ export function usePushToken(): {
   register: () => Promise<void>
   ready: boolean
 } {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
   const [attempt, setAttempt] = useState<PushStatus>('idle')
 

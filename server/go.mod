@@ -1,4 +1,4 @@
-module github.com/synapse-chat/synapse
+module github.com/SyncApp-chat/SyncApp
 
 go 1.26
 

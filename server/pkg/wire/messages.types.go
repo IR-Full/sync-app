@@ -714,6 +714,24 @@ type ProfileBody struct {
 	AvatarRef   string `json:"avatar_ref,omitempty"`
 }
 
+// AccountDeleteBody erases the CALLER's account. The password is re-checked
+// even though the socket is already authenticated: a session token lives on the
+// device, so without it anyone holding an unlocked phone could destroy the
+// account behind it.
+type AccountDeleteBody struct {
+	Password string `json:"password"`
+	// Optional; recorded in the audit log and nowhere else — in particular never
+	// on a row that outlives the account.
+	Reason string `json:"reason,omitempty"`
+}
+
+// AccountDeletedBody confirms the erasure. Every session is revoked before it
+// is sent, so it is the last frame the connection carries.
+type AccountDeletedBody struct {
+	UserID    string `json:"user_id"`
+	DeletedAt int64  `json:"deleted_at"`
+}
+
 // FanoutShardBody is one chunk of a hot chat's recipients plus the message to
 // deliver to them. It never reaches a client — it is an internal bus payload —
 // but it goes through the same codec as everything else that crosses the bus,

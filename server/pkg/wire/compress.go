@@ -10,7 +10,7 @@ import (
 // recur across messages. The dictionary below is a small hand-seeded content
 // dictionary; a production dictionary is trained from a real message corpus with
 //
-//	zstd --train samples/* -o synapse.dict
+//	zstd --train samples/* -o SyncApp.dict
 //
 // and swapped in via sharedDict — the wire format is unchanged (FlagZstd).
 

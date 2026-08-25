@@ -8,7 +8,7 @@ import type { Locale } from './locales'
  * runtime. Placeholders use `{name}` and are substituted by `translate()`.
  */
 const en = {
-  'app.name': 'Synapse',
+  'app.name': 'SyncApp',
 
   'auth.signIn': 'Sign in',
   'auth.signUp': 'Create account',
@@ -107,12 +107,17 @@ const en = {
   'profile.deviceId': 'Device ID',
   'profile.sessionId': 'Session ID',
   'profile.displayName': 'Display name',
-  'profile.displayNameHint':
-    'Stored in this browser only — the protocol has no message for changing a profile.',
+  'profile.displayNameHint': 'Shown to everyone you talk to. Synced across your devices.',
   'profile.avatar': 'Avatar',
-  'profile.avatarHint': 'Generated from your username. The server model has no avatar field.',
+  'profile.avatarHint':
+    'Without a picture, the monogram is generated from your id — same colour everywhere.',
+  'profile.avatarChange': 'Change picture',
+  'profile.avatarRemove': 'Remove',
+  'profile.avatarUploading': 'Uploading…',
+  'profile.avatarFailed': 'Upload failed',
   'profile.save': 'Save',
   'profile.saved': 'Saved',
+  'profile.saveFailed': 'Could not save',
 
   'contacts.title': 'Contacts',
   'contacts.add': 'Add contact',
@@ -257,7 +262,7 @@ const en = {
 export type TranslationKey = keyof typeof en
 
 const ru: Record<TranslationKey, string> = {
-  'app.name': 'Synapse',
+  'app.name': 'SyncApp',
 
   'auth.signIn': 'Войти',
   'auth.signUp': 'Создать аккаунт',
@@ -357,12 +362,17 @@ const ru: Record<TranslationKey, string> = {
   'profile.sessionId': 'ID сессии',
   'profile.displayName': 'Отображаемое имя',
   'profile.displayNameHint':
-    'Хранится только в этом браузере — в протоколе нет сообщения для изменения профиля.',
+    'Видно всем, с кем вы общаетесь. Синхронизируется между вашими устройствами.',
   'profile.avatar': 'Аватар',
   'profile.avatarHint':
-    'Генерируется из имени пользователя. В модели сервера нет поля аватара.',
+    'Без картинки монограмма генерируется из id — цвет везде один и тот же.',
+  'profile.avatarChange': 'Заменить фото',
+  'profile.avatarRemove': 'Убрать',
+  'profile.avatarUploading': 'Загрузка…',
+  'profile.avatarFailed': 'Не удалось загрузить',
   'profile.save': 'Сохранить',
   'profile.saved': 'Сохранено',
+  'profile.saveFailed': 'Не удалось сохранить',
 
   'contacts.title': 'Контакты',
   'contacts.add': 'Добавить контакт',

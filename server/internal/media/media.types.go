@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 // ObjectStore is the blob backend. fsStore (this package) is the local default;

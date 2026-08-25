@@ -7,11 +7,11 @@ import (
 )
 
 // TestPostgresSearch exercises the shared tsvector backend. Runs only when
-// SYNAPSE_TEST_PG_DSN is set.
+// SYNCAPP_TEST_PG_DSN is set.
 func TestPostgresSearch(t *testing.T) {
-	dsn := os.Getenv("SYNAPSE_TEST_PG_DSN")
+	dsn := os.Getenv("SYNCAPP_TEST_PG_DSN")
 	if dsn == "" {
-		t.Skip("set SYNAPSE_TEST_PG_DSN to run the Postgres search test")
+		t.Skip("set SYNCAPP_TEST_PG_DSN to run the Postgres search test")
 	}
 	ctx := context.Background()
 	b, err := NewPostgresBackend(ctx, dsn)

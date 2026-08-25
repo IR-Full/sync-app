@@ -11,9 +11,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/jackc/pgx/v5"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
 )
 
 // --- ReactionStore ---

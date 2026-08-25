@@ -2,10 +2,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="datastore/" />
-        <exclude domain="database" path="synapse.db" />
+        <exclude domain="database" path="syncapp.db" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="datastore/" />
-        <exclude domain="database" path="synapse.db" />
+        <exclude domain="database" path="syncapp.db" />
     </device-transfer>
 </data-extraction-rules>

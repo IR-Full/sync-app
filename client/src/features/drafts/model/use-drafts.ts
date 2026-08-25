@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 
 import { useDraftStore, type Draft } from '@/entities/draft'
-import { MsgType, queryKeys, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, queryKeys, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 /**
  * Pulls the drafts changed since the beginning and keeps the store in sync.
@@ -14,7 +14,7 @@ import { MsgType, queryKeys, useIsConnected, useSynapseClient, type Wire } from 
  * cursor silently hiding a draft.
  */
 export function useDraftSync() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
 
   const query = useQuery({
@@ -52,7 +52,7 @@ export function useDraftSync() {
  * so the write waits for a pause in typing.
  */
 export function useDraftWriter(chatId: string, delayMs = 800) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
   const connected = useIsConnected()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)

@@ -36,10 +36,10 @@ export function removeStorage(key: string): void {
 }
 
 export const StorageKeys = {
-  session: 'synapse:session',
-  deviceId: 'synapse:device-id',
-  theme: 'synapse:theme',
-  locale: 'synapse:locale',
-  chats: 'synapse:chats',
-  settings: 'synapse:settings',
+  session: 'SyncApp:session',
+  deviceId: 'SyncApp:device-id',
+  theme: 'SyncApp:theme',
+  locale: 'SyncApp:locale',
+  chats: 'SyncApp:chats',
+  settings: 'SyncApp:settings',
 } as const

@@ -3,7 +3,7 @@ package gateway
 import (
 	"sync"
 
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 )
 
 // ipGuard blunts connection-flood and reconnect-storm attacks at the accept
@@ -17,7 +17,7 @@ import (
 //     hold at once, so one host cannot occupy a large share of the node.
 //
 // Both default off (limit <= 0) so single-process dev and the test suite are
-// unaffected; production sets them via SYNAPSE_MAX_CONNS_PER_IP / _ACCEPT_RATE.
+// unaffected; production sets them via SyncApp_MAX_CONNS_PER_IP / _ACCEPT_RATE.
 type ipGuard struct {
 	rate       *ratelimit.Limiter // nil = no accept-rate limit
 	maxPerIP   int                // <= 0 = no concurrent cap

@@ -1,4 +1,4 @@
-// gRPC service contracts for the Synapse microservice split. Each domain service
+// gRPC service contracts for the SyncApp microservice split. Each domain service
 // (auth, chat, message, presence, key directory) is exposed here so it can run as
 // a standalone process; the gateway calls them as gRPC clients that satisfy the
 // same Go interfaces the in-process services do (internal/gateway/services.go).
@@ -9,9 +9,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.35.1
-// source: proto/synapse/v1/services.proto
+// source: proto/SyncApp/v1/services.proto
 
-// Distinct proto package from body.proto (synapse.v1): both are linked into the
+// Distinct proto package from body.proto (SyncApp.v1): both are linked into the
 // same binaries (the gateway/daemons use the wire bodies AND these RPCs), and a
 // shared proto package + duplicate message names (e.g. KeyBundle) would collide
 // in the global protobuf registry at init.

@@ -14,7 +14,7 @@ import { fromWire, updateHistory, upsertMessage, useReactionStore } from '@/enti
 import { applyWirePoll } from '@/entities/poll'
 import { useSessionStore } from '@/entities/session'
 import { useUserDirectory } from '@/entities/user'
-import { queryKeys, useSynapseClient } from '@/shared/api'
+import { queryKeys, useSyncAppClient } from '@/shared/api'
 
 /**
  * The single bridge from protocol events into application state.
@@ -27,7 +27,7 @@ import { queryKeys, useSynapseClient } from '@/shared/api'
  * quietly disagreeing about state.
  */
 export function useRealtimeSync(): void {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
 
@@ -110,10 +110,25 @@ export function useRealtimeSync(): void {
 
       client.on('poll', (poll) => applyWirePoll(poll)),
 
+      // Our own profile, changed on another device of this account. The gateway
+      // mirrors PROFILE_SET per user, so this only ever arrives for us — the id
+      // check is there because acting on someone else's would be silent
+      // corruption rather than a visible bug.
+      client.on('profile', (profile) => {
+        if (profile.userId !== selfId) return
+        useSessionStore.getState().updateSession({
+          username: profile.username,
+          displayName: profile.displayName,
+          avatarRef: profile.avatarRef,
+        })
+        queryClient.setQueryData(queryKeys.profile(''), profile)
+        queryClient.setQueryData(queryKeys.profile(profile.userId), profile)
+      }),
+
       client.on('error', (error) => {
         // Uncorrelated errors are informational here: anything tied to a request
         // already rejected that request's promise.
-        console.warn('[synapse] gateway error', error.code, error.message)
+        console.warn('[SyncApp] gateway error', error.code, error.message)
       }),
     ]
 

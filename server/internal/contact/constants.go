@@ -3,7 +3,7 @@ package contact
 import (
 	"errors"
 
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 var (

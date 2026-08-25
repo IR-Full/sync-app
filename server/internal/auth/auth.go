@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -207,12 +207,12 @@ func hashToken(token string) string {
 // each) by design, so an unbounded auth flood — a login/registration storm —
 // would exhaust RAM and CPU and take the whole process down. The semaphore caps
 // concurrent hashes so auth degrades gracefully (requests queue) instead of
-// OOMing. Sized from SYNAPSE_AUTH_HASH_CONCURRENCY, default GOMAXPROCS.
+// OOMing. Sized from SYNCAPP_AUTH_HASH_CONCURRENCY, default GOMAXPROCS.
 var hashSem = newHashSem()
 
 func newHashSem() chan struct{} {
 	n := runtime.GOMAXPROCS(0)
-	if v := os.Getenv("SYNAPSE_AUTH_HASH_CONCURRENCY"); v != "" {
+	if v := os.Getenv("SYNCAPP_AUTH_HASH_CONCURRENCY"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil && p > 0 {
 			n = p
 		}

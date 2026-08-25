@@ -5,9 +5,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // conn is one client connection. It implements delivery.Sink so fanout can push

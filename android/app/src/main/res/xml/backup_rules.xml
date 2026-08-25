@@ -4,5 +4,5 @@
          backup would carry a bearer token and someone's chat history onto another
          device. -->
     <exclude domain="file" path="datastore/" />
-    <exclude domain="database" path="synapse.db" />
+    <exclude domain="database" path="syncapp.db" />
 </full-backup-content>

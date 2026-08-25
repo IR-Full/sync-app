@@ -1,4 +1,4 @@
-# Synapse — Backend Architecture & System Design
+# SyncApp — Backend Architecture & System Design
 
 A Telegram-class messenger backend in Go. This document is the system design
 doc; the repository is a runnable MVP of its core. Where a section is only
@@ -90,7 +90,7 @@ moderation) is an independent consumer that can scale, retry, and fail alone.
 **Binary schema choice: fixed binary frame header + varint-packed envelope
 header + typed body.** Rationale: a fixed header is trivial and fast to parse
 and fuzz; varints keep the per-message header ~6–16 bytes; the body is
-pluggable. Bodies are **protobuf** (schemas in `proto/synapse/v1/`, generated Go
+pluggable. Bodies are **protobuf** (schemas in `proto/SyncApp/v1/`, generated Go
 in `internal/wirepb`, codec in `pkg/wire/protocodec.go`); the codec is swappable
 (`SetBodyCodec`, JSON codec kept for debugging) without touching framing/envelope.
 We reject "protobuf everywhere" for the frame because self-describing framing +
@@ -163,7 +163,7 @@ Type · Seq · Ack · RequestID · len(Body) · Body
   gzip fallback (`CapCompression`); primes the compressor with recurring protobuf
   field tags + common chat tokens so short frames shrink well. Decompress is
   length-bounded (zip-bomb guard).
-- **Bodies:** encoded as **protobuf** (`proto/synapse/v1/` → `internal/wirepb`)
+- **Bodies:** encoded as **protobuf** (`proto/SyncApp/v1/` → `internal/wirepb`)
   behind a swappable codec; framing/envelope unchanged.
 - **Error codes:** ranged (`1xxx` transport, `2xxx` auth, `3xxx` business, `4xxx`
   throttle, `5xxx` server) so clients react by class.
@@ -250,7 +250,15 @@ hard crypto off the critical path.
 - **Multi-device:** each device gets its own session + delivery cursor; fanout
   targets all of a user's devices.
 - **Refresh/revoke:** sessions carry `expires_at` + `revoked_at`; revocation is
-  instant server-side (the reason we chose opaque tokens over JWT).
+  instant server-side (the reason we chose opaque tokens over JWT). **Not yet
+  reachable from a client:** `auth.Service.Revoke` and `ListSessions` are
+  implemented but have no message and no caller, so a logout only discards the
+  token locally while the session stays valid until it expires. A `SESSION_LIST`
+  / `SESSION_REVOKE` pair is the missing half.
+- **Profile:** `display_name` is set at registration and changed afterwards with
+  `PROFILE_SET`; `PROFILE_GET` reads a profile by user id or `@username`, which
+  is also the only user lookup (no directory, no prefix search). `AUTH_OK`
+  carries the profile so a token login knows who it is.
 - **Device list / QR login / bot creds:** device rows exist; QR login (desktop
   scans a code that binds a session) and bot tokens are **[designed]**.
 - **Risk-based signals:** device fingerprint, IP reputation, velocity → step-up
@@ -272,7 +280,7 @@ speaking **gRPC** on the sync path and **NATS** on the async path. The seam is
 `internal/gateway/services.go`: the gateway depends only on service interfaces,
 so a local `*auth.Service` and a gRPC `rpc.AuthClient` are drop-in equivalents
 and the handler code is byte-identical between the two topologies. Contracts live
-in `proto/synapse/v1/services.proto` → `internal/rpc`; the daemons are
+in `proto/SyncApp/v1/services.proto` → `internal/rpc`; the daemons are
 `cmd/authd|chatd|messaged|presenced|keydird` (gRPC) and `cmd/fanoutd|notifyd|
 moderationd|searchd` (bus workers), fronted by `cmd/gatewayd`. **Impl** = present
 in this repo. The split is **verified end-to-end** (client → gatewayd →
@@ -321,11 +329,17 @@ Core entities: `users`, `devices`, `sessions`, `chats`, `chat_members`,
 `messages`, `read_state`, `direct_index` (+ designed: `message_versions`,
 `delivery_state`, `notification_jobs`, `abuse_events`, `audit_logs`).
 
-Product entities, added by versioned migrations `000003`–`000010`:
+Product entities, added by versioned migrations `000003`–`000012`:
 `reactions`, `calls` + `call_participants`, `polls` + `poll_votes`, `contacts`,
 `scheduled_messages`, `pinned_messages`, `drafts`, `invite_links`, plus columns on
 existing tables — `messages.attachment` (JSONB), `messages.thread_root` /
-`reply_count`, `messages.fwd_*` and `messages.expires_at`, and `chats.username`.
+`reply_count`, `messages.fwd_*` and `messages.expires_at`, `chats.username`, and
+`users.avatar_ref`.
+
+- **An avatar is a `media_ref`, not bytes.** `users.avatar_ref` points into the
+  media service, so a profile picture is uploaded, signed, served and collected
+  by the same pipeline as any attachment — instead of becoming a second image
+  path with its own storage, limits and lifecycle.
 
 - **Attachment as a column, not a table.** An attachment has no life of its own:
   it is created with its message, read with it, and deleted with it. A JSONB
@@ -396,8 +410,8 @@ millions of MAU; the first thing to move is the message table (largest, append-
 heaviest) once a single primary's write/IO saturates — the `MessageStore`
 interface makes that swap local. Two scale-out paths are **implemented** behind
 that interface: a **chat_id-sharded message store** (`internal/store/sharded`,
-wired via `SYNAPSE_MESSAGE_SHARD_DSNS`) that spreads writes across N Postgres
-shards, and an optional **read replica** (`SYNAPSE_PG_REPLICA_DSN`) that serves
+wired via `SyncApp_MESSAGE_SHARD_DSNS`) that spreads writes across N Postgres
+shards, and an optional **read replica** (`SyncApp_PG_REPLICA_DSN`) that serves
 history/read-receipt queries off the primary. A shard is a COMPLETE message store, not a partial one: it
 carries the full schema and stages its own outbox, which the relay drains per
 shard — a relay pointed only at the primary would silently lose the events of
@@ -456,7 +470,7 @@ push job.
 
 - **Persistent TCP + WebSocket + QUIC** — same binary protocol over all three
   (native → TCP, browsers → WSS, mobile → QUIC). QUIC (`internal/gateway/quic.go`,
-  enable with `SYNAPSE_QUIC=1`) gives **connection migration** (survives WiFi↔LTE
+  enable with `SyncApp_QUIC=1`) gives **connection migration** (survives WiFi↔LTE
   IP changes without reconnect), no head-of-line blocking, and a faster TLS 1.3
   handshake; the frame codec is stream-generic so all transports share it.
   **[implemented]**
@@ -524,8 +538,8 @@ not indexable** (server has only ciphertext) — search is a cloud-chat feature.
 - **Tracing:** OpenTelemetry (`internal/tracing`); W3C trace context **propagated
   through the event bus** (injected into event headers, extracted in fanout), so a
   trace follows send→outbox→fanout. Exporter: stdout (dev) or **OTLP/HTTP**
-  (`SYNAPSE_OTLP_ENDPOINT`), else no-op. **[implemented]**
-- **Profiling:** `/debug/pprof/` gated by `SYNAPSE_PPROF=1`. **[implemented]**
+  (`SyncApp_OTLP_ENDPOINT`), else no-op. **[implemented]**
+- **Profiling:** `/debug/pprof/` gated by `SyncApp_PPROF=1`. **[implemented]**
 - **Logging:** structured `slog`; a dedicated **audit** channel (`internal/audit`)
   for security events (login, chat export). **[implemented]**
 - **Dashboards:** `deploy/observability` compose brings up Prometheus + Tempo +
@@ -543,7 +557,7 @@ not indexable** (server has only ciphertext) — search is a cloud-chat feature.
 `ErrFlood`); a **per-username login limiter** (brute-force throttle across all
 connections); handshake/idle read deadlines (slow-loris defense); argon2id
 password hashing with timing-equalized login and a **hash-concurrency semaphore**
-(`SYNAPSE_AUTH_HASH_CONCURRENCY`) so an auth flood can't OOM the node with
+(`SyncApp_AUTH_HASH_CONCURRENCY`) so an auth flood can't OOM the node with
 parallel 64 MiB hashes; **session/resume tokens hashed at rest (SHA-256)** so a DB
 leak yields no usable credentials; explicit register-vs-login (no silent account
 creation/enumeration); 16 MiB frame cap + zip-bomb-guarded decompression + a
@@ -552,8 +566,8 @@ an **append-only audit log** (`internal/audit`) for login/export; moderation
 (banned-term + spam-velocity); media URLs HMAC-signed with expiry and
 constant-time verification (plus `nosniff`/attachment on serve), an **AV scan**
 hook (EICAR) on upload; a **per-IP accept guard** (rate + concurrency caps,
-`SYNAPSE_MAX_CONNS_PER_IP`/`_ACCEPT_RATE_PER_IP`) rejecting floods before
-handshake; a **mandatory-TLS policy** switch (`SYNAPSE_REQUIRE_TLS`); **mTLS**
+`SyncApp_MAX_CONNS_PER_IP`/`_ACCEPT_RATE_PER_IP`) rejecting floods before
+handshake; a **mandatory-TLS policy** switch (`SyncApp_REQUIRE_TLS`); **mTLS**
 helper (`pkg/mtls`); **circuit breaker** guarding external deps; **E2E safety
 numbers** (`e2e.SafetyNumber`) for directory-MITM detection; E2E ciphertext the
 server cannot read. A **CI pipeline** CVE-scans deps (govulncheck) and runs SAST
@@ -677,7 +691,7 @@ premature E2E/multi-region complexity. Mitigate by load-testing #5 before #6.
 | Reconnect storm after gateway restart | Med | High | Resume + replay buffer + jittered backoff + accept rate-limit + graceful drain; the retried sends it produces are duplicates, so a failed write batch **bisects** instead of falling back to one transaction per message (which would collapse write throughput exactly at the peak) |
 | Multi-node delivery / split-brain | Med | High | Shared router (Redis) + bus node-targeting + SKIP-LOCKED outbox (no double-publish) |
 | Slow consumers stalling delivery | Med | Med | Bounded queues, drop-and-resync (implemented) |
-| Postgres write saturation | Med | High | **chat_id-sharded message store (implemented, `internal/store/sharded`)** → Scylla; **read replica for history/receipts (implemented, `SYNAPSE_PG_REPLICA_DSN`)** |
+| Postgres write saturation | Med | High | **chat_id-sharded message store (implemented, `internal/store/sharded`)** → Scylla; **read replica for history/receipts (implemented, `SyncApp_PG_REPLICA_DSN`)** |
 | Duplicate delivery confusing clients | High | Low | Client dedup by message_id (at-least-once by design) |
 | **Topology drift** — behaviour depends on the deployment: a field the monolith delivers is dropped by the gRPC contract, or an optional store capability (threads, the self-destruct reaper, media reference checks) is not forwarded by a decorator and the FEATURE disappears for whoever enabled sharding | Med | High | Domain fields mirrored in `services.proto`; capabilities forwarded by `internal/store/sharded` with compile-time assertions; both paths tested against the real thing — a gRPC hop and real Postgres shards |
 | Premature E2E/multi-region | Med | High | Explicitly deferred to V2 |

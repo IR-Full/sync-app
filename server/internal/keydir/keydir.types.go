@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // Directory stores and serves public prekey bundles.

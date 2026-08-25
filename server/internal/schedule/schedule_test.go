@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store/memory"
-	"github.com/synapse-chat/synapse/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
 // allowChats grants or denies posting; the flag can flip mid-test to simulate a

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { MsgType, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 export interface ScheduledItem {
   id: string
@@ -21,7 +21,7 @@ const scheduledKey = (chatId: string) => ['scheduled', chatId] as const
  * it. All three operations answer with the same SCHEDULED body.
  */
 export function useScheduledMessages(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
 
   return useQuery({
@@ -45,7 +45,7 @@ export function useScheduledMessages(chatId: string) {
 }
 
 export function useScheduleMessage(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -70,7 +70,7 @@ export function useScheduleMessage(chatId: string) {
 }
 
 export function useCancelScheduled(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({

@@ -37,9 +37,9 @@ var (
 	}
 )
 
-var File_proto_synapse_v1_services_proto protoreflect.FileDescriptor
+var File_proto_SyncApp_v1_services_proto protoreflect.FileDescriptor
 
-var file_proto_synapse_v1_services_proto_rawDesc = []byte{
+var file_proto_SyncApp_v1_services_proto_rawDesc = []byte{
 	0x0a, 0x1f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2f,
 	0x76, 0x31, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74,
 	0x6f, 0x12, 0x0e, 0x73, 0x79, 0x6e, 0x61, 0x70, 0x73, 0x65, 0x2e, 0x72, 0x70, 0x63, 0x2e, 0x76,
@@ -479,125 +479,125 @@ var file_proto_synapse_v1_services_proto_rawDesc = []byte{
 }
 
 var (
-	file_proto_synapse_v1_services_proto_rawDescOnce sync.Once
-	file_proto_synapse_v1_services_proto_rawDescData = file_proto_synapse_v1_services_proto_rawDesc
+	file_proto_SyncApp_v1_services_proto_rawDescOnce sync.Once
+	file_proto_SyncApp_v1_services_proto_rawDescData = file_proto_SyncApp_v1_services_proto_rawDesc
 )
 
-var file_proto_synapse_v1_services_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_proto_SyncApp_v1_services_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 
-var file_proto_synapse_v1_services_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
+var file_proto_SyncApp_v1_services_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 
-var file_proto_synapse_v1_services_proto_goTypes = []any{
-	(Op)(0),                    // 0: synapse.rpc.v1.Op
-	(*User)(nil),               // 1: synapse.rpc.v1.User
-	(*Session)(nil),            // 2: synapse.rpc.v1.Session
-	(*Chat)(nil),               // 3: synapse.rpc.v1.Chat
-	(*ChatMember)(nil),         // 4: synapse.rpc.v1.ChatMember
-	(*Attachment)(nil),         // 5: synapse.rpc.v1.Attachment
-	(*ForwardOrigin)(nil),      // 6: synapse.rpc.v1.ForwardOrigin
-	(*Message)(nil),            // 7: synapse.rpc.v1.Message
-	(*RegisterRequest)(nil),    // 8: synapse.rpc.v1.RegisterRequest
-	(*LoginRequest)(nil),       // 9: synapse.rpc.v1.LoginRequest
-	(*SessionUser)(nil),        // 10: synapse.rpc.v1.SessionUser
-	(*TokenRequest)(nil),       // 11: synapse.rpc.v1.TokenRequest
-	(*ResumeRequest)(nil),      // 12: synapse.rpc.v1.ResumeRequest
-	(*Identity)(nil),           // 13: synapse.rpc.v1.Identity
-	(*DirectRequest)(nil),      // 14: synapse.rpc.v1.DirectRequest
-	(*ChatIDRequest)(nil),      // 15: synapse.rpc.v1.ChatIDRequest
-	(*CreateGroupRequest)(nil), // 16: synapse.rpc.v1.CreateGroupRequest
-	(*MembersReply)(nil),       // 17: synapse.rpc.v1.MembersReply
-	(*MemberIDsReply)(nil),     // 18: synapse.rpc.v1.MemberIDsReply
-	(*MemberPageRequest)(nil),  // 19: synapse.rpc.v1.MemberPageRequest
-	(*ChatUserRequest)(nil),    // 20: synapse.rpc.v1.ChatUserRequest
-	(*BoolReply)(nil),          // 21: synapse.rpc.v1.BoolReply
-	(*UserChatsRequest)(nil),   // 22: synapse.rpc.v1.UserChatsRequest
-	(*ChatSummary)(nil),        // 23: synapse.rpc.v1.ChatSummary
-	(*ChatSummariesReply)(nil), // 24: synapse.rpc.v1.ChatSummariesReply
-	(*SubmitRequest)(nil),      // 25: synapse.rpc.v1.SubmitRequest
-	(*SubmitReply)(nil),        // 26: synapse.rpc.v1.SubmitReply
-	(*HistoryRequest)(nil),     // 27: synapse.rpc.v1.HistoryRequest
-	(*HistoryReply)(nil),       // 28: synapse.rpc.v1.HistoryReply
-	(*ThreadRequest)(nil),      // 29: synapse.rpc.v1.ThreadRequest
-	(*ForwardRequest)(nil),     // 30: synapse.rpc.v1.ForwardRequest
-	(*MarkReadRequest)(nil),    // 31: synapse.rpc.v1.MarkReadRequest
-	(*Empty)(nil),              // 32: synapse.rpc.v1.Empty
-	(*UserRequest)(nil),        // 33: synapse.rpc.v1.UserRequest
-	(*TypingRequest)(nil),      // 34: synapse.rpc.v1.TypingRequest
-	(*PublishRequest)(nil),     // 35: synapse.rpc.v1.PublishRequest
-	(*FetchRequest)(nil),       // 36: synapse.rpc.v1.FetchRequest
-	(*KeyBundle)(nil),          // 37: synapse.rpc.v1.KeyBundle
-	(*FetchReply)(nil),         // 38: synapse.rpc.v1.FetchReply
-	(*FetchAllReply)(nil),      // 39: synapse.rpc.v1.FetchAllReply
+var file_proto_SyncApp_v1_services_proto_goTypes = []any{
+	(Op)(0),                    // 0: SyncApp.rpc.v1.Op
+	(*User)(nil),               // 1: SyncApp.rpc.v1.User
+	(*Session)(nil),            // 2: SyncApp.rpc.v1.Session
+	(*Chat)(nil),               // 3: SyncApp.rpc.v1.Chat
+	(*ChatMember)(nil),         // 4: SyncApp.rpc.v1.ChatMember
+	(*Attachment)(nil),         // 5: SyncApp.rpc.v1.Attachment
+	(*ForwardOrigin)(nil),      // 6: SyncApp.rpc.v1.ForwardOrigin
+	(*Message)(nil),            // 7: SyncApp.rpc.v1.Message
+	(*RegisterRequest)(nil),    // 8: SyncApp.rpc.v1.RegisterRequest
+	(*LoginRequest)(nil),       // 9: SyncApp.rpc.v1.LoginRequest
+	(*SessionUser)(nil),        // 10: SyncApp.rpc.v1.SessionUser
+	(*TokenRequest)(nil),       // 11: SyncApp.rpc.v1.TokenRequest
+	(*ResumeRequest)(nil),      // 12: SyncApp.rpc.v1.ResumeRequest
+	(*Identity)(nil),           // 13: SyncApp.rpc.v1.Identity
+	(*DirectRequest)(nil),      // 14: SyncApp.rpc.v1.DirectRequest
+	(*ChatIDRequest)(nil),      // 15: SyncApp.rpc.v1.ChatIDRequest
+	(*CreateGroupRequest)(nil), // 16: SyncApp.rpc.v1.CreateGroupRequest
+	(*MembersReply)(nil),       // 17: SyncApp.rpc.v1.MembersReply
+	(*MemberIDsReply)(nil),     // 18: SyncApp.rpc.v1.MemberIDsReply
+	(*MemberPageRequest)(nil),  // 19: SyncApp.rpc.v1.MemberPageRequest
+	(*ChatUserRequest)(nil),    // 20: SyncApp.rpc.v1.ChatUserRequest
+	(*BoolReply)(nil),          // 21: SyncApp.rpc.v1.BoolReply
+	(*UserChatsRequest)(nil),   // 22: SyncApp.rpc.v1.UserChatsRequest
+	(*ChatSummary)(nil),        // 23: SyncApp.rpc.v1.ChatSummary
+	(*ChatSummariesReply)(nil), // 24: SyncApp.rpc.v1.ChatSummariesReply
+	(*SubmitRequest)(nil),      // 25: SyncApp.rpc.v1.SubmitRequest
+	(*SubmitReply)(nil),        // 26: SyncApp.rpc.v1.SubmitReply
+	(*HistoryRequest)(nil),     // 27: SyncApp.rpc.v1.HistoryRequest
+	(*HistoryReply)(nil),       // 28: SyncApp.rpc.v1.HistoryReply
+	(*ThreadRequest)(nil),      // 29: SyncApp.rpc.v1.ThreadRequest
+	(*ForwardRequest)(nil),     // 30: SyncApp.rpc.v1.ForwardRequest
+	(*MarkReadRequest)(nil),    // 31: SyncApp.rpc.v1.MarkReadRequest
+	(*Empty)(nil),              // 32: SyncApp.rpc.v1.Empty
+	(*UserRequest)(nil),        // 33: SyncApp.rpc.v1.UserRequest
+	(*TypingRequest)(nil),      // 34: SyncApp.rpc.v1.TypingRequest
+	(*PublishRequest)(nil),     // 35: SyncApp.rpc.v1.PublishRequest
+	(*FetchRequest)(nil),       // 36: SyncApp.rpc.v1.FetchRequest
+	(*KeyBundle)(nil),          // 37: SyncApp.rpc.v1.KeyBundle
+	(*FetchReply)(nil),         // 38: SyncApp.rpc.v1.FetchReply
+	(*FetchAllReply)(nil),      // 39: SyncApp.rpc.v1.FetchAllReply
 }
 
-var file_proto_synapse_v1_services_proto_depIdxs = []int32{
-	5,  // 0: synapse.rpc.v1.Message.attachment:type_name -> synapse.rpc.v1.Attachment
-	6,  // 1: synapse.rpc.v1.Message.forward:type_name -> synapse.rpc.v1.ForwardOrigin
-	2,  // 2: synapse.rpc.v1.SessionUser.session:type_name -> synapse.rpc.v1.Session
-	1,  // 3: synapse.rpc.v1.SessionUser.user:type_name -> synapse.rpc.v1.User
-	2,  // 4: synapse.rpc.v1.Identity.session:type_name -> synapse.rpc.v1.Session
-	1,  // 5: synapse.rpc.v1.Identity.user:type_name -> synapse.rpc.v1.User
-	4,  // 6: synapse.rpc.v1.MembersReply.members:type_name -> synapse.rpc.v1.ChatMember
-	3,  // 7: synapse.rpc.v1.ChatSummary.chat:type_name -> synapse.rpc.v1.Chat
-	23, // 8: synapse.rpc.v1.ChatSummariesReply.chats:type_name -> synapse.rpc.v1.ChatSummary
-	0,  // 9: synapse.rpc.v1.SubmitRequest.op:type_name -> synapse.rpc.v1.Op
-	5,  // 10: synapse.rpc.v1.SubmitRequest.attachment:type_name -> synapse.rpc.v1.Attachment
-	7,  // 11: synapse.rpc.v1.SubmitReply.message:type_name -> synapse.rpc.v1.Message
-	7,  // 12: synapse.rpc.v1.HistoryReply.messages:type_name -> synapse.rpc.v1.Message
-	37, // 13: synapse.rpc.v1.FetchReply.bundle:type_name -> synapse.rpc.v1.KeyBundle
-	37, // 14: synapse.rpc.v1.FetchAllReply.bundles:type_name -> synapse.rpc.v1.KeyBundle
-	8,  // 15: synapse.rpc.v1.AuthService.Register:input_type -> synapse.rpc.v1.RegisterRequest
-	9,  // 16: synapse.rpc.v1.AuthService.Login:input_type -> synapse.rpc.v1.LoginRequest
-	11, // 17: synapse.rpc.v1.AuthService.Authenticate:input_type -> synapse.rpc.v1.TokenRequest
-	12, // 18: synapse.rpc.v1.AuthService.Resume:input_type -> synapse.rpc.v1.ResumeRequest
-	14, // 19: synapse.rpc.v1.ChatService.EnsureDirect:input_type -> synapse.rpc.v1.DirectRequest
-	14, // 20: synapse.rpc.v1.ChatService.FindDirect:input_type -> synapse.rpc.v1.DirectRequest
-	15, // 21: synapse.rpc.v1.ChatService.Get:input_type -> synapse.rpc.v1.ChatIDRequest
-	16, // 22: synapse.rpc.v1.ChatService.CreateGroup:input_type -> synapse.rpc.v1.CreateGroupRequest
-	15, // 23: synapse.rpc.v1.ChatService.Members:input_type -> synapse.rpc.v1.ChatIDRequest
-	22, // 24: synapse.rpc.v1.ChatService.UserChats:input_type -> synapse.rpc.v1.UserChatsRequest
-	15, // 25: synapse.rpc.v1.ChatService.MemberIDs:input_type -> synapse.rpc.v1.ChatIDRequest
-	19, // 26: synapse.rpc.v1.ChatService.MemberIDsPage:input_type -> synapse.rpc.v1.MemberPageRequest
-	20, // 27: synapse.rpc.v1.ChatService.CanPost:input_type -> synapse.rpc.v1.ChatUserRequest
-	20, // 28: synapse.rpc.v1.ChatService.IsMember:input_type -> synapse.rpc.v1.ChatUserRequest
-	25, // 29: synapse.rpc.v1.MessageService.Submit:input_type -> synapse.rpc.v1.SubmitRequest
-	27, // 30: synapse.rpc.v1.MessageService.History:input_type -> synapse.rpc.v1.HistoryRequest
-	29, // 31: synapse.rpc.v1.MessageService.Thread:input_type -> synapse.rpc.v1.ThreadRequest
-	30, // 32: synapse.rpc.v1.MessageService.Forward:input_type -> synapse.rpc.v1.ForwardRequest
-	31, // 33: synapse.rpc.v1.MessageService.MarkRead:input_type -> synapse.rpc.v1.MarkReadRequest
-	33, // 34: synapse.rpc.v1.PresenceService.Online:input_type -> synapse.rpc.v1.UserRequest
-	33, // 35: synapse.rpc.v1.PresenceService.Heartbeat:input_type -> synapse.rpc.v1.UserRequest
-	33, // 36: synapse.rpc.v1.PresenceService.Offline:input_type -> synapse.rpc.v1.UserRequest
-	34, // 37: synapse.rpc.v1.PresenceService.Typing:input_type -> synapse.rpc.v1.TypingRequest
-	35, // 38: synapse.rpc.v1.KeyDirService.Publish:input_type -> synapse.rpc.v1.PublishRequest
-	36, // 39: synapse.rpc.v1.KeyDirService.Fetch:input_type -> synapse.rpc.v1.FetchRequest
-	33, // 40: synapse.rpc.v1.KeyDirService.FetchAll:input_type -> synapse.rpc.v1.UserRequest
-	10, // 41: synapse.rpc.v1.AuthService.Register:output_type -> synapse.rpc.v1.SessionUser
-	10, // 42: synapse.rpc.v1.AuthService.Login:output_type -> synapse.rpc.v1.SessionUser
-	13, // 43: synapse.rpc.v1.AuthService.Authenticate:output_type -> synapse.rpc.v1.Identity
-	13, // 44: synapse.rpc.v1.AuthService.Resume:output_type -> synapse.rpc.v1.Identity
-	3,  // 45: synapse.rpc.v1.ChatService.EnsureDirect:output_type -> synapse.rpc.v1.Chat
-	3,  // 46: synapse.rpc.v1.ChatService.FindDirect:output_type -> synapse.rpc.v1.Chat
-	3,  // 47: synapse.rpc.v1.ChatService.Get:output_type -> synapse.rpc.v1.Chat
-	3,  // 48: synapse.rpc.v1.ChatService.CreateGroup:output_type -> synapse.rpc.v1.Chat
-	17, // 49: synapse.rpc.v1.ChatService.Members:output_type -> synapse.rpc.v1.MembersReply
-	24, // 50: synapse.rpc.v1.ChatService.UserChats:output_type -> synapse.rpc.v1.ChatSummariesReply
-	18, // 51: synapse.rpc.v1.ChatService.MemberIDs:output_type -> synapse.rpc.v1.MemberIDsReply
-	18, // 52: synapse.rpc.v1.ChatService.MemberIDsPage:output_type -> synapse.rpc.v1.MemberIDsReply
-	21, // 53: synapse.rpc.v1.ChatService.CanPost:output_type -> synapse.rpc.v1.BoolReply
-	21, // 54: synapse.rpc.v1.ChatService.IsMember:output_type -> synapse.rpc.v1.BoolReply
-	26, // 55: synapse.rpc.v1.MessageService.Submit:output_type -> synapse.rpc.v1.SubmitReply
-	28, // 56: synapse.rpc.v1.MessageService.History:output_type -> synapse.rpc.v1.HistoryReply
-	28, // 57: synapse.rpc.v1.MessageService.Thread:output_type -> synapse.rpc.v1.HistoryReply
-	26, // 58: synapse.rpc.v1.MessageService.Forward:output_type -> synapse.rpc.v1.SubmitReply
-	32, // 59: synapse.rpc.v1.MessageService.MarkRead:output_type -> synapse.rpc.v1.Empty
-	32, // 60: synapse.rpc.v1.PresenceService.Online:output_type -> synapse.rpc.v1.Empty
-	32, // 61: synapse.rpc.v1.PresenceService.Heartbeat:output_type -> synapse.rpc.v1.Empty
-	32, // 62: synapse.rpc.v1.PresenceService.Offline:output_type -> synapse.rpc.v1.Empty
-	32, // 63: synapse.rpc.v1.PresenceService.Typing:output_type -> synapse.rpc.v1.Empty
-	32, // 64: synapse.rpc.v1.KeyDirService.Publish:output_type -> synapse.rpc.v1.Empty
-	38, // 65: synapse.rpc.v1.KeyDirService.Fetch:output_type -> synapse.rpc.v1.FetchReply
-	39, // 66: synapse.rpc.v1.KeyDirService.FetchAll:output_type -> synapse.rpc.v1.FetchAllReply
+var file_proto_SyncApp_v1_services_proto_depIdxs = []int32{
+	5,  // 0: SyncApp.rpc.v1.Message.attachment:type_name -> SyncApp.rpc.v1.Attachment
+	6,  // 1: SyncApp.rpc.v1.Message.forward:type_name -> SyncApp.rpc.v1.ForwardOrigin
+	2,  // 2: SyncApp.rpc.v1.SessionUser.session:type_name -> SyncApp.rpc.v1.Session
+	1,  // 3: SyncApp.rpc.v1.SessionUser.user:type_name -> SyncApp.rpc.v1.User
+	2,  // 4: SyncApp.rpc.v1.Identity.session:type_name -> SyncApp.rpc.v1.Session
+	1,  // 5: SyncApp.rpc.v1.Identity.user:type_name -> SyncApp.rpc.v1.User
+	4,  // 6: SyncApp.rpc.v1.MembersReply.members:type_name -> SyncApp.rpc.v1.ChatMember
+	3,  // 7: SyncApp.rpc.v1.ChatSummary.chat:type_name -> SyncApp.rpc.v1.Chat
+	23, // 8: SyncApp.rpc.v1.ChatSummariesReply.chats:type_name -> SyncApp.rpc.v1.ChatSummary
+	0,  // 9: SyncApp.rpc.v1.SubmitRequest.op:type_name -> SyncApp.rpc.v1.Op
+	5,  // 10: SyncApp.rpc.v1.SubmitRequest.attachment:type_name -> SyncApp.rpc.v1.Attachment
+	7,  // 11: SyncApp.rpc.v1.SubmitReply.message:type_name -> SyncApp.rpc.v1.Message
+	7,  // 12: SyncApp.rpc.v1.HistoryReply.messages:type_name -> SyncApp.rpc.v1.Message
+	37, // 13: SyncApp.rpc.v1.FetchReply.bundle:type_name -> SyncApp.rpc.v1.KeyBundle
+	37, // 14: SyncApp.rpc.v1.FetchAllReply.bundles:type_name -> SyncApp.rpc.v1.KeyBundle
+	8,  // 15: SyncApp.rpc.v1.AuthService.Register:input_type -> SyncApp.rpc.v1.RegisterRequest
+	9,  // 16: SyncApp.rpc.v1.AuthService.Login:input_type -> SyncApp.rpc.v1.LoginRequest
+	11, // 17: SyncApp.rpc.v1.AuthService.Authenticate:input_type -> SyncApp.rpc.v1.TokenRequest
+	12, // 18: SyncApp.rpc.v1.AuthService.Resume:input_type -> SyncApp.rpc.v1.ResumeRequest
+	14, // 19: SyncApp.rpc.v1.ChatService.EnsureDirect:input_type -> SyncApp.rpc.v1.DirectRequest
+	14, // 20: SyncApp.rpc.v1.ChatService.FindDirect:input_type -> SyncApp.rpc.v1.DirectRequest
+	15, // 21: SyncApp.rpc.v1.ChatService.Get:input_type -> SyncApp.rpc.v1.ChatIDRequest
+	16, // 22: SyncApp.rpc.v1.ChatService.CreateGroup:input_type -> SyncApp.rpc.v1.CreateGroupRequest
+	15, // 23: SyncApp.rpc.v1.ChatService.Members:input_type -> SyncApp.rpc.v1.ChatIDRequest
+	22, // 24: SyncApp.rpc.v1.ChatService.UserChats:input_type -> SyncApp.rpc.v1.UserChatsRequest
+	15, // 25: SyncApp.rpc.v1.ChatService.MemberIDs:input_type -> SyncApp.rpc.v1.ChatIDRequest
+	19, // 26: SyncApp.rpc.v1.ChatService.MemberIDsPage:input_type -> SyncApp.rpc.v1.MemberPageRequest
+	20, // 27: SyncApp.rpc.v1.ChatService.CanPost:input_type -> SyncApp.rpc.v1.ChatUserRequest
+	20, // 28: SyncApp.rpc.v1.ChatService.IsMember:input_type -> SyncApp.rpc.v1.ChatUserRequest
+	25, // 29: SyncApp.rpc.v1.MessageService.Submit:input_type -> SyncApp.rpc.v1.SubmitRequest
+	27, // 30: SyncApp.rpc.v1.MessageService.History:input_type -> SyncApp.rpc.v1.HistoryRequest
+	29, // 31: SyncApp.rpc.v1.MessageService.Thread:input_type -> SyncApp.rpc.v1.ThreadRequest
+	30, // 32: SyncApp.rpc.v1.MessageService.Forward:input_type -> SyncApp.rpc.v1.ForwardRequest
+	31, // 33: SyncApp.rpc.v1.MessageService.MarkRead:input_type -> SyncApp.rpc.v1.MarkReadRequest
+	33, // 34: SyncApp.rpc.v1.PresenceService.Online:input_type -> SyncApp.rpc.v1.UserRequest
+	33, // 35: SyncApp.rpc.v1.PresenceService.Heartbeat:input_type -> SyncApp.rpc.v1.UserRequest
+	33, // 36: SyncApp.rpc.v1.PresenceService.Offline:input_type -> SyncApp.rpc.v1.UserRequest
+	34, // 37: SyncApp.rpc.v1.PresenceService.Typing:input_type -> SyncApp.rpc.v1.TypingRequest
+	35, // 38: SyncApp.rpc.v1.KeyDirService.Publish:input_type -> SyncApp.rpc.v1.PublishRequest
+	36, // 39: SyncApp.rpc.v1.KeyDirService.Fetch:input_type -> SyncApp.rpc.v1.FetchRequest
+	33, // 40: SyncApp.rpc.v1.KeyDirService.FetchAll:input_type -> SyncApp.rpc.v1.UserRequest
+	10, // 41: SyncApp.rpc.v1.AuthService.Register:output_type -> SyncApp.rpc.v1.SessionUser
+	10, // 42: SyncApp.rpc.v1.AuthService.Login:output_type -> SyncApp.rpc.v1.SessionUser
+	13, // 43: SyncApp.rpc.v1.AuthService.Authenticate:output_type -> SyncApp.rpc.v1.Identity
+	13, // 44: SyncApp.rpc.v1.AuthService.Resume:output_type -> SyncApp.rpc.v1.Identity
+	3,  // 45: SyncApp.rpc.v1.ChatService.EnsureDirect:output_type -> SyncApp.rpc.v1.Chat
+	3,  // 46: SyncApp.rpc.v1.ChatService.FindDirect:output_type -> SyncApp.rpc.v1.Chat
+	3,  // 47: SyncApp.rpc.v1.ChatService.Get:output_type -> SyncApp.rpc.v1.Chat
+	3,  // 48: SyncApp.rpc.v1.ChatService.CreateGroup:output_type -> SyncApp.rpc.v1.Chat
+	17, // 49: SyncApp.rpc.v1.ChatService.Members:output_type -> SyncApp.rpc.v1.MembersReply
+	24, // 50: SyncApp.rpc.v1.ChatService.UserChats:output_type -> SyncApp.rpc.v1.ChatSummariesReply
+	18, // 51: SyncApp.rpc.v1.ChatService.MemberIDs:output_type -> SyncApp.rpc.v1.MemberIDsReply
+	18, // 52: SyncApp.rpc.v1.ChatService.MemberIDsPage:output_type -> SyncApp.rpc.v1.MemberIDsReply
+	21, // 53: SyncApp.rpc.v1.ChatService.CanPost:output_type -> SyncApp.rpc.v1.BoolReply
+	21, // 54: SyncApp.rpc.v1.ChatService.IsMember:output_type -> SyncApp.rpc.v1.BoolReply
+	26, // 55: SyncApp.rpc.v1.MessageService.Submit:output_type -> SyncApp.rpc.v1.SubmitReply
+	28, // 56: SyncApp.rpc.v1.MessageService.History:output_type -> SyncApp.rpc.v1.HistoryReply
+	28, // 57: SyncApp.rpc.v1.MessageService.Thread:output_type -> SyncApp.rpc.v1.HistoryReply
+	26, // 58: SyncApp.rpc.v1.MessageService.Forward:output_type -> SyncApp.rpc.v1.SubmitReply
+	32, // 59: SyncApp.rpc.v1.MessageService.MarkRead:output_type -> SyncApp.rpc.v1.Empty
+	32, // 60: SyncApp.rpc.v1.PresenceService.Online:output_type -> SyncApp.rpc.v1.Empty
+	32, // 61: SyncApp.rpc.v1.PresenceService.Heartbeat:output_type -> SyncApp.rpc.v1.Empty
+	32, // 62: SyncApp.rpc.v1.PresenceService.Offline:output_type -> SyncApp.rpc.v1.Empty
+	32, // 63: SyncApp.rpc.v1.PresenceService.Typing:output_type -> SyncApp.rpc.v1.Empty
+	32, // 64: SyncApp.rpc.v1.KeyDirService.Publish:output_type -> SyncApp.rpc.v1.Empty
+	38, // 65: SyncApp.rpc.v1.KeyDirService.Fetch:output_type -> SyncApp.rpc.v1.FetchReply
+	39, // 66: SyncApp.rpc.v1.KeyDirService.FetchAll:output_type -> SyncApp.rpc.v1.FetchAllReply
 	41, // [41:67] is the sub-list for method output_type
 	15, // [15:41] is the sub-list for method input_type
 	15, // [15:15] is the sub-list for extension type_name

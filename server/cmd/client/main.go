@@ -1,4 +1,4 @@
-// Command client is an interactive terminal client that speaks the Synapse
+// Command client is an interactive terminal client that speaks the SyncApp
 // binary protocol. It demonstrates the full handshake → auth → send/receive
 // lifecycle over raw TCP (default) or WebSocket.
 //
@@ -42,9 +42,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"github.com/gorilla/websocket"
 	"github.com/quic-go/quic-go"
-	"github.com/synapse-chat/synapse/pkg/wire"
 )
 
 func main() {

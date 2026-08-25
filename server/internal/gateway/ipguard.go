@@ -3,7 +3,7 @@ package gateway
 import (
 	"net"
 
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 )
 
 // newIPGuard builds a guard. acceptRate is new-conns/sec per IP (with a small

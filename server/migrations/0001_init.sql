@@ -1,4 +1,4 @@
--- Synapse initial schema (Section 7/8). Postgres-only to start; the message
+-- SyncApp initial schema (Section 7/8). Postgres-only to start; the message
 -- table is the first candidate to move to a wide-column store (Cassandra/Scylla)
 -- when write volume outgrows a single primary. Shard keys are noted in comments.
 

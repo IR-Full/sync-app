@@ -1,3 +1,3 @@
 package tracing
 
-const serviceName = "synapse-gateway"
+const serviceName = "SyncApp-gateway"

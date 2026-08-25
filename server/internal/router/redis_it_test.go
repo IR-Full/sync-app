@@ -10,12 +10,12 @@ import (
 )
 
 // TestRedisRouterMultiNode proves the routing registry is shared: a user bound
-// on two different nodes resolves to both. Runs only when SYNAPSE_TEST_REDIS_ADDR
+// on two different nodes resolves to both. Runs only when SYNCAPP_TEST_REDIS_ADDR
 // is set.
 func TestRedisRouterMultiNode(t *testing.T) {
-	addr := os.Getenv("SYNAPSE_TEST_REDIS_ADDR")
+	addr := os.Getenv("SYNCAPP_TEST_REDIS_ADDR")
 	if addr == "" {
-		t.Skip("set SYNAPSE_TEST_REDIS_ADDR to run the Redis router test")
+		t.Skip("set SYNCAPP_TEST_REDIS_ADDR to run the Redis router test")
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: addr})
 	defer rdb.Close()

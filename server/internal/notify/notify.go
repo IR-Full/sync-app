@@ -11,9 +11,9 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/synapse-chat/synapse/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // New builds the notification service.

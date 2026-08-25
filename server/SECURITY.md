@@ -1,6 +1,6 @@
-# Synapse — Protocol & System Security Audit
+# SyncApp — Protocol & System Security Audit
 
-This document is a hands-on security review of the Synapse protocol and gateway:
+This document is a hands-on security review of the SyncApp protocol and gateway:
 the threat model, what is defended today (with the file that does it), what is
 deliberately deferred, and concrete recommendations before production. It is
 written to be read alongside the code.
@@ -22,7 +22,7 @@ Sections below reflect the new state:
 - **Group-commit writes** — concurrent inserts coalesce into one fsync without
   dropping durability (230→3760 msg/s), so a write burst can't be used to force a
   durability/throughput tradeoff.
-- **TLS 1.3** — optional on TCP + WS (`SYNAPSE_TLS_CERT/KEY` or self-signed dev),
+- **TLS 1.3** — optional on TCP + WS (`SyncApp_TLS_CERT/KEY` or self-signed dev),
   plus **QUIC** (requires TLS); warns loudly when off. **mTLS helper** (`pkg/mtls`)
   for service-to-service auth.
 - **E2E signed prekeys** — Ed25519 signatures on signed prekeys, verified in X3DH
@@ -41,14 +41,20 @@ Sections below reflect the new state:
   upgrade — notably a pgx SQL-injection (GO-2026-5004), an x/text infinite-loop
   DoS, and a quic-go panic reachable from the QUIC listener.
 - **Per-IP accept guard**: per-source-IP accept-rate + concurrent-connection caps
-  reject floods/reconnect storms *before* handshake (`SYNAPSE_MAX_CONNS_PER_IP` /
-  `SYNAPSE_ACCEPT_RATE_PER_IP`), counted by `synapse_connections_rejected_total`.
-- **Mandatory-TLS policy** (`SYNAPSE_REQUIRE_TLS=1`): the server refuses to boot in
+  reject floods/reconnect storms *before* handshake (`SyncApp_MAX_CONNS_PER_IP` /
+  `SyncApp_ACCEPT_RATE_PER_IP`), counted by `SyncApp_connections_rejected_total`.
+- **Mandatory-TLS policy** (`SyncApp_REQUIRE_TLS=1`): the server refuses to boot in
   plaintext, so a misconfiguration cannot silently expose cleartext.
 - **E2E safety numbers** (`e2e.SafetyNumber`): a symmetric 60-digit fingerprint of
   both parties' identity keys for out-of-band MITM detection at the key directory.
-- Media HTTP responses now carry `nosniff` + attachment disposition; FS media
-  store tightened to 0700/0600; WS/HTTP server given a `ReadHeaderTimeout`.
+- Media HTTP responses carry `nosniff`, and everything is served as an inert
+  attachment — except images, which are served inline under the type their own
+  BYTES say they are (`http.DetectContentType`, whitelist: png/jpeg/gif/webp,
+  never SVG). A file that merely claims to be a PNG stays an attachment, and an
+  exact image type plus `nosniff` means a polyglot is never rendered as markup.
+  Without this a picture could not be displayed at all, which is not a security
+  property — just a broken avatar. FS media store tightened to 0700/0600;
+  WS/HTTP server given a `ReadHeaderTimeout`.
 - **Amplification throttles**: typing indicators are the cheapest frame to send
   and the most expensive to serve (one per chat member, on every node), so they
   now pass a per-connection and a per-chat bucket; call signaling, which bypasses
@@ -131,10 +137,10 @@ Who we defend against, and where:
   *inside* TLS — we never invent transport crypto). Optional by config; MVP can run
   plaintext locally. Make it mandatory-by-policy in prod.
 - ✅ Per-IP **accept rate limiting** and concurrent-connection caps at the accept
-  edge (`ipGuard`, `SYNAPSE_MAX_CONNS_PER_IP` / `SYNAPSE_ACCEPT_RATE_PER_IP`), on
+  edge (`ipGuard`, `SyncApp_MAX_CONNS_PER_IP` / `SyncApp_ACCEPT_RATE_PER_IP`), on
   top of multi-accept + `SO_REUSEPORT`. An upstream L4/edge quota is still worth
   adding in front for volumetric floods that never reach the app.
-- ✅ WebSocket `CheckOrigin` enforces an **origin allow-list** (`SYNAPSE_ALLOWED_ORIGINS`);
+- ✅ WebSocket `CheckOrigin` enforces an **origin allow-list** (`SyncApp_ALLOWED_ORIGINS`);
   empty = allow-any is dev-only.
 
 ---
@@ -159,8 +165,19 @@ Who we defend against, and where:
   out by someone spamming their username.
 - ✅ **Revocation**: opaque tokens give O(1) server-side revocation
   (`revoked_at`), unlike stateless JWTs. Expiry is enforced on every use.
+- ✅ **Handle lookup is metered**: `PROFILE_GET` resolves `@username` → user, so
+  it is treated as an enumeration primitive and charged to the per-connection
+  flood budget like a write. It also refuses a lookup when either side has
+  blocked the other, so a block cannot be sidestepped by asking for the profile
+  directly.
 
 **TODO before prod**
+- ⬜ **Expose revocation to clients.** The mechanism exists and nothing calls it:
+  `auth.Service.Revoke` and `ListSessions` have no message and no caller, so
+  "log out" only discards the token on the device while the session stays valid
+  until `expires_at`. A lost phone therefore keeps access. `SESSION_LIST` /
+  `SESSION_REVOKE` (plus "sign out everywhere") is the missing half — this is the
+  largest known gap in this section.
 - ⬜ Additionally throttle by IP (not only username).
 - ⬜ **Risk signals**: device fingerprint, IP reputation, velocity → step-up auth.
 - ⬜ Bind tokens to a device/TLS channel to limit token replay if one leaks.
@@ -200,7 +217,14 @@ Who we defend against, and where:
   bits of crypto-random), so it cannot be guessed or enumerated; combined with the
   signed URL this makes access sound.
 - 🟡 Production should **additionally** verify the fetcher is a member of a chat
-  where the media was posted (defense in depth against a leaked ref).
+  where the media was posted (defense in depth against a leaked ref). Note that
+  avatars widen what a leaked ref exposes: a profile picture is fetched by
+  anyone who can see the profile, so a membership check alone will not be the
+  whole rule once it lands.
+- ✅ **Inline rendering is decided by content, not by the uploader.** Only
+  png/jpeg/gif/webp — recognised from their own leading bytes — are served
+  `inline`; everything else, SVG included, keeps `attachment`. `nosniff` is set
+  either way, so an exact image type cannot be re-interpreted as markup.
 
 ---
 
@@ -323,7 +347,7 @@ Uses **only standard, audited primitives** — no home-grown crypto:
 | Supply chain (CI: govulncheck CVE scan + gosec SAST + race + fuzz) | ✅ good |
 | E2E crypto (standard primitives, tested, prekey signatures, multi-device, safety numbers) | ✅ strong |
 | Media (signed URLs, unguessable refs, size caps, AV scan, nosniff) | ✅ strong |
-| Transport encryption (TLS 1.3 on TCP/WS/QUIC) | ✅ optional, or enforced via `SYNAPSE_REQUIRE_TLS` |
+| Transport encryption (TLS 1.3 on TCP/WS/QUIC) | ✅ optional, or enforced via `SyncApp_REQUIRE_TLS` |
 | Observability (histograms, pprof, OTLP tracing) | ✅ good |
 | RBAC + audit log | ✅ good |
 | Data retention (outbox, scheduled, replay, media collected) | ✅ good |

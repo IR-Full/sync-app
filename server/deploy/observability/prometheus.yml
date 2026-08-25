@@ -2,7 +2,7 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
-  - job_name: synapse-gateway
+  - job_name: SyncApp-gateway
     static_configs:
-      # The Synapse server's /metrics on the host (ports :8080 by default).
+      # The SyncApp server's /metrics on the host (ports :8080 by default).
       - targets: ["host.docker.internal:8080"]

@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/jackc/pgx/v5"
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
 )
 
 func newBatcher(s *Store) *batcher {
@@ -18,8 +18,8 @@ func newBatcher(s *Store) *batcher {
 		store:    s,
 		jobs:     make(chan *writeJob, 8192),
 		done:     make(chan struct{}),
-		maxBatch: envInt("SYNAPSE_WRITE_BATCH_SIZE", 64),
-		maxWait:  time.Duration(envInt("SYNAPSE_WRITE_BATCH_WAIT_US", 2000)) * time.Microsecond,
+		maxBatch: envInt("SyncApp_WRITE_BATCH_SIZE", 64),
+		maxWait:  time.Duration(envInt("SyncApp_WRITE_BATCH_WAIT_US", 2000)) * time.Microsecond,
 	}
 	go b.run()
 	return b
@@ -178,7 +178,7 @@ func (b *batcher) flushTx(ctx context.Context, batch []*writeJob) error {
 			}
 		}
 	}
-	ins.Queue(`NOTIFY synapse_outbox`) // one wakeup for the whole batch
+	ins.Queue(`NOTIFY SyncApp_outbox`) // one wakeup for the whole batch
 	br2 := tx.SendBatch(ctx, ins)
 	for i := 0; i < ins.Len(); i++ {
 		if _, err := br2.Exec(); err != nil {

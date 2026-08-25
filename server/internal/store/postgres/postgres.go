@@ -11,10 +11,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
 )
 
 // reader returns the pool for lag-tolerant reads: the replica if attached, else
@@ -42,7 +42,7 @@ func Connect(ctx context.Context, dsn string) (*Store, error) {
 	// the just-sent case, so a client never depends on the replica for its own
 	// latest write). If the replica is unreachable at boot we fail closed on it and
 	// fall back to the primary rather than refuse to start.
-	if rdsn := os.Getenv("SYNAPSE_PG_REPLICA_DSN"); rdsn != "" {
+	if rdsn := os.Getenv("SyncApp_PG_REPLICA_DSN"); rdsn != "" {
 		if rp, err := connectPool(ctx, rdsn); err != nil {
 			// Non-fatal: log-less fallback to primary keeps the node serving.
 			s.readPool = nil
@@ -52,8 +52,8 @@ func Connect(ctx context.Context, dsn string) (*Store, error) {
 	}
 	// Group-commit batcher: coalesces concurrent message writes into shared
 	// transactions so many messages amortize one commit fsync (the measured
-	// single-node write bottleneck). Disable with SYNAPSE_WRITE_BATCH=off.
-	if os.Getenv("SYNAPSE_WRITE_BATCH") != "off" {
+	// single-node write bottleneck). Disable with SyncApp_WRITE_BATCH=off.
+	if os.Getenv("SyncApp_WRITE_BATCH") != "off" {
 		s.batcher = newBatcher(s)
 	}
 	return s, nil
@@ -122,6 +122,66 @@ func (s *Store) UpdateProfile(ctx context.Context, userID, displayName, avatarRe
 		return store.ErrNotFound
 	}
 	return nil
+}
+
+// DeleteAccount erases an account. Everything runs in ONE transaction: a
+// half-erased account — say, sessions gone but the users row still present — is
+// worse than either outcome, because the owner can no longer log in to ask for
+// it again.
+//
+// Order matters twice over. devices and sessions carry a foreign key to
+// users(id), so they go first. Messages are anonymised rather than deleted (see
+// store.UserStore.DeleteAccount); dedup_key is cleared with them, since the
+// partial unique index on (sender_id, dedup_key) would otherwise collide the
+// moment a second account is erased with a colliding key under the shared
+// sender id 0.
+func (s *Store) DeleteAccount(ctx context.Context, userID string) error {
+	uid := atoi(userID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return wrap(err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
+
+	// Ownership check first: without it a bad id silently "succeeds" and the
+	// caller reports a deletion that never happened.
+	var exists bool
+	if err := tx.QueryRow(ctx, `SELECT TRUE FROM users WHERE id=$1 FOR UPDATE`, uid).Scan(&exists); err != nil {
+		return store.ErrNotFound
+	}
+
+	stmts := []struct {
+		sql  string
+		args []any
+	}{
+		{`DELETE FROM sessions WHERE user_id=$1`, []any{uid}},
+		{`DELETE FROM devices WHERE user_id=$1`, []any{uid}},
+		// Both directions: entries this account made, and entries other people
+		// made ABOUT it (including blocks, which must not outlive their subject).
+		{`DELETE FROM contacts WHERE owner_id=$1 OR user_id=$1`, []any{uid}},
+		{`DELETE FROM drafts WHERE user_id=$1`, []any{uid}},
+		{`DELETE FROM read_state WHERE user_id=$1`, []any{uid}},
+		{`DELETE FROM reactions WHERE user_id=$1`, []any{uid}},
+		{`DELETE FROM poll_votes WHERE user_id=$1`, []any{uid}},
+		{`DELETE FROM scheduled_messages WHERE sender_id=$1`, []any{uid}},
+		{`DELETE FROM invite_links WHERE created_by=$1`, []any{uid}},
+		{`DELETE FROM pinned_messages WHERE pinned_by=$1`, []any{uid}},
+		{`DELETE FROM call_participants WHERE user_id=$1`, []any{uid}},
+		{`UPDATE messages SET sender_id=0, text='', media_ref='', attachment=NULL,
+		         dedup_key='', deleted=TRUE, edited_at=$2
+		   WHERE sender_id=$1`, []any{uid, nowMs()}},
+		// Forward provenance names the original sender; a forwarded copy that keeps
+		// pointing at a deleted account re-identifies it from someone else's chat.
+		{`UPDATE messages SET fwd_sender_id=0 WHERE fwd_sender_id=$1`, []any{uid}},
+		{`DELETE FROM chat_members WHERE user_id=$1`, []any{uid}},
+		{`DELETE FROM users WHERE id=$1`, []any{uid}},
+	}
+	for _, st := range stmts {
+		if _, err := tx.Exec(ctx, st.sql, st.args...); err != nil {
+			return wrap(err)
+		}
+	}
+	return wrap(tx.Commit(ctx))
 }
 
 func (s *Store) GetUser(ctx context.Context, id string) (*model.User, error) {
@@ -665,7 +725,7 @@ func stageOutboxTx(ctx context.Context, tx pgx.Tx, mkOb store.MakeOutbox, m *mod
 	}
 	// Wake the relay immediately on commit (LISTEN/NOTIFY) instead of waiting for
 	// the next poll tick.
-	_, err := tx.Exec(ctx, `NOTIFY synapse_outbox`)
+	_, err := tx.Exec(ctx, `NOTIFY SyncApp_outbox`)
 	return err
 }
 
@@ -677,7 +737,7 @@ func (s *Store) Listen(ctx context.Context) (<-chan struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := conn.Exec(ctx, "LISTEN synapse_outbox"); err != nil {
+	if _, err := conn.Exec(ctx, "LISTEN SyncApp_outbox"); err != nil {
 		conn.Release()
 		return nil, err
 	}

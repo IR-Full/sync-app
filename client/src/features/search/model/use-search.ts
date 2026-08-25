@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 
-import { MsgType, queryKeys, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, queryKeys, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 export interface SearchHit {
   messageId: string
@@ -21,7 +21,7 @@ export interface SearchHit {
  * expected to debounce — `enabled` keeps it off until the query is meaningful.
  */
 export function useMessageSearch(query: string, limit = 30) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
   const trimmed = query.trim()
 

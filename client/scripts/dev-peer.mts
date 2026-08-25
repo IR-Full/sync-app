@@ -7,14 +7,14 @@
  *
  *   node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/dev-peer.mts [username]
  */
-import { SynapseClient } from '../src/shared/api/protocol/client.ts'
+import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
 import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
 
-const url = process.env.SYNAPSE_WS_URL ?? 'ws://localhost:8080/ws'
+const url = process.env.SyncApp_WS_URL ?? 'ws://localhost:8080/ws'
 const username = process.argv[2] ?? 'webbob'
 const password = 'correct-horse-battery'
 
-const client = new SynapseClient({ url })
+const client = new SyncAppClient({ url })
 client.setDeviceId(`dev-peer-${username}`)
 
 async function main() {

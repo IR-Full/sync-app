@@ -15,11 +15,11 @@ import (
 )
 
 // BuildTLSConfig returns a TLS config for the client-facing listeners, or nil for
-// plaintext. Precedence: an explicit cert/key pair (SYNAPSE_TLS_CERT/KEY), else an
-// ephemeral self-signed cert when SYNAPSE_TLS_SELFSIGNED=1 (dev only), else nil
+// plaintext. Precedence: an explicit cert/key pair (SyncApp_TLS_CERT/KEY), else an
+// ephemeral self-signed cert when SyncApp_TLS_SELFSIGNED=1 (dev only), else nil
 // with a loud warning — the custom protocol must ride inside TLS in production.
 func BuildTLSConfig(log *slog.Logger) (*tls.Config, error) {
-	certFile, keyFile := os.Getenv("SYNAPSE_TLS_CERT"), os.Getenv("SYNAPSE_TLS_KEY")
+	certFile, keyFile := os.Getenv("SyncApp_TLS_CERT"), os.Getenv("SyncApp_TLS_KEY")
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
@@ -28,7 +28,7 @@ func BuildTLSConfig(log *slog.Logger) (*tls.Config, error) {
 		log.Info("TLS enabled (file certificate)")
 		return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, nil
 	}
-	if os.Getenv("SYNAPSE_TLS_SELFSIGNED") == "1" {
+	if os.Getenv("SyncApp_TLS_SELFSIGNED") == "1" {
 		cert, err := genSelfSigned()
 		if err != nil {
 			return nil, err
@@ -36,7 +36,7 @@ func BuildTLSConfig(log *slog.Logger) (*tls.Config, error) {
 		log.Warn("TLS enabled with a SELF-SIGNED certificate (dev only; clients must skip verification)")
 		return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, nil
 	}
-	log.Warn("TLS DISABLED — traffic is plaintext. Set SYNAPSE_TLS_CERT/KEY (or SYNAPSE_TLS_SELFSIGNED=1) before production")
+	log.Warn("TLS DISABLED — traffic is plaintext. Set SyncApp_TLS_CERT/KEY (or SyncApp_TLS_SELFSIGNED=1) before production")
 	return nil, nil
 }
 
@@ -48,7 +48,7 @@ func genSelfSigned() (tls.Certificate, error) {
 	}
 	tmpl := x509.Certificate{
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
-		Subject:      pkix.Name{CommonName: "synapse-dev"},
+		Subject:      pkix.Name{CommonName: "SyncApp-dev"},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
@@ -63,10 +63,10 @@ func genSelfSigned() (tls.Certificate, error) {
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: priv}, nil
 }
 
-// MediaSecret returns the HMAC key used to sign media URLs (SYNAPSE_MEDIA_SECRET),
+// MediaSecret returns the HMAC key used to sign media URLs (SyncApp_MEDIA_SECRET),
 // or an insecure dev default. The gateway and mediad must share the same value.
 func MediaSecret() []byte {
-	if v := os.Getenv("SYNAPSE_MEDIA_SECRET"); v != "" {
+	if v := os.Getenv("SyncApp_MEDIA_SECRET"); v != "" {
 		return []byte(v)
 	}
 	return []byte("dev-insecure-media-secret-change-me")

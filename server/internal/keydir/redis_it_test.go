@@ -7,17 +7,17 @@ import (
 	"os"
 	"testing"
 
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"github.com/redis/go-redis/v9"
-	"github.com/synapse-chat/synapse/pkg/wire"
 )
 
 // TestRedisKeydirSharedAcrossNodes proves a prekey published via one directory
 // instance ("node A") is visible via another ("node B") — the multi-node E2E
-// requirement. Runs only when SYNAPSE_TEST_REDIS_ADDR is set.
+// requirement. Runs only when SyncApp_TEST_REDIS_ADDR is set.
 func TestRedisKeydirSharedAcrossNodes(t *testing.T) {
-	addr := os.Getenv("SYNAPSE_TEST_REDIS_ADDR")
+	addr := os.Getenv("SyncApp_TEST_REDIS_ADDR")
 	if addr == "" {
-		t.Skip("set SYNAPSE_TEST_REDIS_ADDR to run the Redis keydir test")
+		t.Skip("set SyncApp_TEST_REDIS_ADDR to run the Redis keydir test")
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: addr})
 	defer rdb.Close()

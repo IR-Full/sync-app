@@ -1,7 +1,7 @@
 package wire
 
-// QUICALPN is the ALPN protocol token for the Synapse QUIC transport.
-const QUICALPN = "synapse-quic"
+// QUICALPN is the ALPN protocol token for the SyncApp QUIC transport.
+const QUICALPN = "SyncApp-quic"
 
 const (
 	MsgReserved MsgType = 0
@@ -139,6 +139,14 @@ const (
 	// the shape a delivery cursor needs, and per-chat seqs are monotonic, so a
 	// client keeps the maximum and duplicates are harmless.
 	MsgDelivered MsgType = 128 // S→C: a message of mine reached a recipient's device
+
+	// Account deletion. An app that lets a user create an account in-app must let
+	// them destroy it in-app (Apple 5.1.1(v), Google Play's account-deletion
+	// policy) — until this existed the protocol could open an account but never
+	// close one, and LOGOUT is not deletion: the row, the messages and the push
+	// tokens all survived it.
+	MsgAccountDelete  MsgType = 129 // C→S: erase MY account (password re-confirmed)
+	MsgAccountDeleted MsgType = 130 // S→C: erasure done; the session is already dead
 
 	// Calls & conferences (90s block). The server owns signaling only: media
 	// never flows through it (peer-to-peer or via an SFU).

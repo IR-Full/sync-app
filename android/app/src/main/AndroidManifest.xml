@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:name=".SynapseApplication"
+        android:name=".SyncAppApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -15,14 +15,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Synapse"
+        android:theme="@style/Theme.SyncApp"
         tools:targetApi="34">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.Synapse"
+            android:theme="@style/Theme.SyncApp"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -38,19 +38,19 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="synapse" android:host="chat" />
+                <data android:scheme="syncapp" android:host="chat" />
             </intent-filter>
         </activity>
 
         <!--
           Push. The server does not talk to FCM directly: internal/notify POSTs
-          {token, platform, title, body, chat_id, message_id} to SYNAPSE_PUSH_ENDPOINT,
+          {token, platform, title, body, chat_id, message_id} to SyncApp_PUSH_ENDPOINT,
           so a deployment needs a relay that forwards those keys to FCM as a DATA
           message. Without google-services.json this service is simply never
           instantiated, and the app is unaffected.
         -->
         <service
-            android:name=".push.SynapseMessagingService"
+            android:name=".push.SyncAppMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

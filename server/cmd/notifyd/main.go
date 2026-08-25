@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/synapse-chat/synapse/internal/notify"
-	"github.com/synapse-chat/synapse/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/notify"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
 )
 
 func main() {
@@ -27,11 +27,11 @@ func main() {
 	defer b.Close()
 
 	svc := notify.New(b.Bus,
-		notify.ProviderFor(os.Getenv("SYNAPSE_PUSH_ENDPOINT"), os.Getenv("SYNAPSE_PUSH_KEY"), b.Log), b.Log).
+		notify.ProviderFor(os.Getenv("SyncApp_PUSH_ENDPOINT"), os.Getenv("SyncApp_PUSH_KEY"), b.Log), b.Log).
 		WithDevices(notify.StoreDevices{Users: b.Stores.Users})
 	if err := svc.Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
-	platform.RunWorker(ctx, platform.Env("SYNAPSE_NOTIFYD_METRICS", ":9107"), b.Log)
+	platform.RunWorker(ctx, platform.Env("SyncApp_NOTIFYD_METRICS", ":9107"), b.Log)
 }

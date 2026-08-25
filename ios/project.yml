@@ -1,7 +1,7 @@
-name: Synapse
+name: SyncApp
 
 options:
-  bundleIdPrefix: chat.synapse
+  bundleIdPrefix: chat.syncapp
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
@@ -28,11 +28,11 @@ settings:
 # it. Xcode reports that as `no such module` at the first import, which points
 # at the app's source rather than at the reference that failed.
 packages:
-  Synapse:
-    path: SynapseKit
+  SyncApp:
+    path: SyncAppKit
 
 targets:
-  Synapse:
+  SyncApp:
     type: application
     platform: iOS
 
@@ -55,10 +55,10 @@ targets:
     # XcodeGen does not understand is skipped silently — producing exactly the
     # same `no such module` with nothing in the log to say why.
     dependencies:
-      - package: Synapse
-        product: SynapseDI
-      - package: Synapse
-        product: SynapsePresentation
+      - package: SyncApp
+        product: SyncAppDI
+      - package: SyncApp
+        product: SyncAppPresentation
 
     settings:
       base:
@@ -67,28 +67,28 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
 schemes:
-  Synapse Dev:
+  SyncApp Dev:
     build:
       targets:
-        Synapse: all
+        SyncApp: all
     run:
       config: Dev
     test:
       config: Dev
 
-  Synapse Stage:
+  SyncApp Stage:
     build:
       targets:
-        Synapse: all
+        SyncApp: all
     run:
       config: Stage
     test:
       config: Stage
 
-  Synapse Prod:
+  SyncApp Prod:
     build:
       targets:
-        Synapse: all
+        SyncApp: all
     run:
       config: Prod
     test:

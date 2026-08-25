@@ -8,17 +8,17 @@ import grpc "google.golang.org/grpc"
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Register_FullMethodName     = "/synapse.rpc.v1.AuthService/Register"
-	AuthService_Login_FullMethodName        = "/synapse.rpc.v1.AuthService/Login"
-	AuthService_Authenticate_FullMethodName = "/synapse.rpc.v1.AuthService/Authenticate"
-	AuthService_Resume_FullMethodName       = "/synapse.rpc.v1.AuthService/Resume"
+	AuthService_Register_FullMethodName     = "/SyncApp.rpc.v1.AuthService/Register"
+	AuthService_Login_FullMethodName        = "/SyncApp.rpc.v1.AuthService/Login"
+	AuthService_Authenticate_FullMethodName = "/SyncApp.rpc.v1.AuthService/Authenticate"
+	AuthService_Resume_FullMethodName       = "/SyncApp.rpc.v1.AuthService/Resume"
 )
 
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AuthService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "synapse.rpc.v1.AuthService",
+	ServiceName: "SyncApp.rpc.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -39,27 +39,27 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/synapse/v1/services.proto",
+	Metadata: "proto/SyncApp/v1/services.proto",
 }
 
 const (
-	ChatService_EnsureDirect_FullMethodName  = "/synapse.rpc.v1.ChatService/EnsureDirect"
-	ChatService_FindDirect_FullMethodName    = "/synapse.rpc.v1.ChatService/FindDirect"
-	ChatService_Get_FullMethodName           = "/synapse.rpc.v1.ChatService/Get"
-	ChatService_CreateGroup_FullMethodName   = "/synapse.rpc.v1.ChatService/CreateGroup"
-	ChatService_Members_FullMethodName       = "/synapse.rpc.v1.ChatService/Members"
-	ChatService_UserChats_FullMethodName     = "/synapse.rpc.v1.ChatService/UserChats"
-	ChatService_MemberIDs_FullMethodName     = "/synapse.rpc.v1.ChatService/MemberIDs"
-	ChatService_MemberIDsPage_FullMethodName = "/synapse.rpc.v1.ChatService/MemberIDsPage"
-	ChatService_CanPost_FullMethodName       = "/synapse.rpc.v1.ChatService/CanPost"
-	ChatService_IsMember_FullMethodName      = "/synapse.rpc.v1.ChatService/IsMember"
+	ChatService_EnsureDirect_FullMethodName  = "/SyncApp.rpc.v1.ChatService/EnsureDirect"
+	ChatService_FindDirect_FullMethodName    = "/SyncApp.rpc.v1.ChatService/FindDirect"
+	ChatService_Get_FullMethodName           = "/SyncApp.rpc.v1.ChatService/Get"
+	ChatService_CreateGroup_FullMethodName   = "/SyncApp.rpc.v1.ChatService/CreateGroup"
+	ChatService_Members_FullMethodName       = "/SyncApp.rpc.v1.ChatService/Members"
+	ChatService_UserChats_FullMethodName     = "/SyncApp.rpc.v1.ChatService/UserChats"
+	ChatService_MemberIDs_FullMethodName     = "/SyncApp.rpc.v1.ChatService/MemberIDs"
+	ChatService_MemberIDsPage_FullMethodName = "/SyncApp.rpc.v1.ChatService/MemberIDsPage"
+	ChatService_CanPost_FullMethodName       = "/SyncApp.rpc.v1.ChatService/CanPost"
+	ChatService_IsMember_FullMethodName      = "/SyncApp.rpc.v1.ChatService/IsMember"
 )
 
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ChatService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "synapse.rpc.v1.ChatService",
+	ServiceName: "SyncApp.rpc.v1.ChatService",
 	HandlerType: (*ChatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -104,22 +104,22 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/synapse/v1/services.proto",
+	Metadata: "proto/SyncApp/v1/services.proto",
 }
 
 const (
-	MessageService_Submit_FullMethodName   = "/synapse.rpc.v1.MessageService/Submit"
-	MessageService_History_FullMethodName  = "/synapse.rpc.v1.MessageService/History"
-	MessageService_Thread_FullMethodName   = "/synapse.rpc.v1.MessageService/Thread"
-	MessageService_Forward_FullMethodName  = "/synapse.rpc.v1.MessageService/Forward"
-	MessageService_MarkRead_FullMethodName = "/synapse.rpc.v1.MessageService/MarkRead"
+	MessageService_Submit_FullMethodName   = "/SyncApp.rpc.v1.MessageService/Submit"
+	MessageService_History_FullMethodName  = "/SyncApp.rpc.v1.MessageService/History"
+	MessageService_Thread_FullMethodName   = "/SyncApp.rpc.v1.MessageService/Thread"
+	MessageService_Forward_FullMethodName  = "/SyncApp.rpc.v1.MessageService/Forward"
+	MessageService_MarkRead_FullMethodName = "/SyncApp.rpc.v1.MessageService/MarkRead"
 )
 
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MessageService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "synapse.rpc.v1.MessageService",
+	ServiceName: "SyncApp.rpc.v1.MessageService",
 	HandlerType: (*MessageServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -144,21 +144,21 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/synapse/v1/services.proto",
+	Metadata: "proto/SyncApp/v1/services.proto",
 }
 
 const (
-	PresenceService_Online_FullMethodName    = "/synapse.rpc.v1.PresenceService/Online"
-	PresenceService_Heartbeat_FullMethodName = "/synapse.rpc.v1.PresenceService/Heartbeat"
-	PresenceService_Offline_FullMethodName   = "/synapse.rpc.v1.PresenceService/Offline"
-	PresenceService_Typing_FullMethodName    = "/synapse.rpc.v1.PresenceService/Typing"
+	PresenceService_Online_FullMethodName    = "/SyncApp.rpc.v1.PresenceService/Online"
+	PresenceService_Heartbeat_FullMethodName = "/SyncApp.rpc.v1.PresenceService/Heartbeat"
+	PresenceService_Offline_FullMethodName   = "/SyncApp.rpc.v1.PresenceService/Offline"
+	PresenceService_Typing_FullMethodName    = "/SyncApp.rpc.v1.PresenceService/Typing"
 )
 
 // PresenceService_ServiceDesc is the grpc.ServiceDesc for PresenceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PresenceService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "synapse.rpc.v1.PresenceService",
+	ServiceName: "SyncApp.rpc.v1.PresenceService",
 	HandlerType: (*PresenceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -179,20 +179,20 @@ var PresenceService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/synapse/v1/services.proto",
+	Metadata: "proto/SyncApp/v1/services.proto",
 }
 
 const (
-	KeyDirService_Publish_FullMethodName  = "/synapse.rpc.v1.KeyDirService/Publish"
-	KeyDirService_Fetch_FullMethodName    = "/synapse.rpc.v1.KeyDirService/Fetch"
-	KeyDirService_FetchAll_FullMethodName = "/synapse.rpc.v1.KeyDirService/FetchAll"
+	KeyDirService_Publish_FullMethodName  = "/SyncApp.rpc.v1.KeyDirService/Publish"
+	KeyDirService_Fetch_FullMethodName    = "/SyncApp.rpc.v1.KeyDirService/Fetch"
+	KeyDirService_FetchAll_FullMethodName = "/SyncApp.rpc.v1.KeyDirService/FetchAll"
 )
 
 // KeyDirService_ServiceDesc is the grpc.ServiceDesc for KeyDirService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var KeyDirService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "synapse.rpc.v1.KeyDirService",
+	ServiceName: "SyncApp.rpc.v1.KeyDirService",
 	HandlerType: (*KeyDirServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -209,5 +209,5 @@ var KeyDirService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/synapse/v1/services.proto",
+	Metadata: "proto/SyncApp/v1/services.proto",
 }

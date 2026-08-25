@@ -109,7 +109,7 @@ func kdfRootFromX3DH(dhConcat []byte) []byte {
 	}
 	ikm := append(prefix, dhConcat...)
 	out := make([]byte, 32)
-	r := hkdf.New(sha256.New, ikm, nil, []byte("Synapse-X3DH"))
+	r := hkdf.New(sha256.New, ikm, nil, []byte("SyncApp-X3DH"))
 	_, _ = io.ReadFull(r, out)
 	return out
 }

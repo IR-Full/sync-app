@@ -1,5 +1,5 @@
 /* Общее */
-"app.name" = "Synapse";
+"app.name" = "SyncApp";
 "common.ok" = "ОК";
 "common.cancel" = "Отмена";
 "common.done" = "Готово";
@@ -113,7 +113,12 @@
 "profile.display.name" = "Отображаемое имя";
 "profile.user.id" = "ID пользователя";
 "profile.device.id" = "Устройство";
-"profile.local.only.footer" = "Имя и символ хранятся только на этом устройстве: на сервере нет API профиля, поэтому другие видят ваш username.";
+"profile.visible.footer" = "Имя и фото видны всем, с кем вы общаетесь, и совпадают на всех ваших устройствах.";
+"profile.avatar.change" = "Заменить фото";
+"profile.avatar.remove" = "Убрать";
+"profile.avatar.failed" = "Не удалось прочитать изображение";
+"profile.save" = "Сохранить";
+"profile.save.failed" = "Не удалось сохранить";
 "profile.theme" = "Тема";
 "profile.theme.system" = "Как в системе";
 "profile.theme.light" = "Светлая";

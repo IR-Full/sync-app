@@ -12,7 +12,7 @@ package keydir
 import (
 	"context"
 
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // opCtx returns the caller's context when it already has a deadline, else one

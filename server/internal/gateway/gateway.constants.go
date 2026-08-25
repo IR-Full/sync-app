@@ -15,7 +15,7 @@ const deliveredQueueDepth = 4096
 // DefaultConfig returns sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		ServerVersion:    "synapse/0.1",
+		ServerVersion:    "SyncApp/0.1",
 		Heartbeat:        20 * time.Second,
 		IdleTimeout:      60 * time.Second,
 		HandshakeTimeout: 10 * time.Second,

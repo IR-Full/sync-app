@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/synapse-chat/synapse/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
 // PushJob is the payload fanout publishes on notify.push. Token/Platform are

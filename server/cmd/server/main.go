@@ -1,4 +1,4 @@
-// Command server is the all-in-one runner for the Synapse MVP. It wires the
+// Command server is the all-in-one runner for the SyncApp MVP. It wires the
 // domain services, the event bus, and the realtime gateway into one process
 // (a "modular monolith" that is already split along the service boundaries from
 // Section 6, so pieces can be peeled into separate deployables later).
@@ -6,12 +6,12 @@
 // Backends are selected by environment. With none set it runs fully in-memory
 // (great for `go run` and demos). Set the DSNs to use the Docker infra:
 //
-//	SYNAPSE_PG_DSN     postgres://... (enables durable storage)
-//	SYNAPSE_REDIS_ADDR host:6379      (enables Redis presence)
-//	SYNAPSE_NATS_URL   nats://...      (enables NATS event bus)
-//	SYNAPSE_TCP_ADDR   default :7000   (raw-TCP binary protocol)
-//	SYNAPSE_WS_ADDR    default :8080   (WebSocket + /healthz)
-//	SYNAPSE_NODE_ID    default 1       (snowflake node id, 0..1023)
+//	SyncApp_PG_DSN     postgres://... (enables durable storage)
+//	SyncApp_REDIS_ADDR host:6379      (enables Redis presence)
+//	SyncApp_NATS_URL   nats://...      (enables NATS event bus)
+//	SyncApp_TCP_ADDR   default :7000   (raw-TCP binary protocol)
+//	SyncApp_WS_ADDR    default :8080   (WebSocket + /healthz)
+//	SyncApp_NODE_ID    default 1       (snowflake node id, 0..1023)
 package main
 
 import (
@@ -30,38 +30,38 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/audit"
-	"github.com/synapse-chat/synapse/internal/auth"
-	"github.com/synapse-chat/synapse/internal/call"
-	"github.com/synapse-chat/synapse/internal/chat"
-	"github.com/synapse-chat/synapse/internal/contact"
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/internal/fanout"
-	"github.com/synapse-chat/synapse/internal/gateway"
-	"github.com/synapse-chat/synapse/internal/invite"
-	"github.com/synapse-chat/synapse/internal/keydir"
-	"github.com/synapse-chat/synapse/internal/media"
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/moderation"
-	"github.com/synapse-chat/synapse/internal/nodeid"
-	"github.com/synapse-chat/synapse/internal/notify"
-	"github.com/synapse-chat/synapse/internal/outbox"
-	"github.com/synapse-chat/synapse/internal/pin"
-	"github.com/synapse-chat/synapse/internal/platform"
-	"github.com/synapse-chat/synapse/internal/poll"
-	"github.com/synapse-chat/synapse/internal/presence"
-	"github.com/synapse-chat/synapse/internal/reaction"
-	"github.com/synapse-chat/synapse/internal/replay"
-	"github.com/synapse-chat/synapse/internal/router"
-	"github.com/synapse-chat/synapse/internal/schedule"
-	"github.com/synapse-chat/synapse/internal/search"
-	"github.com/synapse-chat/synapse/internal/store"
-	"github.com/synapse-chat/synapse/internal/store/memory"
-	"github.com/synapse-chat/synapse/internal/store/postgres"
-	"github.com/synapse-chat/synapse/internal/tracing"
-	"github.com/synapse-chat/synapse/pkg/eventbus"
-	"github.com/synapse-chat/synapse/pkg/id"
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/internal/audit"
+	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/call"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/contact"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/fanout"
+	"github.com/SyncApp-chat/SyncApp/internal/gateway"
+	"github.com/SyncApp-chat/SyncApp/internal/invite"
+	"github.com/SyncApp-chat/SyncApp/internal/keydir"
+	"github.com/SyncApp-chat/SyncApp/internal/media"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/moderation"
+	"github.com/SyncApp-chat/SyncApp/internal/nodeid"
+	"github.com/SyncApp-chat/SyncApp/internal/notify"
+	"github.com/SyncApp-chat/SyncApp/internal/outbox"
+	"github.com/SyncApp-chat/SyncApp/internal/pin"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/poll"
+	"github.com/SyncApp-chat/SyncApp/internal/presence"
+	"github.com/SyncApp-chat/SyncApp/internal/reaction"
+	"github.com/SyncApp-chat/SyncApp/internal/replay"
+	"github.com/SyncApp-chat/SyncApp/internal/router"
+	"github.com/SyncApp-chat/SyncApp/internal/schedule"
+	"github.com/SyncApp-chat/SyncApp/internal/search"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/SyncApp-chat/SyncApp/internal/store/postgres"
+	"github.com/SyncApp-chat/SyncApp/internal/tracing"
+	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
@@ -79,7 +79,7 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Distributed tracing (no-op unless SYNAPSE_TRACE=stdout / OTLP configured).
+	// Distributed tracing (no-op unless SyncApp_TRACE=stdout / OTLP configured).
 	shutdownTracing, err := tracing.Init(ctx)
 	if err != nil {
 		return err
@@ -97,12 +97,12 @@ func run(log *slog.Logger) error {
 	// runs its own gateway pool + data plane, users connect to the nearest, and
 	// chats are home-region pinned (cross-region traffic flows over the event
 	// bus). Here it is informational, stamped into logs for correlation.
-	region := env("SYNAPSE_REGION", "local")
+	region := env("SyncApp_REGION", "local")
 	log = log.With("region", region, "node", nodeID)
 
 	// --- storage ---
 	var stores store.Stores
-	if dsn := os.Getenv("SYNAPSE_PG_DSN"); dsn != "" {
+	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
 		pg, err := postgres.Connect(ctx, dsn)
 		if err != nil {
 			return err
@@ -115,12 +115,12 @@ func run(log *slog.Logger) error {
 		log.Info("storage: postgres")
 	} else {
 		stores = memory.New().Stores()
-		log.Info("storage: in-memory (set SYNAPSE_PG_DSN for durable storage)")
+		log.Info("storage: in-memory (set SyncApp_PG_DSN for durable storage)")
 	}
 
 	// --- event bus ---
 	var bus eventbus.Bus
-	if url := os.Getenv("SYNAPSE_NATS_URL"); url != "" {
+	if url := os.Getenv("SyncApp_NATS_URL"); url != "" {
 		bus, err = eventbus.NewNATS(url)
 		if err != nil {
 			return err
@@ -136,12 +136,12 @@ func run(log *slog.Logger) error {
 	var pbackend presence.Backend
 	var rtr router.Router
 	var replayBuf replay.Buffer
-	if addr := os.Getenv("SYNAPSE_REDIS_ADDR"); addr != "" {
-		pbackend, err = presence.NewRedisBackend(addr, os.Getenv("SYNAPSE_REDIS_PASSWORD"), 0)
+	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
+		pbackend, err = presence.NewRedisBackend(addr, os.Getenv("SyncApp_REDIS_PASSWORD"), 0)
 		if err != nil {
 			return err
 		}
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SYNAPSE_REDIS_PASSWORD")})
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
 		defer rdb.Close()
 		// Wrap in a circuit breaker + local fallback: a Redis outage degrades to
 		// same-node delivery instead of a total routing failure.
@@ -183,7 +183,7 @@ func run(log *slog.Logger) error {
 	// Search indexer (consumes message events). Shared Postgres index when a DSN
 	// is set (visible across nodes), else in-memory.
 	var searchBackend search.Backend
-	if dsn := os.Getenv("SYNAPSE_PG_DSN"); dsn != "" {
+	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
 		searchBackend, err = search.NewPostgresBackend(ctx, dsn)
 		if err != nil {
 			return err
@@ -210,25 +210,25 @@ func run(log *slog.Logger) error {
 	// tokens the provider reports as dead — without it, a user who uninstalls the
 	// app costs a failed delivery on every message they are ever sent.
 	notifySvc := notify.New(bus,
-		notify.ProviderFor(os.Getenv("SYNAPSE_PUSH_ENDPOINT"), os.Getenv("SYNAPSE_PUSH_KEY"), log), log).
+		notify.ProviderFor(os.Getenv("SyncApp_PUSH_ENDPOINT"), os.Getenv("SyncApp_PUSH_KEY"), log), log).
 		WithDevices(notify.StoreDevices{Users: stores.Users})
 	if err := notifySvc.Start(); err != nil {
 		return err
 	}
 
 	// --- listeners ---
-	tcpAddr := env("SYNAPSE_TCP_ADDR", ":7000")
-	wsAddr := env("SYNAPSE_WS_ADDR", ":8080")
+	tcpAddr := env("SyncApp_TCP_ADDR", ":7000")
+	wsAddr := env("SyncApp_WS_ADDR", ":8080")
 
 	// Media service (needs the public base URL for signed links).
-	mediaDir := env("SYNAPSE_MEDIA_DIR", "./data/media")
+	mediaDir := env("SyncApp_MEDIA_DIR", "./data/media")
 	fsStore, err := media.NewFSStore(mediaDir)
 	if err != nil {
 		return err
 	}
-	publicBase := env("SYNAPSE_PUBLIC_URL", "http://localhost"+wsAddr)
-	if os.Getenv("SYNAPSE_MEDIA_SECRET") == "" {
-		log.Warn("SYNAPSE_MEDIA_SECRET not set — using an insecure dev default; set it (from a secrets manager) before production")
+	publicBase := env("SyncApp_PUBLIC_URL", "http://localhost"+wsAddr)
+	if os.Getenv("SyncApp_MEDIA_SECRET") == "" {
+		log.Warn("SyncApp_MEDIA_SECRET not set — using an insecure dev default; set it (from a secrets manager) before production")
 	}
 	mediaSvc := media.New(fsStore, ids, platform.MediaSecret(), publicBase).WithLogger(log)
 	// Blobs are collected, not leaked: the message log answers "is this still
@@ -244,8 +244,8 @@ func run(log *slog.Logger) error {
 
 	// E2E key directory (shared across nodes when Redis is configured).
 	var keyDir keydir.Directory
-	if addr := os.Getenv("SYNAPSE_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SYNAPSE_REDIS_PASSWORD")})
+	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
 		defer rdb.Close()
 		keyDir = keydir.NewRedis(rdb, log)
 	} else {
@@ -256,8 +256,8 @@ func run(log *slog.Logger) error {
 	// and across nodes when Redis is present, which is the only place a limit can
 	// live if a user's second connection lands on a different pod.
 	var userLimits ratelimit.Shared
-	if addr := os.Getenv("SYNAPSE_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SYNAPSE_REDIS_PASSWORD")})
+	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
 		defer rdb.Close()
 		userLimits = ratelimit.NewRedisShared(rdb, "user", 2, 20)
 		log.Info("per-user limits: redis (shared across nodes)")
@@ -265,32 +265,32 @@ func run(log *slog.Logger) error {
 
 	gwCfg := gateway.DefaultConfig()
 	gwCfg.NodeID = strconv.FormatInt(nodeID, 10)
-	if v := os.Getenv("SYNAPSE_SEND_RATE"); v != "" {
+	if v := os.Getenv("SyncApp_SEND_RATE"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			gwCfg.SendRate, gwCfg.SendBurst = f, f*2
 		}
 	}
-	if origins := os.Getenv("SYNAPSE_ALLOWED_ORIGINS"); origins != "" {
+	if origins := os.Getenv("SyncApp_ALLOWED_ORIGINS"); origins != "" {
 		gwCfg.AllowedOrigins = strings.Split(origins, ",")
 	} else {
-		log.Warn("SYNAPSE_ALLOWED_ORIGINS not set — WebSocket accepts any origin (dev only); set your web origins before production")
+		log.Warn("SyncApp_ALLOWED_ORIGINS not set — WebSocket accepts any origin (dev only); set your web origins before production")
 	}
 	// Per-IP accept guard (connection-flood / reconnect-storm defense). Off by
 	// default so dev and tests are unaffected; set both in production.
-	if v := os.Getenv("SYNAPSE_MAX_CONNS_PER_IP"); v != "" {
+	if v := os.Getenv("SyncApp_MAX_CONNS_PER_IP"); v != "" {
 		if n, e := strconv.Atoi(v); e == nil {
 			gwCfg.MaxConnsPerIP = n
 		}
 	}
-	if v := os.Getenv("SYNAPSE_ACCEPT_RATE_PER_IP"); v != "" {
+	if v := os.Getenv("SyncApp_ACCEPT_RATE_PER_IP"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			gwCfg.AcceptRatePerIP = f
 		}
 	}
-	if admins := os.Getenv("SYNAPSE_ADMIN_USERS"); admins != "" {
+	if admins := os.Getenv("SyncApp_ADMIN_USERS"); admins != "" {
 		gwCfg.AdminUsers = strings.Split(admins, ",")
 	}
-	if mods := os.Getenv("SYNAPSE_MODERATOR_USERS"); mods != "" {
+	if mods := os.Getenv("SyncApp_MODERATOR_USERS"); mods != "" {
 		gwCfg.ModeratorUsers = strings.Split(mods, ",")
 	}
 	auditSink := audit.NewLogSink(log)
@@ -328,11 +328,11 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	// Mandatory-TLS policy: with SYNAPSE_REQUIRE_TLS=1 the server refuses to start
+	// Mandatory-TLS policy: with SyncApp_REQUIRE_TLS=1 the server refuses to start
 	// in plaintext, so a misconfiguration can never silently expose cleartext
 	// traffic in production. The plaintext path stays available for local dev.
-	if os.Getenv("SYNAPSE_REQUIRE_TLS") == "1" && tlsConf == nil {
-		return fmt.Errorf("SYNAPSE_REQUIRE_TLS=1 but TLS is not configured; set SYNAPSE_TLS_CERT/KEY (or SYNAPSE_TLS_SELFSIGNED=1 for dev)")
+	if os.Getenv("SyncApp_REQUIRE_TLS") == "1" && tlsConf == nil {
+		return fmt.Errorf("SyncApp_REQUIRE_TLS=1 but TLS is not configured; set SyncApp_TLS_CERT/KEY (or SyncApp_TLS_SELFSIGNED=1 for dev)")
 	}
 
 	ln, err := net.Listen("tcp", tcpAddr)
@@ -350,16 +350,16 @@ func run(log *slog.Logger) error {
 	}()
 
 	// QUIC listens on the same address over UDP (requires TLS). Enable with
-	// SYNAPSE_QUIC=1; gives mobile clients connection migration + no HOL blocking.
-	if tlsConf != nil && os.Getenv("SYNAPSE_QUIC") == "1" {
+	// SyncApp_QUIC=1; gives mobile clients connection migration + no HOL blocking.
+	if tlsConf != nil && os.Getenv("SyncApp_QUIC") == "1" {
 		go func() {
 			log.Info("gateway listening (quic)", "addr", tcpAddr)
 			if err := gw.ServeQUIC(ctx, tcpAddr, tlsConf); err != nil {
 				log.Error("quic serve", "err", err)
 			}
 		}()
-	} else if os.Getenv("SYNAPSE_QUIC") == "1" {
-		log.Warn("SYNAPSE_QUIC=1 ignored: QUIC requires TLS (set SYNAPSE_TLS_* or SYNAPSE_TLS_SELFSIGNED=1)")
+	} else if os.Getenv("SyncApp_QUIC") == "1" {
+		log.Warn("SyncApp_QUIC=1 ignored: QUIC requires TLS (set SyncApp_TLS_* or SyncApp_TLS_SELFSIGNED=1)")
 	}
 
 	mux := http.NewServeMux()
@@ -370,7 +370,7 @@ func run(log *slog.Logger) error {
 	})
 	mux.Handle("/metrics", promhttp.Handler()) // Prometheus scrape target
 	mediaSvc.RegisterHTTP(mux)                 // /media/upload/*, /media/download/*
-	if os.Getenv("SYNAPSE_PPROF") == "1" {
+	if os.Getenv("SyncApp_PPROF") == "1" {
 		// Live profiling (CPU/heap/goroutine/block). Gated because it exposes
 		// internals — bind to an internal port / behind auth in production.
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -412,22 +412,22 @@ func run(log *slog.Logger) error {
 }
 
 // resolveNodeID picks a unique Snowflake node id (0..1023). Precedence:
-//  1. explicit SYNAPSE_NODE_ID (e.g. a Kubernetes StatefulSet ordinal);
+//  1. explicit SyncApp_NODE_ID (e.g. a Kubernetes StatefulSet ordinal);
 //  2. a distributed lease from Redis (guarantees uniqueness across instances);
 //  3. a hostname-derived id with a loud warning (collision possible).
 //
 // It returns the id and a release func (no-op unless a lease was taken).
 func resolveNodeID(ctx context.Context, log *slog.Logger) (int64, func()) {
-	if v := os.Getenv("SYNAPSE_NODE_ID"); v != "" {
+	if v := os.Getenv("SyncApp_NODE_ID"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 64)
 		if err != nil || n < 0 || n > 1023 {
-			log.Warn("invalid SYNAPSE_NODE_ID; falling back to 0", "value", v)
+			log.Warn("invalid SyncApp_NODE_ID; falling back to 0", "value", v)
 			return 0, func() {}
 		}
 		return n, func() {}
 	}
-	if addr := os.Getenv("SYNAPSE_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SYNAPSE_REDIS_PASSWORD")})
+	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
 		n, release, err := nodeid.Lease(ctx, rdb, 30*time.Second)
 		if err == nil {
 			log.Info("node id leased from Redis", "node_id", n)
@@ -443,7 +443,7 @@ func resolveNodeID(ctx context.Context, log *slog.Logger) (int64, func()) {
 		h *= 16777619
 	}
 	n := int64(h % 1024)
-	log.Warn("node id derived from hostname — set SYNAPSE_NODE_ID or SYNAPSE_REDIS_ADDR to guarantee uniqueness",
+	log.Warn("node id derived from hostname — set SyncApp_NODE_ID or SyncApp_REDIS_ADDR to guarantee uniqueness",
 		"host", host, "node_id", n)
 	return n, func() {}
 }

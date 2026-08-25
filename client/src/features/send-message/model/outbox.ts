@@ -36,7 +36,7 @@ interface OutboxState {
 }
 
 function storageKey(ownerId: string): string {
-  return `synapse:outbox:${ownerId}`
+  return `SyncApp:outbox:${ownerId}`
 }
 
 function persist(ownerId: string | null, items: OutboxItem[]): void {

@@ -10,20 +10,20 @@
 # service just selects its binary via `command:`.
 
 x-fleet-image: &fleet-image
-  image: synapse-fleet:latest
+  image: SYNCAPP-fleet:latest
   restart: unless-stopped
 
 x-backends: &backends
   # Shared data plane. Services are stateless; all state is here.
-  SYNAPSE_PG_DSN: postgres://synapse:synapse@postgres:5432/synapse?sslmode=disable
-  SYNAPSE_REDIS_ADDR: redis:6379
-  SYNAPSE_NATS_URL: nats://nats:4222
+  SYNCAPP_PG_DSN: postgres://SYNCAPP:SYNCAPP@postgres:5432/SYNCAPP?sslmode=disable
+  SYNCAPP_REDIS_ADDR: redis:6379
+  SYNCAPP_NATS_URL: nats://nats:4222
   # Peer service addresses (gateway/messaged/fanoutd/searchd dial these).
-  SYNAPSE_AUTHD_ADDR: authd:9001
-  SYNAPSE_CHATD_ADDR: chatd:9002
-  SYNAPSE_MESSAGED_ADDR: messaged:9003
-  SYNAPSE_PRESENCED_ADDR: presenced:9004
-  SYNAPSE_KEYDIRD_ADDR: keydird:9005
+  SYNCAPP_AUTHD_ADDR: authd:9001
+  SYNCAPP_CHATD_ADDR: chatd:9002
+  SYNCAPP_MESSAGED_ADDR: messaged:9003
+  SYNCAPP_PRESENCED_ADDR: presenced:9004
+  SYNCAPP_KEYDIRD_ADDR: keydird:9005
 
 x-depends-infra: &depends-infra
   postgres: {condition: service_healthy}
@@ -33,8 +33,8 @@ x-depends-infra: &depends-infra
 services:
   postgres:
     image: postgres:16-alpine
-    environment: {POSTGRES_USER: synapse, POSTGRES_PASSWORD: synapse, POSTGRES_DB: synapse}
-    healthcheck: {test: ["CMD-SHELL", "pg_isready -U synapse"], interval: 5s, timeout: 3s, retries: 10}
+    environment: {POSTGRES_USER: SYNCAPP, POSTGRES_PASSWORD: SYNCAPP, POSTGRES_DB: SYNCAPP}
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U SYNCAPP"], interval: 5s, timeout: 3s, retries: 10}
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]

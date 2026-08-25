@@ -1,5 +1,5 @@
 /**
- * SynapseClient — the whole custom-protocol surface, in one place.
+ * SyncAppClient — the whole custom-protocol surface, in one place.
  *
  * The gateway speaks a binary protocol over a WebSocket (`/ws`), not REST: one
  * binary WS message == one frame == one envelope. Everything the app needs —
@@ -16,13 +16,13 @@
  * protocol quirks (seq/ack bookkeeping, the streamed-history convention,
  * request correlation) from leaking into components.
  */
-import { CLIENT_CAPS, hasCap, Cap } from './caps'
+import { Cap, CLIENT_CAPS, hasCap } from './caps'
 import { decodeBody, encodeBody, hasBody } from './codec'
 import { decodeEnvelope, encodeEnvelope, type Envelope } from './envelope'
 import { ErrorCode, isAuthError, ProtocolError } from './error-code'
 import { decodeFrame, encodeFrame } from './frame'
-import { MsgType, msgTypeName } from './msg-type'
 import type * as Body from './generated/bodies'
+import { MsgType, msgTypeName } from './msg-type'
 
 export type ConnectionState =
   'idle' | 'connecting' | 'authenticating' | 'ready' | 'reconnecting' | 'closed'
@@ -37,6 +37,14 @@ export interface Session {
   sessionId: string
   token: string
   resumeToken: string
+  /**
+   * Who the session belongs to. AUTH_OK carries the profile, which is what lets
+   * a token login — every launch after the first, where no username was typed —
+   * know more about itself than an id.
+   */
+  username: string
+  displayName: string
+  avatarRef: string
 }
 
 /** Unsolicited server pushes, plus connection-level signals. */
@@ -53,6 +61,10 @@ export interface ClientEvents {
   pinned: Body.Pinned
   /** draft mirrored from another device of this same user (private) */
   drafts: Body.Drafts
+  /** a profile changed — our own, mirrored from another device of this account */
+  profile: Body.Profile
+  /** a message of ours reached a recipient's device (body is a delivery cursor) */
+  delivered: Body.ReadUpdate
   /** poll created, voted on, or closed */
   poll: Body.PollState
   /** call room lifecycle + roster */
@@ -94,7 +106,7 @@ export interface DecodedEnvelope<T = unknown> {
   body: T
 }
 
-export interface SynapseClientOptions {
+export interface SyncAppClientOptions {
   url: string
   clientVersion?: string
   /** how long a request may wait for its reply before rejecting */
@@ -112,8 +124,8 @@ const DEFAULTS = {
   livenessTimeoutMs: 45_000,
 }
 
-export class SynapseClient {
-  private readonly options: Required<SynapseClientOptions>
+export class SyncAppClient {
+  private readonly options: Required<SyncAppClientOptions>
   private socket: WebSocket | null = null
   private _state: ConnectionState = 'idle'
 
@@ -141,7 +153,7 @@ export class SynapseClient {
     reject: (error: unknown) => void
   } | null = null
 
-  constructor(options: SynapseClientOptions) {
+  constructor(options: SyncAppClientOptions) {
     this.options = { ...DEFAULTS, ...options }
   }
 
@@ -179,7 +191,7 @@ export class SynapseClient {
       try {
         ;(listener as Listener<K>)(payload)
       } catch (error) {
-        console.error(`[synapse] listener for "${event}" threw`, error)
+        console.error(`[SyncApp] listener for "${event}" threw`, error)
       }
     }
   }
@@ -330,6 +342,9 @@ export class SynapseClient {
       sessionId: reply.body.sessionId,
       token: reply.body.token,
       resumeToken: reply.body.resumeToken,
+      username: reply.body.username,
+      displayName: reply.body.displayName,
+      avatarRef: reply.body.avatarRef,
     }
     // The gateway assigns a device id when we sent none; adopt it so a later
     // reconnect presents the same device.
@@ -424,7 +439,7 @@ export class SynapseClient {
     try {
       envelope = decodeEnvelope(decodeFrame(new Uint8Array(data)))
     } catch (error) {
-      console.error('[synapse] dropping malformed frame', error)
+      console.error('[SyncApp] dropping malformed frame', error)
       return
     }
 
@@ -447,7 +462,7 @@ export class SynapseClient {
       try {
         body = decodeBody(envelope.type, envelope.body)
       } catch (error) {
-        console.error(`[synapse] cannot decode ${msgTypeName(envelope.type)} body`, error)
+        console.error(`[SyncApp] cannot decode ${msgTypeName(envelope.type)} body`, error)
         return
       }
     }
@@ -529,6 +544,12 @@ export class SynapseClient {
         break
       case MsgType.DRAFTS:
         this.emit('drafts', envelope.body as Body.Drafts)
+        break
+      case MsgType.PROFILE:
+        this.emit('profile', envelope.body as Body.Profile)
+        break
+      case MsgType.DELIVERED:
+        this.emit('delivered', envelope.body as Body.ReadUpdate)
         break
       case MsgType.POLL_STATE:
         this.emit('poll', envelope.body as Body.PollState)

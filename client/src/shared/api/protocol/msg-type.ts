@@ -117,6 +117,22 @@ export const MsgType = {
   CHAT_CREATE: 120,
   CHAT_INFO: 121,
   PUSH_TOKEN: 122,
+
+  // Chat list: the only message that tells a fresh client which chats it is in.
+  CHAT_LIST: 123,
+  CHATS: 124,
+
+  // Profiles. PROFILE_GET also takes "@handle", which makes it the user lookup.
+  PROFILE_GET: 125,
+  PROFILE_SET: 126,
+  PROFILE: 127,
+
+  /**
+   * A message of ours reached a recipient's device — the step between "stored"
+   * and "read". Pushed unsolicited; the body is a ReadUpdate, because
+   * (chat_id, user_id, up_to_chat_seq) is exactly a delivery cursor.
+   */
+  DELIVERED: 128,
 } as const
 
 export type MsgType = (typeof MsgType)[keyof typeof MsgType]

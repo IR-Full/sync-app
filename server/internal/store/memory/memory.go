@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/synapse-chat/synapse/internal/model"
-	"github.com/synapse-chat/synapse/internal/store"
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
 // New returns an empty in-memory store usable for every store interface.

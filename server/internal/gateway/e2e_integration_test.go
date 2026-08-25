@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/synapse-chat/synapse/pkg/e2e"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/pkg/e2e"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // e2eInit is the X3DH bootstrap the initiator sends with its first secret

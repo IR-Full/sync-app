@@ -3,7 +3,7 @@
 import { useMutation } from '@tanstack/react-query'
 
 import { chatKindFromString, useChatStore } from '@/entities/chat'
-import { MsgType, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useSyncAppClient, type Wire } from '@/shared/api'
 
 export type GroupKind = 'group' | 'channel'
 
@@ -17,7 +17,7 @@ export type GroupKind = 'group' | 'channel'
  * fails the whole request if any one is unknown.
  */
 export function useCreateGroupChat() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const upsert = useChatStore((store) => store.upsert)
 
   return useMutation({
@@ -64,7 +64,7 @@ export function useCreateGroupChat() {
  * added here stays sparse until a message or a CHAT_INFO fills it in.
  */
 export function useJoinChat() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const upsert = useChatStore((store) => store.upsert)
 
   return useMutation({

@@ -13,9 +13,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/synapse-chat/synapse/internal/chat"
-	"github.com/synapse-chat/synapse/internal/platform"
-	"github.com/synapse-chat/synapse/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/rpc"
 )
 
 func main() {
@@ -31,8 +31,8 @@ func main() {
 	defer b.Close()
 
 	svc := chat.New(b.Stores.Chats, b.IDs)
-	addr := platform.Env("SYNAPSE_CHATD_ADDR", ":9002")
-	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNAPSE_CHATD_METRICS", ":9102"), b.Log,
+	addr := platform.Env("SyncApp_CHATD_ADDR", ":9002")
+	if err := platform.ServeGRPC(ctx, addr, platform.Env("SyncApp_CHATD_METRICS", ":9102"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterChat(s, svc) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)

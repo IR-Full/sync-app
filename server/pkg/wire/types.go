@@ -80,6 +80,10 @@ func (t MsgType) String() string {
 		return "PROFILE_SET"
 	case MsgProfile:
 		return "PROFILE"
+	case MsgAccountDelete:
+		return "ACCOUNT_DELETE"
+	case MsgAccountDeleted:
+		return "ACCOUNT_DELETED"
 	case MsgChatExport:
 		return "CHAT_EXPORT"
 	case MsgChatExportResult:

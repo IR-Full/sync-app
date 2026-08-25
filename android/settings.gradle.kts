@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SynapseAndroid"
+rootProject.name = "SyncAppAndroid"
 include(":app")

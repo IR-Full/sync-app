@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { MsgType, queryKeys, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, queryKeys, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 export interface PinnedMessage {
   messageId: string
@@ -18,7 +18,7 @@ export interface PinnedMessage {
  * changes — the realtime bridge invalidates this query on that push.
  */
 export function useChatPins(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
 
   return useQuery({
@@ -41,7 +41,7 @@ export function useChatPins(chatId: string) {
 }
 
 export function useTogglePin(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({

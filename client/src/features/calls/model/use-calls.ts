@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react'
 
 import { peerKey, roomFromWire, useCallStore, type CallKind } from '@/entities/call'
 import { useSessionStore } from '@/entities/session'
-import { MsgType, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useSyncAppClient, type Wire } from '@/shared/api'
 
 import { CallSession, type OutboundSignal } from './webrtc'
 
@@ -43,7 +43,7 @@ function constraintsFor(kind: CallKind): MediaStreamConstraints {
  * follows the authoritative roster rather than a guess made at invite time.
  */
 export function useCallEngine(): void {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
   const selfDeviceId = useSessionStore((state) => state.session?.deviceId ?? '')
   const session = useRef<CallSession | null>(null)
@@ -136,7 +136,7 @@ const engineRef: {
 } = { session: null, pending: null }
 
 export function useCallActions() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
   const selfDeviceId = useSessionStore((state) => state.session?.deviceId ?? '')
 

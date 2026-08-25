@@ -60,7 +60,7 @@ export function unmarshalHeader(bytes: Uint8Array): RatchetHeader {
 
 /** Derives (rootKey, chainKey) from the root key and a DH output. */
 function kdfRootKey(rootKey: Uint8Array, dhOut: Uint8Array): [Uint8Array, Uint8Array] {
-  const out = hkdf(sha256, dhOut, rootKey, toUtf8('Synapse-Ratchet-RK'), 64)
+  const out = hkdf(sha256, dhOut, rootKey, toUtf8('SyncApp-Ratchet-RK'), 64)
   return [out.slice(0, 32), out.slice(32)]
 }
 
@@ -79,7 +79,7 @@ function kdfChainKey(chainKey: Uint8Array): [Uint8Array, Uint8Array] {
  * cipher key.
  */
 function aeadFor(messageKey: Uint8Array): { key: Uint8Array; nonce: Uint8Array } {
-  const buf = hkdf(sha256, messageKey, undefined, toUtf8('Synapse-Ratchet-Msg'), 32 + 12)
+  const buf = hkdf(sha256, messageKey, undefined, toUtf8('SyncApp-Ratchet-Msg'), 32 + 12)
   return { key: buf.slice(0, 32), nonce: buf.slice(32) }
 }
 

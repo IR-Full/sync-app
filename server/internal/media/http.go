@@ -79,11 +79,42 @@ func (s *Service) handleDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	// Serve user-uploaded bytes as an opaque, non-rendered download: octet-stream +
-	// nosniff stops content-type sniffing, and attachment disposition stops inline
-	// rendering — together they neutralize stored-XSS via a malicious upload.
-	w.Header().Set("Content-Type", "application/octet-stream")
+	// User-uploaded bytes default to an opaque, non-rendered download:
+	// octet-stream + attachment, with nosniff so the browser cannot decide
+	// otherwise — together they neutralize stored-XSS via a malicious upload.
+	//
+	// Images are the exception, because a picture that cannot be displayed is not
+	// a picture: a client showing an avatar or a photo has no way to render an
+	// attachment. They are served inline under their REAL type, decided by the
+	// bytes rather than by what the uploader claimed — a file that only says it
+	// is a PNG stays an attachment. With an exact image type plus nosniff, a
+	// polyglot that is also valid HTML is still never rendered as markup, which
+	// is the attack this guards against.
+	contentType, disposition := "application/octet-stream", "attachment"
+	if img := imageContentType(data); img != "" {
+		contentType, disposition = img, "inline"
+	}
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Disposition", "attachment")
-	_, _ = w.Write(data) // #nosec G705 -- served as inert attachment (nosniff + octet-stream), never rendered
+	w.Header().Set("Content-Disposition", disposition)
+	_, _ = w.Write(data) // #nosec G705 -- inert attachment, or an image under its detected type (nosniff)
+}
+
+// imageContentType reports the media type of data when it is an image format
+// that is SAFE to render inline, and "" otherwise.
+//
+// The judgement is made from the content's own signature (http.DetectContentType
+// reads the leading bytes), never from the upload's declared type, so the
+// decision cannot be steered by a client.
+//
+// SVG is deliberately absent: it is a document format that can carry script, so
+// rendering one inline from our own origin would be the stored-XSS this whole
+// handler is arranged to prevent. It stays an attachment.
+func imageContentType(data []byte) string {
+	switch detected := strings.TrimSpace(strings.Split(http.DetectContentType(data), ";")[0]); detected {
+	case "image/png", "image/jpeg", "image/gif", "image/webp":
+		return detected
+	default:
+		return ""
+	}
 }

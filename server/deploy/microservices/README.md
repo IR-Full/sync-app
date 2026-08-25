@@ -1,4 +1,4 @@
-# Synapse — microservice fleet
+# SyncApp — microservice fleet
 
 The same system as `cmd/server` (the modular monolith), split into independently
 deployable processes that talk **gRPC** (sync path) and **NATS** (async path) over
@@ -66,7 +66,7 @@ message sent through one gateway is delivered to a client on the other.
 
 Start the infra (`docker compose up -d` at the repo root), then launch each daemon
 with the shared backends set — see the env in the compose file
-(`SYNAPSE_PG_DSN`/`SYNAPSE_REDIS_ADDR`/`SYNAPSE_NATS_URL` + the `*_ADDR` peers).
+(`SyncApp_PG_DSN`/`SyncApp_REDIS_ADDR`/`SyncApp_NATS_URL` + the `*_ADDR` peers).
 The `cmd/server` monolith remains the zero-setup path (`go run ./cmd/server`).
 
 ## Notes
@@ -77,5 +77,12 @@ The `cmd/server` monolith remains the zero-setup path (`go run ./cmd/server`).
 - **Latency tax.** Every send now crosses `gatewayd → messaged → chatd`, so
   per-message throughput is lower than the monolith — the expected cost of the
   split. Scale `messaged`/`fanoutd` horizontally to compensate.
-- **mTLS** between services is enabled by setting `SYNAPSE_MTLS_CA/CERT/KEY`
+- **mTLS** between services is enabled by setting `SyncApp_MTLS_CA/CERT/KEY`
   (see `internal/platform`); left off here for a zero-config local run.
+- **One edge shortcut: profiles.** `gatewayd` reaches the `users` table directly
+  (`gateway.Services.Users`) rather than through `authd` — for `@username`
+  resolution, and now for `PROFILE_GET`/`PROFILE_SET` as well, which makes the
+  edge a *writer* of account data. It is a deliberate shortcut, not a pattern:
+  the operations are a primary-key read and a two-column update with no domain
+  logic behind them. A user-directory RPC on `authd` is the follow-up that would
+  remove it.

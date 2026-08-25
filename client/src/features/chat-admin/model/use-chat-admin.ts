@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { MsgType, useIsConnected, useSynapseClient, type Wire } from '@/shared/api'
+import { MsgType, useIsConnected, useSyncAppClient, type Wire } from '@/shared/api'
 
 export interface InviteLink {
   code: string
@@ -24,7 +24,7 @@ const invitesKey = (chatId: string) => ['invites', chatId] as const
  * them; the request does.
  */
 export function useInviteLinks(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const connected = useIsConnected()
 
   return useQuery({
@@ -50,7 +50,7 @@ export function useInviteLinks(chatId: string) {
 }
 
 export function useCreateInvite(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -67,7 +67,7 @@ export function useCreateInvite(chatId: string) {
 }
 
 export function useRevokeInvite(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -84,7 +84,7 @@ export function useRevokeInvite(chatId: string) {
 
 /** Promote or demote a member. Owner-only on the server. */
 export function useSetMemberRole(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: MemberRole }) => {
@@ -104,7 +104,7 @@ export function useSetMemberRole(chatId: string) {
  * handle is unique across all chats, so a taken name comes back as a conflict.
  */
 export function useSetChatUsername(chatId: string) {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
 
   return useMutation({
     mutationFn: async (username: string) => {
@@ -124,7 +124,7 @@ export function useSetChatUsername(chatId: string) {
  * page repeats the chat metadata and members, so only the messages accumulate.
  */
 export function useChatExport() {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
 
   return useMutation({
     mutationFn: async (chatId: string) => {

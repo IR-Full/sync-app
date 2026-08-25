@@ -1,0 +1,252 @@
+package com.syncapp.messenger.presentation.chat
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.syncapp.messenger.core.AppError
+import com.syncapp.messenger.core.Outcome
+import com.syncapp.messenger.data.media.MediaUrlCache
+import com.syncapp.messenger.domain.model.Chat
+import com.syncapp.messenger.domain.model.ChatKind
+import com.syncapp.messenger.domain.model.ChatTarget
+import com.syncapp.messenger.domain.model.Message
+import com.syncapp.messenger.domain.model.MessageStatus
+import com.syncapp.messenger.domain.model.UserPresence
+import com.syncapp.messenger.domain.repository.AuthRepository
+import com.syncapp.messenger.domain.repository.ChatRepository
+import com.syncapp.messenger.domain.repository.ConnectionStatus
+import com.syncapp.messenger.domain.repository.MessageRepository
+import com.syncapp.messenger.domain.repository.UserRepository
+import com.syncapp.messenger.domain.usecase.LoadOlderMessagesUseCase
+import com.syncapp.messenger.domain.usecase.MarkChatReadUseCase
+import com.syncapp.messenger.domain.usecase.OpenChatUseCase
+import com.syncapp.messenger.domain.usecase.SendMessageUseCase
+import com.syncapp.messenger.presentation.navigation.Routes
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class ChatUiState(
+    val loadingOlder: Boolean = false,
+    val sending: Boolean = false,
+    val hasMoreHistory: Boolean = true,
+    val error: AppError? = null,
+)
+
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    savedState: SavedStateHandle,
+    private val chatRepository: ChatRepository,
+    private val messageRepository: MessageRepository,
+    private val mediaCache: MediaUrlCache,
+    private val userRepository: UserRepository,
+    private val openChat: OpenChatUseCase,
+    private val sendMessage: SendMessageUseCase,
+    private val loadOlder: LoadOlderMessagesUseCase,
+    private val markRead: MarkChatReadUseCase,
+    authRepository: AuthRepository,
+) : ViewModel() {
+
+    private val routeChatId: String? = savedState.get<String>(Routes.CHAT_ARG_ID)?.takeIf { it.isNotEmpty() }
+    private val routePeer: String? = savedState.get<String>(Routes.CHAT_ARG_PEER)?.takeIf { it.isNotEmpty() }
+
+    /**
+     * Which chat this screen is showing.
+     *
+     * A direct chat opened on someone we have never messaged has no id yet — the
+     * gateway assigns one when the first message lands — so until then the screen
+     * works against a `"@username"` key and switches to the real id the moment it
+     * exists. Everything below observes this, so nothing else has to know.
+     */
+    val chatKey: StateFlow<String> = when {
+        routeChatId != null -> flowOf(routeChatId)
+        routePeer != null -> chatRepository.observeResolvedDirectChatId(routePeer)
+            .map { resolved -> resolved ?: "@$routePeer" }
+        else -> flowOf("")
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, routeChatId ?: routePeer?.let { "@$it" } ?: "")
+
+    val connection: StateFlow<ConnectionStatus> = authRepository.connection
+
+    val chat: StateFlow<Chat?> = chatKey
+        .flatMapLatest { key -> if (key.isEmpty()) flowOf(null) else chatRepository.observeChat(key) }
+        .onEach { mediaCache.request(it?.peerAvatarRef) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * The transcript.
+     *
+     * Delivery and read state are derived from the other members' cursors rather than
+     * stored per message: both are monotonic, so a message backfilled *after* a receipt
+     * arrived is still shown correctly — which a one-off row update at receipt time
+     * would have missed.
+     */
+    val messages: StateFlow<List<Message>> = chatKey
+        .flatMapLatest { key ->
+            if (key.isEmpty()) {
+                flowOf(emptyList())
+            } else {
+                combine(
+                    messageRepository.observeMessages(key),
+                    messageRepository.observeOthersReadSeq(key),
+                    messageRepository.observeOthersDeliveredSeq(key),
+                ) { rows, readSeq, deliveredSeq ->
+                    rows.map { message -> message.withReceipts(readSeq, deliveredSeq) }
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The other person's online state, for a direct chat only — a group has no single
+     * "last seen" to show. Null until the gateway says something, and the UI shows
+     * nothing at all in that case rather than implying they are offline.
+     */
+    val peerPresence: StateFlow<UserPresence?> = chat
+        .flatMapLatest { current ->
+            val peerId = current?.peerUserId?.takeIf { current.kind == ChatKind.DIRECT }
+            if (peerId == null) flowOf(null) else userRepository.observePresence(peerId)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val typingUsers: StateFlow<List<String>> = chatKey
+        .flatMapLatest { key ->
+            if (key.isEmpty()) flowOf(emptySet()) else messageRepository.observeTyping(key)
+        }
+        .map { it.toList() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Labels for the people in this chat, so bubbles can be attributed in a group. */
+    val senderLabels: StateFlow<Map<String, String>> = userRepository.observeKnownUsers()
+        .map { users -> users.associateBy({ it.userId }, { it.displayLabel }) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Signed, expiring URLs for the refs on screen — attachments and the peer's
+     * avatar alike. Shared app-wide, so a person's picture is fetched once however
+     * many screens draw it.
+     */
+    val mediaUrls: StateFlow<Map<String, String>> = mediaCache.urls
+
+    private val _state = MutableStateFlow(ChatUiState())
+    val state: StateFlow<ChatUiState> = _state.asStateFlow()
+
+    private var draft = MutableStateFlow("")
+    val input: StateFlow<String> = draft.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            chat.collect { current ->
+                _state.update { it.copy(hasMoreHistory = current?.hasMoreHistory ?: false) }
+            }
+        }
+        viewModelScope.launch {
+            // Opening on a handle has to resolve first. A conversation with this person
+            // may already exist server-side — from another device, or from before a
+            // reinstall — and only the resolution learns its id, and with it the history
+            // that would otherwise stay invisible.
+            val resolved = when {
+                routeChatId != null -> routeChatId
+                routePeer != null ->
+                    (openChat(null, routePeer).getOrNull() as? ChatTarget.Existing)?.chatId
+                else -> null
+            }
+            // A chat opened from the list may hold nothing but the message that
+            // announced it, so pull its newest page on entry.
+            if (resolved != null) chatRepository.refresh(resolved)
+        }
+    }
+
+    fun onInputChange(value: String) {
+        draft.value = value
+        // Typing is throttled in the repository to match the gateway's own limit;
+        // anything faster would be relayed to nobody.
+        messageRepository.sendTyping(chatKey.value, active = value.isNotEmpty())
+    }
+
+    fun send() {
+        val text = draft.value
+        if (text.isBlank()) return
+        val target = targetOf(chatKey.value) ?: return
+        draft.value = ""
+        _state.update { it.copy(sending = true, error = null) }
+        viewModelScope.launch {
+            val outcome = sendMessage(target, text)
+            _state.update {
+                it.copy(sending = false, error = (outcome as? Outcome.Failure)?.error)
+            }
+        }
+    }
+
+    fun sendAttachment(bytes: ByteArray, filename: String, mime: String) {
+        val target = targetOf(chatKey.value) ?: return
+        _state.update { it.copy(sending = true, error = null) }
+        viewModelScope.launch {
+            val outcome = messageRepository.sendAttachment(target, bytes, filename, mime)
+            _state.update {
+                it.copy(sending = false, error = (outcome as? Outcome.Failure)?.error)
+            }
+        }
+    }
+
+    fun retry(messageId: String) {
+        viewModelScope.launch { messageRepository.retry(messageId) }
+    }
+
+    fun loadOlderMessages() {
+        val current = chat.value ?: return
+        if (_state.value.loadingOlder || !current.hasMoreHistory) return
+        _state.update { it.copy(loadingOlder = true) }
+        viewModelScope.launch {
+            val outcome = loadOlder(current)
+            _state.update {
+                it.copy(
+                    loadingOlder = false,
+                    hasMoreHistory = (outcome as? Outcome.Success)?.value ?: it.hasMoreHistory,
+                    error = (outcome as? Outcome.Failure)?.error,
+                )
+            }
+        }
+    }
+
+    /** Called when the transcript is on screen: everything visible has been read. */
+    fun markVisibleRead() {
+        val key = chatKey.value
+        if (key.isEmpty()) return
+        val newest = messages.value.maxOfOrNull { it.seq } ?: return
+        if (newest <= 0) return
+        viewModelScope.launch { markRead(key, newest) }
+    }
+
+    fun requestMedia(mediaRef: String) = mediaCache.request(mediaRef)
+
+    fun dismissError() = _state.update { it.copy(error = null) }
+
+    /**
+     * Applies the two receipt cursors to one message. Read wins over delivered: it is
+     * the later fact, and a cursor that has passed a message for reading has
+     * necessarily passed it for delivery.
+     */
+    private fun Message.withReceipts(readSeq: Long, deliveredSeq: Long): Message = when {
+        !isOutgoing || status != MessageStatus.SENT || seq <= 0 -> this
+        seq <= readSeq -> copy(status = MessageStatus.READ)
+        seq <= deliveredSeq -> copy(status = MessageStatus.DELIVERED)
+        else -> this
+    }
+
+    private fun targetOf(key: String): ChatTarget? = when {
+        key.isEmpty() -> null
+        key.startsWith("@") -> ChatTarget.DirectPeer(key.removePrefix("@"))
+        else -> ChatTarget.Existing(key)
+    }
+}

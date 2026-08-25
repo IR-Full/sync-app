@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/delivery"
-	"github.com/synapse-chat/synapse/internal/metrics"
-	"github.com/synapse-chat/synapse/pkg/ratelimit"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 func newConn(g *Gateway, t wire.Transport, remote string) *conn {

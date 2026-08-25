@@ -101,6 +101,14 @@ const BODY_TYPES = {
   [MsgType.CHAT_CREATE]: 'ChatCreate',
   [MsgType.CHAT_INFO]: 'ChatInfo',
   [MsgType.PUSH_TOKEN]: 'PushToken',
+  [MsgType.CHAT_LIST]: 'ChatList',
+  [MsgType.CHATS]: 'Chats',
+  [MsgType.PROFILE_GET]: 'ProfileGet',
+  [MsgType.PROFILE_SET]: 'ProfileSet',
+  [MsgType.PROFILE]: 'Profile',
+  // DELIVERED reuses ReadUpdate — a delivery cursor has the same shape as a read
+  // one, and the server's own convention is to reuse a body under a new type.
+  [MsgType.DELIVERED]: 'ReadUpdate',
 } as const satisfies Partial<Record<number, string>>
 
 const typeCache = new Map<number, Type>()

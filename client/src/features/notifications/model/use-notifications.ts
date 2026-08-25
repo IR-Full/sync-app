@@ -6,7 +6,7 @@ import { useChatStore } from '@/entities/chat'
 import { useSessionStore } from '@/entities/session'
 import { useSettingsStore } from '@/entities/settings'
 import { labelForUser, useUserDirectory } from '@/entities/user'
-import { useSynapseClient } from '@/shared/api'
+import { useSyncAppClient } from '@/shared/api'
 
 /**
  * Browser notifications for messages that arrive while the tab is hidden.
@@ -18,7 +18,7 @@ import { useSynapseClient } from '@/shared/api'
  * is focused, where the message is already visible.
  */
 export function useMessageNotifications(): void {
-  const client = useSynapseClient()
+  const client = useSyncAppClient()
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
   const enabled = useSettingsStore((state) => state.desktopNotifications)
   const sound = useSettingsStore((state) => state.soundOnMessage)

@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/synapse-chat/synapse/internal/contact"
-	"github.com/synapse-chat/synapse/internal/message"
-	"github.com/synapse-chat/synapse/internal/pin"
-	"github.com/synapse-chat/synapse/internal/schedule"
-	"github.com/synapse-chat/synapse/pkg/wire"
+	"github.com/SyncApp-chat/SyncApp/internal/contact"
+	"github.com/SyncApp-chat/SyncApp/internal/message"
+	"github.com/SyncApp-chat/SyncApp/internal/pin"
+	"github.com/SyncApp-chat/SyncApp/internal/schedule"
+	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
 // --- Contacts & blocking ---
