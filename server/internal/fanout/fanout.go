@@ -52,6 +52,10 @@ func (s *Service) WithPreviewPolicy(p PreviewPolicy) *Service {
 	return s
 }
 
+// WithChatKinds lets fanout tell a channel from a group, so read receipts in a
+// channel stay with the reader (see receiptsArePrivate).
+func (s *Service) WithChatKinds(k ChatKinds) *Service { s.kinds = k; return s }
+
 // WithMuteChecker makes the notification path honour a muted chat.
 //
 // Optional in the same sense as the presence audience: a deployment without one
@@ -345,9 +349,17 @@ func (s *Service) eachMember(ctx context.Context, chatID string, fn func(userID 
 // constant somewhere else that happens to be small today.
 func (s *Service) deliverNew(ctx context.Context, members []string, body wire.NewMessageBody) {
 	payload := wire.Marshal(body)
+	// Edits and deletions ride this same path (as MsgNew with the flag set) so
+	// connected clients update in place. They are not news for someone offline:
+	// a notification per edit is spam, and one for a deletion announces a
+	// message its sender just took back — with its text, if previews are on.
+	notify := !body.Edited && !body.Deleted
 	for start := 0; start < len(members); start += routeBatchSize {
 		end := min(start+routeBatchSize, len(members))
 		for _, uid := range s.routeMany(ctx, members[start:end], wire.MsgNew, payload) {
+			if !notify {
+				continue
+			}
 			// The sender's own absence is not news: they know they sent it, and a
 			// notification for your own message is a bug users report as one.
 			if uid == body.SenderID {
@@ -414,6 +426,9 @@ func (s *Service) onRead(ctx context.Context, e eventbus.Event) error {
 	var body wire.ReadUpdateBody
 	if err := wire.Unmarshal(e.Data, &body); err != nil {
 		return err
+	}
+	if s.receiptsArePrivate(ctx, body.ChatID) {
+		return nil
 	}
 	// The reader does not need their own receipt back.
 	return s.broadcast(ctx, body.ChatID, wire.MsgReadUpd, wire.Marshal(body), body.UserID)
@@ -680,4 +695,22 @@ func (s *Service) onPinned(ctx context.Context, e eventbus.Event) error {
 		return err
 	}
 	return s.broadcast(ctx, body.ChatID, wire.MsgPinned, wire.Marshal(body), "")
+}
+
+// receiptsArePrivate reports whether a read receipt in this chat stays with the
+// reader.
+//
+// In a channel, a receipt broadcast to the audience does two wrong things at once:
+// it tells every subscriber who else is subscribed (a channel's membership is not
+// public), and it costs O(members) per read — so O(members²) as the audience reads
+// a post. The same cost applies to any chat big enough to be sharded, where
+// per-person receipts are not shown anyway. Groups and 1:1 chats keep them.
+func (s *Service) receiptsArePrivate(ctx context.Context, chatID string) bool {
+	if s.kinds != nil {
+		if typ, err := s.kinds.ChatType(ctx, chatID); err == nil && typ == model.ChatChannel {
+			return true
+		}
+	}
+	_, hot, err := s.members(ctx, chatID)
+	return err == nil && hot
 }

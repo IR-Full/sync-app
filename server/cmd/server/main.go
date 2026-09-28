@@ -193,6 +193,9 @@ func run(log *slog.Logger) error {
 		// has existed since the first migration with nothing reading it, so until
 		// this line muting a chat did nothing at all.
 		WithMuteChecker(chatSvc).
+		// Chat kind keeps channel read receipts with the reader (see
+		// fanout.receiptsArePrivate).
+		WithChatKinds(chatSvc).
 		// Message text reaches the push provider only for accounts that asked for
 		// it. Without this the payload carried a preview of every message to
 		// Apple/Google — the server volunteering the plaintext that E2E exists to

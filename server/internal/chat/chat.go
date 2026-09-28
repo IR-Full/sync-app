@@ -383,6 +383,16 @@ func (s *Service) CanPost(ctx context.Context, chatID, userID string) (bool, err
 	return true, nil
 }
 
+// ChatType returns a chat's kind from the cached authorization view, so fanout
+// can ask it per event without a database read.
+func (s *Service) ChatType(ctx context.Context, chatID string) (model.ChatType, error) {
+	e, err := s.authView(ctx, chatID)
+	if err != nil {
+		return "", err
+	}
+	return e.typ, nil
+}
+
 // DirectPeer returns the other participant of a 1:1 chat (direct or secret) as
 // seen by userID. ok is false for any other kind of chat, and for a caller who is
 // not in it. It answers from the same cached view as authorization, so the
