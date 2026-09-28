@@ -28,6 +28,9 @@ func New(st store.ScheduleStore, chats Chats, sender Sender, ids *id.Generator, 
 	return &Service{store: st, chats: chats, sender: sender, ids: ids, log: log}
 }
 
+// WithBlockGate makes the dispatcher honour blocks at fire time.
+func (s *Service) WithBlockGate(g BlockGate) *Service { s.blocks = g; return s }
+
 // Schedule validates and stores a pending send. Permission is checked NOW (at
 // schedule time) and again when it fires, so losing access in between cannot
 // deliver the message.
@@ -128,6 +131,15 @@ func (s *Service) dispatchDue(ctx context.Context) {
 			s.log.Info("dropping scheduled message: sender may no longer post",
 				"id", m.ID, "chat", m.ChatID, "user", m.SenderID)
 			continue
+		}
+		// Same for a block placed after scheduling: the gateway refuses the send
+		// at scheduling time, and without this a message queued the minute before
+		// would still arrive the day after.
+		if s.blocks != nil {
+			if blocked, err := s.blocks.Blocked(ctx, m.ChatID, m.SenderID); err != nil || blocked {
+				s.log.Info("dropping scheduled message: blocked", "id", m.ID, "chat", m.ChatID)
+				continue
+			}
 		}
 		if _, _, err := s.sender.Send(ctx, message.SendInput{
 			SenderID: m.SenderID, ChatID: m.ChatID,

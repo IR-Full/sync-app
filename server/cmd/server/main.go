@@ -176,7 +176,8 @@ func run(log *slog.Logger) error {
 	contactSvc := contact.New(stores.Contacts, stores.Users)
 	pinSvc := pin.New(stores.Pins, stores.Drafts, chatSvc, bus)
 	inviteSvc := invite.New(stores.Invites, stores.Chats.(store.MemberRoleStore), chatSvc)
-	schedSvc := schedule.New(stores.Schedule, chatSvc, msgSvc, ids, log)
+	schedSvc := schedule.New(stores.Schedule, chatSvc, msgSvc, ids, log).
+		WithBlockGate(dmBlockGate{chats: chatSvc, contacts: contactSvc})
 	go schedSvc.Run(ctx, 5*time.Second) // dispatches due sends + reaps self-destructed
 
 	// Presence is gated on the sender's privacy setting. The gate is built from
@@ -555,4 +556,20 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// dmBlockGate answers the scheduler's "is this 1:1 send refused by a block?" by
+// combining the chat service's cached peer lookup with the contact service. It
+// lives here because neither package should import the other.
+type dmBlockGate struct {
+	chats    *chat.Service
+	contacts *contact.Service
+}
+
+func (g dmBlockGate) Blocked(ctx context.Context, chatID, senderID string) (bool, error) {
+	peer, ok, err := g.chats.DirectPeer(ctx, chatID, senderID)
+	if err != nil || !ok {
+		return false, err
+	}
+	return g.contacts.BlocksBetween(ctx, senderID, peer)
 }

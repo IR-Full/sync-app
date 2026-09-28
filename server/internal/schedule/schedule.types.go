@@ -15,6 +15,12 @@ type Chats interface {
 	CanPost(ctx context.Context, chatID, userID string) (bool, error)
 }
 
+// BlockGate reports whether a block between the two people in a 1:1 chat
+// refuses this sender's message. Optional: without one, only CanPost is checked.
+type BlockGate interface {
+	Blocked(ctx context.Context, chatID, senderID string) (bool, error)
+}
+
 // Sender delivers a due message through the normal write path (so it gets a seq,
 // an outbox event, and fanout exactly like a live send).
 type Sender interface {
@@ -27,6 +33,7 @@ type Service struct {
 	store  store.ScheduleStore
 	chats  Chats
 	sender Sender
+	blocks BlockGate
 	ids    *id.Generator
 	log    *slog.Logger
 }

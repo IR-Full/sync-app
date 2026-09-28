@@ -914,7 +914,7 @@ func (s *Store) EditMessage(ctx context.Context, chatID, id, text string, at int
 
 func (s *Store) DeleteMessage(ctx context.Context, chatID, id string, at int64, mkOb store.MakeOutbox) (*model.Message, error) {
 	return s.mutateMessage(ctx, mkOb,
-		`UPDATE messages SET deleted=TRUE, text='', media_ref='', edited_at=$3
+		`UPDATE messages SET deleted=TRUE, text='', media_ref='', attachment=NULL, edited_at=$3
 		 WHERE chat_id=$1 AND id=$2
 		 RETURNING `+msgCols,
 		atoi(chatID), atoi(id), at)

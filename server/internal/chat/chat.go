@@ -383,6 +383,29 @@ func (s *Service) CanPost(ctx context.Context, chatID, userID string) (bool, err
 	return true, nil
 }
 
+// DirectPeer returns the other participant of a 1:1 chat (direct or secret) as
+// seen by userID. ok is false for any other kind of chat, and for a caller who is
+// not in it. It answers from the same cached view as authorization, so the
+// gateway can ask it on every send into a DM without a database round trip.
+func (s *Service) DirectPeer(ctx context.Context, chatID, userID string) (peer string, ok bool, err error) {
+	e, err := s.authView(ctx, chatID)
+	if err != nil {
+		return "", false, err
+	}
+	if !e.typ.Is1To1() || e.large {
+		return "", false, nil
+	}
+	if _, member := e.roles[userID]; !member {
+		return "", false, nil
+	}
+	for uid := range e.roles {
+		if uid != userID {
+			return uid, true, nil
+		}
+	}
+	return "", false, nil // a 1:1 chat with only the caller left in it
+}
+
 // IsMember reports chat membership (cached read authorization).
 func (s *Service) IsMember(ctx context.Context, chatID, userID string) (bool, error) {
 	_, _, member, err := s.roleOf(ctx, chatID, userID)

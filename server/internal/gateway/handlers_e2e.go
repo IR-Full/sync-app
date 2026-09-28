@@ -383,6 +383,11 @@ func (c *conn) handleChatExport(ctx context.Context, e wire.Envelope) error {
 	if !validID(body.ChatID) {
 		return c.replyError(e.RequestID, wire.ErrBadArg, "invalid chat id")
 	}
+	// Export is a bulk read of the conversation, which a block takes away just as
+	// it takes away HISTORY (through resolveChat).
+	if err := c.refuseIfBlocked(ctx, body.ChatID); err != nil {
+		return c.replyBlocked(e.RequestID, err)
+	}
 	ch, err := c.gw.svc.Chat.Get(ctx, body.ChatID)
 	if err != nil {
 		return c.replyForError(e.RequestID, err)
