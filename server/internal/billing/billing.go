@@ -260,6 +260,11 @@ func (s *Service) HandleCallback(ctx context.Context, providerName string, raw [
 		return fmt.Errorf("%w: %s", ErrNoProvider, providerName)
 	}
 	cb, err := provider.Verify(ctx, raw, headers)
+	if errors.Is(err, ErrProviderUnavailable) {
+		// Not a verdict on the callback: we could not ask. Surfaced as-is so the
+		// handler answers 500 and the acquirer retries.
+		return err
+	}
 	if err != nil {
 		// Logged as a warning and returned: an unverifiable callback is either a
 		// misconfiguration or someone probing, and both are worth seeing.

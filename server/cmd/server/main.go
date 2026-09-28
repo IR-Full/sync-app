@@ -353,9 +353,12 @@ func run(log *slog.Logger) error {
 		billingSvc = billing.New(stores.Billing, bus, ids, log)
 		if shop := envcfg.Get("SYNCAPP_YOOKASSA_SHOP_ID"); shop != "" {
 			billingSvc = billingSvc.WithProvider(&billing.YooKassa{
-				Endpoint:      envcfg.GetDefault("SYNCAPP_YOOKASSA_ENDPOINT", "https://api.yookassa.ru/v3/payments"),
-				ShopID:        shop,
-				SecretKey:     envcfg.Get("SYNCAPP_YOOKASSA_SECRET"),
+				Endpoint:  envcfg.GetDefault("SYNCAPP_YOOKASSA_ENDPOINT", "https://api.yookassa.ru/v3/payments"),
+				ShopID:    shop,
+				SecretKey: envcfg.Get("SYNCAPP_YOOKASSA_SECRET"),
+				// Optional: only for notifications relayed through a signing proxy.
+				// YooKassa does not sign its own; each one is checked by fetching the
+				// payment back from the API (billing.YooKassa.Verify).
 				WebhookSecret: envcfg.Get("SYNCAPP_YOOKASSA_WEBHOOK_SECRET"),
 			})
 			log.Info("billing: yookassa enabled (card + sbp)")

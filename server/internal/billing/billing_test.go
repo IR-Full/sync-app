@@ -628,7 +628,7 @@ func TestDecimalToMinorHandlesProviderFormatting(t *testing.T) {
 // ------------------------------------------------------------------ webhooks
 
 // TestWebhookVerificationIsMandatory covers the real providers rather than the fake
-// one, because the signature check is the only thing between a stranger and a free
+// one, because verification is the only thing between a stranger and a free
 // subscription — the endpoint is unauthenticated by construction.
 func TestWebhookVerificationIsMandatory(t *testing.T) {
 	body := []byte(`{"object":{"id":"p1","status":"succeeded","paid":true,"amount":{"value":"299.00","currency":"RUB"}}}`)
@@ -647,7 +647,8 @@ func TestWebhookVerificationIsMandatory(t *testing.T) {
 		}
 	})
 	t.Run("yookassa accepts a correct signature", func(t *testing.T) {
-		y := &YooKassa{WebhookSecret: "shh"}
+		// The signature is the optional proxy layer; the API lookup still decides.
+		y := newYoo(t, &fakeYooAPI{status: "succeeded", paid: "true", amount: "299.00"}, "shh")
 		mac := hmac.New(sha256.New, []byte("shh"))
 		mac.Write(body)
 		cb, err := y.Verify(context.Background(), body,
@@ -662,18 +663,21 @@ func TestWebhookVerificationIsMandatory(t *testing.T) {
 			t.Fatalf("amount = %d, want 29900", cb.AmountMinor)
 		}
 	})
-	t.Run("yookassa refuses with no secret configured", func(t *testing.T) {
-		// "We could not check" must never mean "therefore it is fine".
+	t.Run("yookassa refuses when it cannot ask the API", func(t *testing.T) {
+		// "We could not check" must never mean "therefore it is fine". With no
+		// signing proxy the check IS the API lookup, so an unreachable API refuses
+		// — retryably, since the notification may well be genuine.
 		y := &YooKassa{}
-		if _, err := y.Verify(context.Background(), body, map[string]string{"X-Signature": "anything"}); err == nil {
-			t.Fatal("verification passed with no secret configured")
+		_, err := y.Verify(context.Background(), body, nil)
+		if !errors.Is(err, ErrProviderUnavailable) {
+			t.Fatalf("err = %v, want ErrProviderUnavailable", err)
 		}
 	})
 	t.Run("header lookup is case-insensitive", func(t *testing.T) {
 		// HTTP header names are case-insensitive and different layers canonicalise
 		// differently. Missing the signature because of capitalisation fails closed,
 		// which is safe and extremely confusing.
-		y := &YooKassa{WebhookSecret: "shh"}
+		y := newYoo(t, &fakeYooAPI{status: "succeeded", paid: "true", amount: "299.00"}, "shh")
 		mac := hmac.New(sha256.New, []byte("shh"))
 		mac.Write(body)
 		if _, err := y.Verify(context.Background(), body,

@@ -169,6 +169,11 @@ var (
 	// unauthenticated by construction, so this is the only thing standing between a
 	// stranger and a free subscription.
 	ErrBadSignature = errors.New("billing: callback signature did not verify")
+	// ErrProviderUnavailable means a callback could not be checked because the
+	// acquirer itself could not be reached. Unlike ErrBadSignature it is worth a
+	// retry: the notification may be perfectly genuine, and answering 400 would
+	// make the acquirer give up on a payment the user has already made.
+	ErrProviderUnavailable = errors.New("billing: payment provider unavailable")
 	// ErrAmountMismatch means a callback reported a different amount than the payment
 	// was created for — a provider bug, or a forged body that happened to verify.
 	ErrAmountMismatch = errors.New("billing: callback amount does not match the payment")
