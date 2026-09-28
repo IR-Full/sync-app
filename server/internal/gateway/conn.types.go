@@ -27,6 +27,7 @@ type conn struct {
 	platform  string
 	authed    bool
 	peerCaps  wire.Cap
+	inFlags   byte // compression flags the peer may send after auth (wire.Flag*)
 
 	outSeq        atomic.Uint64 // server→client sequence
 	lastClientSeq atomic.Uint64 // highest client Seq observed (piggyback ack)

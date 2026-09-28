@@ -13,6 +13,10 @@ func NewTCPTransport(c net.Conn) Transport { return NewStreamTransport(c) }
 
 func (t *streamTransport) ReadFrame() ([]byte, error) { return ReadFrame(t.conn) }
 
+func (t *streamTransport) readRawFrame(max int) (byte, []byte, error) {
+	return readRawFrame(t.conn, max)
+}
+
 func (t *streamTransport) WriteFrame(flags byte, payload []byte) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -32,26 +36,49 @@ func NewConn(t Transport, peerCompression bool) *Conn {
 
 // ReadEnvelope reads and decodes the next envelope.
 func (c *Conn) ReadEnvelope() (Envelope, error) {
-	payload, err := c.t.ReadFrame()
+	payload, err := c.readPayload()
 	if err != nil {
 		return Envelope{}, err
 	}
 	return DecodeEnvelope(payload)
 }
 
+func (c *Conn) readPayload() ([]byte, error) {
+	rt, ok := c.t.(rawTransport)
+	if !c.restrictIn || !ok {
+		return c.t.ReadFrame()
+	}
+	flags, raw, err := rt.readRawFrame(c.maxIn)
+	if err != nil {
+		return nil, err
+	}
+	if flags&(FlagCompressed|FlagZstd)&^c.allowIn != 0 {
+		return nil, ErrCompressionNotNegotiated
+	}
+	return decompress(flags, raw)
+}
+
+// SetInboundPolicy restricts what this connection will read from here on:
+// frames whose payload (as sent) exceeds maxPayload are refused before their body
+// is read, and a frame compressed with anything outside allowed is refused
+// before it is decompressed. allowed is a mask of FlagCompressed and FlagZstd.
+//
+// A server calls this before the handshake with a small limit and no
+// compression, then widens it as the peer earns it: the flag on a frame is
+// chosen by whoever sent it, so without this a stranger's very first frame gets
+// to make us run a decompressor.
+//
+// Call it from the goroutine that reads; it is not synchronised with
+// ReadEnvelope.
+func (c *Conn) SetInboundPolicy(maxPayload int, allowed byte) {
+	c.restrictIn = true
+	c.maxIn = maxPayload
+	c.allowIn = allowed & (FlagCompressed | FlagZstd)
+}
+
 // WriteEnvelope encodes and writes an envelope, compressing when worthwhile.
 func (c *Conn) WriteEnvelope(e *Envelope) error {
-	payload := e.Encode()
-	var flags byte
-	if len(payload) >= c.compressMinLen {
-		switch {
-		case c.zstd:
-			flags |= FlagZstd
-		case c.compress:
-			flags |= FlagCompressed
-		}
-	}
-	return c.t.WriteFrame(flags, payload)
+	return c.WriteRaw(e.Encode())
 }
 
 // SetZstd enables zstd+dictionary compression for outbound frames (negotiated
@@ -77,10 +104,19 @@ func (c *Conn) SetCompression(on bool) { c.compress = on }
 
 // WriteRaw writes a pre-encoded envelope payload as a frame (compressing per the
 // connection policy). Used to replay buffered frames verbatim on session resume.
+//
+// Every post-handshake frame on the gateway goes through here, so this is where
+// the negotiated algorithm has to be honoured: it used to consider only gzip,
+// which left a zstd-negotiated connection uncompressed after WELCOME.
 func (c *Conn) WriteRaw(payload []byte) error {
 	var flags byte
-	if c.compress && len(payload) >= c.compressMinLen {
-		flags |= FlagCompressed
+	if len(payload) >= c.compressMinLen {
+		switch {
+		case c.zstd:
+			flags |= FlagZstd
+		case c.compress:
+			flags |= FlagCompressed
+		}
 	}
 	return c.t.WriteFrame(flags, payload)
 }

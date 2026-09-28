@@ -32,9 +32,14 @@ func newConn(g *Gateway, t wire.Transport, remote string) *conn {
 	// memory cost; the lo lane is the only one we can safely shrink here.)
 	n := g.cfg.MaxInflight
 	const ephemeralLane = 16
+	wc := wire.NewConn(t, false) // compression enabled after Hello
+	// Until the peer authenticates it gets small frames and no compression at all:
+	// the compression flag is chosen by the sender, so otherwise a stranger's first
+	// frame decides whether we run a decompressor on it.
+	wc.SetInboundPolicy(preAuthMaxPayload, 0)
 	return &conn{
 		gw: g,
-		wc: wire.NewConn(t, false), // compression enabled after Hello
+		wc: wc,
 		// Truncated rather than verbatim: a log line outlives the connection, and a
 		// file of addresses plus timestamps is a movement history whether or not
 		// anyone set out to build one. See logaddr.go.
@@ -100,6 +105,8 @@ func (c *conn) run(ctx context.Context) {
 		c.log.Info("auth failed", "err", err)
 		return
 	}
+	// Authenticated: full-size frames and the compression it negotiated.
+	c.wc.SetInboundPolicy(wire.MaxPayloadSize, c.inFlags)
 
 	c.log.Info("connection established", "user", logUser(c.userID), "device", logUser(c.deviceID))
 
@@ -139,6 +146,14 @@ func (c *conn) handshake(ctx context.Context) error {
 		wire.CapBatching | wire.CapSecretQueue
 	agreed := hello.Caps & serverCaps
 	c.peerCaps = agreed
+	// Inbound compression the peer may use once authenticated: exactly what it
+	// negotiated. Both, if it offered both — the choice of which to SEND is ours.
+	if agreed&wire.CapZstd != 0 {
+		c.inFlags |= wire.FlagZstd
+	}
+	if agreed&wire.CapCompression != 0 {
+		c.inFlags |= wire.FlagCompressed
+	}
 	// Prefer zstd+dictionary when both sides support it; else gzip.
 	if agreed&wire.CapZstd != 0 {
 		c.wc.SetZstd(true)
