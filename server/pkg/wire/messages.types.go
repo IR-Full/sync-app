@@ -888,6 +888,7 @@ type SubscriptionBody struct {
 	PriorityDelivery   bool  `json:"priority_delivery,omitempty"`
 	VoiceTranscription bool  `json:"voice_transcription,omitempty"`
 	Badge              bool  `json:"badge,omitempty"`
+	CustomThemes       bool  `json:"custom_themes,omitempty"`
 }
 
 // PasswordChangeBody replaces the caller password.

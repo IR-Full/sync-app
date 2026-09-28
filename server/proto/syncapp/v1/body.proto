@@ -401,6 +401,10 @@ message Subscription {
   bool priority_delivery = 10;
   bool voice_transcription = 11;
   bool badge = 12;
+  // custom_themes unlocks the accent palettes in the client's appearance settings.
+  // Cosmetic and client-side, but still an entitlement: the client must not decide
+  // who is paying by reading the plan name.
+  bool custom_themes = 13;
 }
 
 message PasswordChange {

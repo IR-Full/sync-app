@@ -2798,6 +2798,13 @@ func (x *Subscription) GetBadge() bool {
 	return false
 }
 
+func (x *Subscription) GetCustomThemes() bool {
+	if x != nil {
+		return x.CustomThemes
+	}
+	return false
+}
+
 func (x *PasswordChange) Reset() {
 	*x = PasswordChange{}
 	if protoimpl.UnsafeEnabled {

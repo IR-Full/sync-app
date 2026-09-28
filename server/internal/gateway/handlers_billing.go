@@ -163,6 +163,7 @@ func subscriptionToWire(sub *model.Subscription, ent model.Entitlements) wire.Su
 		PriorityDelivery:   ent.PriorityDelivery,
 		VoiceTranscription: ent.VoiceTranscription,
 		Badge:              ent.Badge,
+		CustomThemes:       ent.CustomThemes,
 	}
 	if sub != nil {
 		out.Status = string(sub.Status)

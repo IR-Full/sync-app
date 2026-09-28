@@ -39,6 +39,7 @@ export const StorageKeys = {
   session: 'SyncApp:session',
   deviceId: 'SyncApp:device-id',
   theme: 'SyncApp:theme',
+  accent: 'SyncApp:accent',
   locale: 'SyncApp:locale',
   chats: 'SyncApp:chats',
   settings: 'SyncApp:settings',

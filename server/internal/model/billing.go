@@ -184,6 +184,14 @@ type Entitlements struct {
 	// Badge is cosmetic status. Worth listing: a tier with no visible marker is one
 	// nobody else knows you have.
 	Badge bool `json:"badge"`
+	// CustomThemes unlocks the accent palettes in the client's appearance settings.
+	//
+	// Purely client-side in effect — the server stores no colour and renders nothing
+	// — so it is here for one reason: the client must not decide who is paying. A
+	// flag rather than a `plan == "premium"` test, because a deployment with no
+	// acquirer reports the plan as free while granting everything, and a name-based
+	// check would hide the palettes on exactly the installation where they are free.
+	CustomThemes bool `json:"custom_themes"`
 }
 
 // FreeEntitlements is what an account gets without paying.
@@ -211,6 +219,7 @@ func PremiumEntitlements() Entitlements {
 		PriorityDelivery:   true,
 		VoiceTranscription: true,
 		Badge:              true,
+		CustomThemes:       true,
 	}
 }
 

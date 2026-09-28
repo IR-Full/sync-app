@@ -45,6 +45,13 @@ const themeScript = `
       (stored === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) document.documentElement.classList.add('dark');
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    // The accent belongs here for the same reason the theme does: it is stored
+    // per browser, so the server cannot render it, and applying it from an effect
+    // would paint the default blue first and then swap it.
+    var accent = JSON.parse(localStorage.getItem('SyncApp:accent') || '"default"');
+    if (['violet', 'emerald', 'amber', 'rose'].indexOf(accent) !== -1) {
+      document.documentElement.dataset.accent = accent;
+    }
   } catch (e) {}
 })();
 `

@@ -1087,6 +1087,11 @@ export const descriptor = {
                 "badge": {
                   "type": "bool",
                   "id": 12
+                },
+                "customThemes": {
+                  "type": "bool",
+                  "id": 13,
+                  "protoName": "custom_themes"
                 }
               }
             },

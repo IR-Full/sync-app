@@ -542,6 +542,10 @@ type Subscription struct {
 	PriorityDelivery   bool   `protobuf:"varint,10,opt,name=priority_delivery,json=priorityDelivery,proto3" json:"priority_delivery,omitempty"`
 	VoiceTranscription bool   `protobuf:"varint,11,opt,name=voice_transcription,json=voiceTranscription,proto3" json:"voice_transcription,omitempty"`
 	Badge              bool   `protobuf:"varint,12,opt,name=badge,proto3" json:"badge,omitempty"`
+	// custom_themes unlocks the accent palettes in the client's appearance settings.
+	// Cosmetic and client-side, but still an entitlement: the client must not decide
+	// who is paying by reading the plan name.
+	CustomThemes bool `protobuf:"varint,13,opt,name=custom_themes,json=customThemes,proto3" json:"custom_themes,omitempty"`
 }
 
 type PasswordChange struct {

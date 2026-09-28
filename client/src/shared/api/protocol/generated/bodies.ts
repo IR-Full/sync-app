@@ -336,6 +336,7 @@ export interface Subscription {
   priorityDelivery: boolean
   voiceTranscription: boolean
   badge: boolean
+  customThemes: boolean
 }
 
 export interface PasswordChange {

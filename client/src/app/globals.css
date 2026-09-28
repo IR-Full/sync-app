@@ -55,6 +55,66 @@
   --color-success: #43c07f;
 }
 
+/*
+ * Accent palettes (Premium).
+ *
+ * An accent is ORTHOGONAL to light/dark rather than a theme of its own: it
+ * overrides four tokens and inherits every surface and ink value from whichever
+ * of the two is active. A full theme per colour would be five more palettes to
+ * keep legible against both backgrounds, and they would drift.
+ *
+ * Each accent is therefore declared twice — once for light, once under `.dark` —
+ * because the same hue needs a different lightness to hold contrast on white and
+ * on near-black. The dark values are the lighter ones for exactly that reason.
+ *
+ * `--color-bubble-own` follows the accent: the message bubble IS the accent in
+ * this UI, and an accent that changed the buttons but not the conversation would
+ * look like a bug rather than a choice.
+ */
+:root[data-accent='violet'] {
+  --color-accent: #7c4dff;
+  --color-accent-hover: #6a3ae8;
+  --color-bubble-own: #7c4dff;
+}
+.dark[data-accent='violet'] {
+  --color-accent: #9d78ff;
+  --color-accent-hover: #b294ff;
+  --color-bubble-own: #6a3ae8;
+}
+
+:root[data-accent='emerald'] {
+  --color-accent: #0f9d6e;
+  --color-accent-hover: #0c8259;
+  --color-bubble-own: #0f9d6e;
+}
+.dark[data-accent='emerald'] {
+  --color-accent: #2ec38d;
+  --color-accent-hover: #4fd6a4;
+  --color-bubble-own: #0c8259;
+}
+
+:root[data-accent='amber'] {
+  --color-accent: #c2700c;
+  --color-accent-hover: #a25c08;
+  --color-bubble-own: #c2700c;
+}
+.dark[data-accent='amber'] {
+  --color-accent: #e8a13c;
+  --color-accent-hover: #f2b65c;
+  --color-bubble-own: #a25c08;
+}
+
+:root[data-accent='rose'] {
+  --color-accent: #d6336c;
+  --color-accent-hover: #b52a5b;
+  --color-bubble-own: #d6336c;
+}
+.dark[data-accent='rose'] {
+  --color-accent: #f06595;
+  --color-accent-hover: #f783ac;
+  --color-bubble-own: #b52a5b;
+}
+
 @theme inline {
   --color-surface: var(--color-surface);
   --color-surface-sunken: var(--color-surface-sunken);

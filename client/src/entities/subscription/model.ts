@@ -33,6 +33,8 @@ export interface Entitlements {
   priorityDelivery: boolean
   voiceTranscription: boolean
   badge: boolean
+  /** unlocks the accent palettes in appearance settings */
+  customThemes: boolean
 }
 
 /**
@@ -55,6 +57,7 @@ export const UNKNOWN_ENTITLEMENTS: Entitlements = {
   priorityDelivery: false,
   voiceTranscription: false,
   badge: false,
+  customThemes: false,
 }
 
 interface SubscriptionState {
@@ -85,6 +88,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set) => ({
         priorityDelivery: body.priorityDelivery ?? false,
         voiceTranscription: body.voiceTranscription ?? false,
         badge: body.badge ?? false,
+        customThemes: body.customThemes ?? false,
       },
     }),
 

@@ -12,7 +12,8 @@ import { DeleteAccountPanel, SessionsPanel } from '@/features/sessions'
 import { usePushToken } from '@/features/push-token'
 import { LOCALE_LABELS, LOCALES, useLocaleStore, useTranslate } from '@/shared/i18n'
 import { cn } from '@/shared/lib/cn'
-import { useThemeStore, type ThemeMode } from '@/shared/theme/model'
+import { ACCENTS, useThemeStore, type Accent, type ThemeMode } from '@/shared/theme/model'
+import { useSubscriptionStore } from '@/entities/subscription'
 import { Button, Toggle } from '@/shared/ui'
 
 /**
@@ -77,6 +78,63 @@ function ChoiceRow<T extends string>({
   )
 }
 
+/**
+ * The accent picker: swatches rather than names, because the thing being chosen
+ * is a colour and a row of words makes you click one to find out what it is.
+ *
+ * `locked` renders the same swatches disabled with an explanation, instead of
+ * hiding the row. Hiding a paid feature means nobody discovers it exists; showing
+ * it greyed with a reason is the difference between an upsell and a dead end.
+ */
+function AccentRow({
+  label,
+  hint,
+  value,
+  locked,
+  onChange,
+}: {
+  label: string
+  hint: string
+  value: Accent
+  locked: boolean
+  onChange: (next: Accent) => void
+}) {
+  return (
+    <div className="py-2">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-sm font-medium">{label}</span>
+        <div className="flex gap-2">
+          {ACCENTS.map((accent) => (
+            <button
+              key={accent}
+              type="button"
+              disabled={locked}
+              onClick={() => onChange(accent)}
+              aria-label={accent}
+              aria-pressed={value === accent}
+              data-accent-swatch={accent}
+              className={cn(
+                'size-6 rounded-full border-2 transition-transform',
+                // The swatch paints ITS OWN colour, not the active accent, so the
+                // row shows what each option would do rather than five copies of
+                // the current choice.
+                accent === 'default' && 'bg-[#3b6ef5]',
+                accent === 'violet' && 'bg-[#7c4dff]',
+                accent === 'emerald' && 'bg-[#0f9d6e]',
+                accent === 'amber' && 'bg-[#c2700c]',
+                accent === 'rose' && 'bg-[#d6336c]',
+                value === accent ? 'border-ink scale-110' : 'border-transparent',
+                locked ? 'cursor-not-allowed opacity-40' : 'hover:scale-110',
+              )}
+            />
+          ))}
+        </div>
+      </div>
+      {locked && <p className="text-ink-faint mt-1 text-xs">{hint}</p>}
+    </div>
+  )
+}
+
 export function SettingsPanel() {
   const t = useTranslate()
   const router = useRouter()
@@ -84,6 +142,12 @@ export function SettingsPanel() {
 
   const mode = useThemeStore((state) => state.mode)
   const setMode = useThemeStore((state) => state.setMode)
+  const accent = useThemeStore((state) => state.accent)
+  const setAccent = useThemeStore((state) => state.setAccent)
+  // Gated on the ENTITLEMENT, never on `plan === 'premium'`: a deployment with no
+  // acquirer reports the plan as free while granting everything, so a name-based
+  // check would lock the palettes on exactly the install where they are free.
+  const canCustomise = useSubscriptionStore((state) => state.entitlements.customThemes)
   const locale = useLocaleStore((state) => state.locale)
   const setLocale = useLocaleStore((state) => state.setLocale)
   const settings = useSettingsStore()
@@ -125,6 +189,20 @@ export function SettingsPanel() {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
+      {/*
+        A sticky header, because this page is long: the panels below it run to
+        account deletion, and the only way back used to be a button buried in the
+        third section — directly beside Log out, which is a bad thing to reach for
+        by mistake. Back belongs where it is always reachable and where nothing
+        destructive sits next to it.
+      */}
+      <header className="bg-surface-sunken/95 sticky top-0 z-10 -mx-4 flex items-center gap-3 px-4 py-3 backdrop-blur">
+        <Button variant="secondary" size="small" onClick={() => router.push('/chats')}>
+          ← {t('nav.back')}
+        </Button>
+        <h1 className="text-ink text-base font-semibold">{t('settings.title')}</h1>
+      </header>
+
       <Section title={t('settings.appearance')}>
         <ChoiceRow<ThemeMode>
           label={t('settings.theme')}
@@ -135,6 +213,13 @@ export function SettingsPanel() {
             { value: 'dark', label: t('settings.theme.dark') },
             { value: 'system', label: t('settings.theme.system') },
           ]}
+        />
+        <AccentRow
+          label={t('settings.accent')}
+          hint={t('settings.accent.premium')}
+          value={accent}
+          locked={!canCustomise}
+          onChange={setAccent}
         />
         <ChoiceRow
           label={t('settings.language')}
@@ -190,9 +275,6 @@ export function SettingsPanel() {
           onChange={(next) => settings.set('sendReadReceipts', next)}
         />
         <div className="mt-3 flex gap-2">
-          <Button variant="secondary" onClick={() => router.push('/chats')}>
-            {t('nav.back')}
-          </Button>
           <Button variant="danger" onClick={logout}>
             {t('nav.logout')}
           </Button>

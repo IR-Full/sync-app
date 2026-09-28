@@ -189,6 +189,7 @@ func toProto(v any) proto.Message {
 			MaxPinnedChats: b.MaxPinnedChats, Folders: b.Folders,
 			AdvancedSearch: b.AdvancedSearch, PriorityDelivery: b.PriorityDelivery,
 			VoiceTranscription: b.VoiceTranscription, Badge: b.Badge,
+			CustomThemes: b.CustomThemes,
 		}
 	case PasswordChangeBody:
 		return &pb.PasswordChange{OldPassword: b.OldPassword, NewPassword: b.NewPassword}
@@ -547,6 +548,7 @@ func protoTarget(v any) (proto.Message, func()) {
 				MaxPinnedChats: m.MaxPinnedChats, Folders: m.Folders,
 				AdvancedSearch: m.AdvancedSearch, PriorityDelivery: m.PriorityDelivery,
 				VoiceTranscription: m.VoiceTranscription, Badge: m.Badge,
+				CustomThemes: m.CustomThemes,
 			}
 		}
 	case *PasswordChangeBody:
