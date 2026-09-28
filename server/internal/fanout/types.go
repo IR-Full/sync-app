@@ -67,6 +67,8 @@ type PresenceAudience interface {
 
 // ChatKinds tells fanout what kind of chat an event belongs to. Optional: without
 // it, read receipts are kept private only in chats large enough to be sharded.
+// Answers are cached for the life of the process (see Service.kindCache), so an
+// implementation may be a remote call.
 type ChatKinds interface {
 	ChatType(ctx context.Context, chatID string) (model.ChatType, error)
 }
@@ -85,6 +87,13 @@ type Service struct {
 	mu        sync.RWMutex
 	cache     map[string]memberEntry
 	lastSweep time.Time
+
+	// kindCache remembers each chat's kind. A chat never changes kind, so an
+	// entry never goes stale and needs no TTL — only a size bound. It exists for
+	// fanoutd, where ChatKinds is a gRPC call to chatd that ends in a database
+	// read: without it every read receipt would cost that round trip.
+	kindMu    sync.RWMutex
+	kindCache map[string]model.ChatType
 }
 
 // memberEntry is a chat's cached delivery shape. ids is nil when the chat is

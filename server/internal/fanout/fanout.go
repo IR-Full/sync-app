@@ -26,7 +26,8 @@ import (
 // New builds the fanout service.
 func New(bus eventbus.Bus, chats Chats, rtr router.Router, log *slog.Logger) *Service {
 	return &Service{bus: bus, chats: chats, router: rtr, log: log,
-		cache: map[string]memberEntry{}, lastSweep: time.Now()}
+		cache: map[string]memberEntry{}, lastSweep: time.Now(),
+		kindCache: map[string]model.ChatType{}}
 }
 
 // WithPresenceAudience gates presence on the sender's privacy setting.
@@ -706,11 +707,35 @@ func (s *Service) onPinned(ctx context.Context, e eventbus.Event) error {
 // a post. The same cost applies to any chat big enough to be sharded, where
 // per-person receipts are not shown anyway. Groups and 1:1 chats keep them.
 func (s *Service) receiptsArePrivate(ctx context.Context, chatID string) bool {
-	if s.kinds != nil {
-		if typ, err := s.kinds.ChatType(ctx, chatID); err == nil && typ == model.ChatChannel {
-			return true
-		}
+	if typ, ok := s.chatKind(ctx, chatID); ok && typ == model.ChatChannel {
+		return true
 	}
 	_, hot, err := s.members(ctx, chatID)
 	return err == nil && hot
+}
+
+// chatKind returns a chat's kind, remembered after the first lookup. ok is false
+// when no ChatKinds is wired or the lookup failed; a failure is not cached, so
+// the next event asks again.
+func (s *Service) chatKind(ctx context.Context, chatID string) (model.ChatType, bool) {
+	if s.kinds == nil {
+		return "", false
+	}
+	s.kindMu.RLock()
+	typ, ok := s.kindCache[chatID]
+	s.kindMu.RUnlock()
+	if ok {
+		return typ, true
+	}
+	typ, err := s.kinds.ChatType(ctx, chatID)
+	if err != nil || typ == "" {
+		return "", false
+	}
+	s.kindMu.Lock()
+	if len(s.kindCache) >= kindCacheMax {
+		s.kindCache = make(map[string]model.ChatType)
+	}
+	s.kindCache[chatID] = typ
+	s.kindMu.Unlock()
+	return typ, true
 }

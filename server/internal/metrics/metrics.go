@@ -143,7 +143,7 @@ var (
 	}, []string{"provider"})
 	WebhookRejected = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "SYNCAPP_billing_webhook_rejected_total",
-		Help: "Provider callbacks whose signature did not verify.",
+		Help: "Provider callbacks that did not authenticate (source address, signature or API check).",
 	}, []string{"provider"})
 	WebhookUnknown = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "SYNCAPP_billing_webhook_unknown_total",

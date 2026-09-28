@@ -169,6 +169,9 @@ var (
 	// unauthenticated by construction, so this is the only thing standing between a
 	// stranger and a free subscription.
 	ErrBadSignature = errors.New("billing: callback signature did not verify")
+	// ErrUntrustedSource means a callback arrived from an address the provider does
+	// not send notifications from. Refused before any other check.
+	ErrUntrustedSource = errors.New("billing: callback from an address the provider does not use")
 	// ErrProviderUnavailable means a callback could not be checked because the
 	// acquirer itself could not be reached. Unlike ErrBadSignature it is worth a
 	// retry: the notification may be perfectly genuine, and answering 400 would

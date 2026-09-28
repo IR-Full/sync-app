@@ -35,7 +35,10 @@ func main() {
 	}
 	defer func() { _ = chatConn.Close() }()
 
-	fan := fanout.New(b.Bus, rpc.NewChatClient(chatConn), b.Router, b.Log)
+	chats := rpc.NewChatClient(chatConn)
+	// Chat kinds keep read receipts in a channel with the reader, as in the
+	// monolith; without them only the size rule applies (fanout.receiptsArePrivate).
+	fan := fanout.New(b.Bus, chats, b.Router, b.Log).WithChatKinds(chats)
 	if err := fan.Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)

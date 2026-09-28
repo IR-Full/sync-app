@@ -14,6 +14,11 @@ const (
 	memberSweepEvery = 30 * time.Second
 )
 
+// kindCacheMax bounds the chat-kind cache. An entry is a few dozen bytes, so this
+// is a memory cap of a few MB; past it the cache is dropped wholesale and refills
+// from the chats that are actually active.
+const kindCacheMax = 100_000
+
 // Hot-chat fanout sharding. A message to a huge channel would otherwise make ONE
 // worker walk every member serially (fanout amplification). Above the threshold,
 // the member set is split into fixed-size chunks re-published as fanout.shard

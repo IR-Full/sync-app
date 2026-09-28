@@ -259,6 +259,14 @@ func (s *Service) HandleCallback(ctx context.Context, providerName string, raw [
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrNoProvider, providerName)
 	}
+	// The source address is checked first, and only for a provider that publishes
+	// its own. It is the cheap gate, not the authentication: Verify still runs.
+	if r, ok := provider.(SourceRestricted); ok {
+		if src := callbackSource(ctx); !r.AllowsSource(src) {
+			metrics.WebhookRejected.WithLabelValues(providerName).Inc()
+			return fmt.Errorf("%w: %v", ErrUntrustedSource, src)
+		}
+	}
 	cb, err := provider.Verify(ctx, raw, headers)
 	if errors.Is(err, ErrProviderUnavailable) {
 		// Not a verdict on the callback: we could not ask. Surfaced as-is so the
