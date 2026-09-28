@@ -1340,4 +1340,5 @@ data class Subscription(
     @ProtoNumber(10) @SerialName("priority_delivery") val priorityDelivery: Boolean = false,
     @ProtoNumber(11) @SerialName("voice_transcription") val voiceTranscription: Boolean = false,
     @ProtoNumber(12) val badge: Boolean = false,
+    @ProtoNumber(13) @SerialName("custom_themes") val customThemes: Boolean = false,
 )
