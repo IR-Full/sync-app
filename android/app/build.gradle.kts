@@ -211,6 +211,11 @@ android {
             // and a build that goes red because a new AGP shipped overnight
             // teaches people to ignore the linter.
             "AndroidGradlePluginVersion",
+            // The same shape again: it fires when Google ships a newer Android,
+            // not when this code changes. Raising targetSdk opts the app into new
+            // platform behaviour and needs its own testing, so it is a deliberate
+            // bump in its own change, not something a red build forces overnight.
+            "OldTargetApi",
         )
 
         // A machine-readable report for the CI summary; the HTML one is
