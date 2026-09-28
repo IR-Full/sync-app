@@ -3,6 +3,7 @@ package fanout
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"strings"
@@ -843,5 +844,59 @@ func TestReadReceiptsStayPrivateInChannels(t *testing.T) {
 				t.Fatalf("%s: other member reached = %v, want %v", tc.kind, got, tc.broadcast)
 			}
 		})
+	}
+}
+
+// countingKinds answers ChatType from a map and counts the calls, failing while
+// fail is set.
+type countingKinds struct {
+	mu    sync.Mutex
+	kinds map[string]model.ChatType
+	calls int
+	fail  bool
+}
+
+func (k *countingKinds) ChatType(_ context.Context, chatID string) (model.ChatType, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.calls++
+	if k.fail {
+		return "", errors.New("chatd unavailable")
+	}
+	return k.kinds[chatID], nil
+}
+
+// In fanoutd ChatKinds is a gRPC call that ends in a database read. A chat never
+// changes kind, so the answer is remembered: a channel whose audience reads a post
+// costs one lookup, not one per receipt. A failed lookup is not remembered — the
+// next receipt asks again — and while it fails the size rule still applies.
+func TestChatKindIsLookedUpOncePerChat(t *testing.T) {
+	svc, _, rtr := newFanout([]string{"u1", "u2", "u3"}, "u1", "u2", "u3")
+	kinds := &countingKinds{kinds: map[string]model.ChatType{"c1": model.ChatChannel}, fail: true}
+	svc.WithChatKinds(kinds)
+	read := func() {
+		t.Helper()
+		if err := svc.onRead(context.Background(), event(eventbus.SubjMessageRead,
+			wire.ReadUpdateBody{ChatID: "c1", UserID: "u1", UpToChatSeq: 5})); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	read()
+	if !rtr.reached()["u2"] {
+		t.Fatal("with the kind unknown, a small chat's receipt should fall back to being shared")
+	}
+	kinds.fail = false
+	rtr.mu.Lock()
+	rtr.delivers = nil
+	rtr.mu.Unlock()
+	for i := 0; i < 5; i++ {
+		read()
+	}
+	if rtr.reached()["u2"] {
+		t.Fatal("channel receipt reached another subscriber")
+	}
+	if kinds.calls != 2 {
+		t.Fatalf("ChatType called %d times, want 2 (one failure, then one lookup remembered)", kinds.calls)
 	}
 }

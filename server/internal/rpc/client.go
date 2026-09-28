@@ -182,6 +182,17 @@ func (c *ChatClient) Get(ctx context.Context, chatID string) (*model.Chat, error
 	return modelChat(r), nil
 }
 
+// ChatType returns a chat's kind. Satisfies fanout.ChatKinds for fanoutd, which
+// remembers the answer (a chat never changes kind), so this read happens once per
+// chat per worker rather than once per event.
+func (c *ChatClient) ChatType(ctx context.Context, chatID string) (model.ChatType, error) {
+	ch, err := c.Get(ctx, chatID)
+	if err != nil {
+		return "", err
+	}
+	return ch.Type, nil
+}
+
 func (c *ChatClient) Members(ctx context.Context, chatID string) ([]*model.ChatMember, error) {
 	r, err := c.c.Members(ctx, &pb.ChatIDRequest{ChatId: chatID})
 	if err != nil {
