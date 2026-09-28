@@ -269,3 +269,48 @@ func TestSecretChatRequiresAKeyDirectory(t *testing.T) {
 		t.Errorf("error code = %d, want ErrUnsupported", eb.Code)
 	}
 }
+
+// TestSecretChatsAreOpenWhereNothingIsForSale pins the entitlement side of the
+// gate, which is a different question from every other test in this file.
+//
+// The harness runs a billing service with NO acquirer, which is the shape of any
+// self-hosted deployment: a BillingStore always exists, so the service is always
+// constructed, while the payment provider is optional. That combination used to
+// resolve to the FREE tier, and the free tier withholds secret chats — so the
+// feature this project leads with was locked behind a purchase the deployment
+// could not take. `model.UngatedEntitlements` documents exactly that failure.
+//
+// It went unnoticed because the gates asked `Billing == nil` and this harness
+// left it nil, so the suite only ever tested a branch production never reaches.
+func TestSecretChatsAreOpenWhereNothingIsForSale(t *testing.T) {
+	addr := startGateway(t)
+	alice := connectWithCaps(t, addr, "nosalealice", "secret123", secretPeer)
+	connectWithCaps(t, addr, "nosalebob", "secret123", secretPeer)
+
+	// No PREMIUM_REQUIRED: with no acquirer there are no tiers to be outside of.
+	chatID := newSecretChat(t, alice, 1, "nosalebob")
+	if chatID == "" {
+		t.Fatal("secret chat was refused on a deployment that sells nothing")
+	}
+}
+
+// TestBillingWithNoAcquirerReportsEverythingGranted is the same property read
+// through BILLING_STATUS, which is what a client draws its upgrade prompt from.
+// A deployment with nothing to sell must not show one.
+func TestBillingWithNoAcquirerReportsEverythingGranted(t *testing.T) {
+	addr := startGateway(t)
+	alice := connect(t, addr, "nosalestatus", "secret123")
+
+	alice.send(t, wire.MsgBillingStatus, 1, struct{}{})
+	e := alice.readUntil(t, wire.MsgSubscription)
+	var sub wire.SubscriptionBody
+	if err := wire.Unmarshal(e.Body, &sub); err != nil {
+		t.Fatalf("decode SUBSCRIPTION: %v", err)
+	}
+	if !sub.SecretChats {
+		t.Error("secret chats reported as unavailable where they cannot be bought")
+	}
+	if !sub.CustomThemes {
+		t.Error("accent palettes reported as unavailable where they cannot be bought")
+	}
+}

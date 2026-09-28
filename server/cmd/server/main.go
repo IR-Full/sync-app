@@ -259,7 +259,13 @@ func run(log *slog.Logger) error {
 		return err
 	}
 	publicBase := env("SYNCAPP_PUBLIC_URL", "http://localhost"+wsAddr)
-	mediaSvc := media.New(fsStore, ids, platform.MediaSecret(), publicBase).WithLogger(log)
+	mediaSvc := media.New(fsStore, ids, platform.MediaSecret(), publicBase).
+		WithLogger(log).
+		// The deployment ceiling, above which no TIER may go. Default 4 GiB, which
+		// is the largest tier — per-account limits come from entitlements now, so
+		// this only has to be big enough not to contradict them. Lower it when the
+		// disk behind the object store says so.
+		WithMaxSize(int64(envcfg.Int("SYNCAPP_MEDIA_MAX_BYTES", 0)))
 	// Blobs are collected, not leaked: the message log answers "is this still
 	// referenced?", which is the only safe basis for deleting one — a forward
 	// carries a copy of the original's ref. Deleting a message releases its bytes

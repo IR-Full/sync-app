@@ -839,3 +839,39 @@ func TestUngatedEntitlementsGrantEverything(t *testing.T) {
 }
 
 var _ = store.ErrNotFound // keep the import honest across refactors
+
+// TestSellsTiersDistinguishesAStoreFromAnAcquirer covers the condition that
+// decides whether a deployment HAS tiers at all.
+//
+// It is worth a test of its own because the distinction it draws is the one the
+// gateway got wrong for a long time. Every handler asked `svc.Billing == nil`,
+// meaning "is billing wired up" — but the service is constructed whenever a
+// BillingStore exists, and both the Postgres and the in-memory store implement
+// one, so the answer was always "yes" and the ungated branch behind it was dead.
+// A self-hosted instance with no acquirer therefore put every account on the free
+// tier, which locks secret chats behind a purchase that same instance cannot
+// take. `model.UngatedEntitlements` warns about exactly that outcome.
+func TestSellsTiersDistinguishesAStoreFromAnAcquirer(t *testing.T) {
+	noAcquirer, _, _ := newSvc(t)
+	if noAcquirer.SellsTiers() {
+		t.Error("a service with no provider claims it can sell; that is the bug this exists to stop")
+	}
+
+	withAcquirer, _, _ := newSvc(t, &fakeProvider{})
+	if !withAcquirer.SellsTiers() {
+		t.Error("a service with a provider says it cannot sell")
+	}
+}
+
+// TestNoAcquirerOffersNothingToBuy pins the other half: with no provider the
+// catalogue lists no way to pay, so a client cannot draw a buy button that would
+// fail on click.
+func TestNoAcquirerOffersNothingToBuy(t *testing.T) {
+	svc, _, _ := newSvc(t)
+
+	for _, offer := range svc.Plans("RU") {
+		if len(offer.Methods) != 0 {
+			t.Errorf("plan %q offers payment methods with no acquirer: %v", offer.Plan, offer.Methods)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +30,7 @@ func TestMediaUploadDownloadRoundTrip(t *testing.T) {
 	svc.baseURL = srv.URL
 
 	payload := []byte("hello media bytes")
-	ticket, err := svc.InitUpload("user1", "note.txt", "text/plain", int64(len(payload)))
+	ticket, err := svc.InitUpload("user1", "note.txt", "text/plain", int64(len(payload)), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +108,7 @@ func TestDownloadRendersImagesAndNothingElse(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ticket, err := svc.InitUpload("user1", tc.filename, tc.declared, int64(len(tc.payload)))
+			ticket, err := svc.InitUpload("user1", tc.filename, tc.declared, int64(len(tc.payload)), 0)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -162,7 +163,7 @@ func TestMediaRejectsMalware(t *testing.T) {
 
 	// A file containing the EICAR test signature must be rejected by the scanner.
 	payload := append([]byte("prefix "), eicar...)
-	ticket, err := svc.InitUpload("u", "virus.txt", "text/plain", int64(len(payload)))
+	ticket, err := svc.InitUpload("u", "virus.txt", "text/plain", int64(len(payload)), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +219,7 @@ func TestUploadTicketIsSingleUseAndSizeBound(t *testing.T) {
 	svc.baseURL = srv.URL
 
 	payload := []byte("exactly this many bytes")
-	ticket, err := svc.InitUpload("user1", "note.txt", "text/plain", int64(len(payload)))
+	ticket, err := svc.InitUpload("user1", "note.txt", "text/plain", int64(len(payload)), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,5 +337,55 @@ func TestSweepCollectsOrphansButSparesFreshUploads(t *testing.T) {
 	}
 	if !fs.Exists("in-flight") {
 		t.Fatal("swept an upload young enough to still be mid-send")
+	}
+}
+
+// TestTierCeilingIsWhatBounds covers the defect that made MaxUploadBytes
+// decorative: the service capped every upload at its own constant, and that
+// constant was 100 MiB — exactly the FREE tier's allowance. So a Premium account
+// was told it had 4 GiB and refused at a hundredth of it.
+func TestTierCeilingIsWhatBounds(t *testing.T) {
+	fs, err := NewFSStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids, _ := id.NewGenerator(1)
+	svc := New(fs, ids, []byte("test-secret"), "http://example")
+
+	const mib = 1 << 20
+	free := int64(100 * mib)
+	premium := int64(4 << 30)
+
+	// The free ceiling refuses what is above it...
+	if _, err := svc.InitUpload("u", "big.bin", "application/octet-stream", free+1, free); err == nil {
+		t.Error("a file above the free allowance was accepted")
+	} else if !errors.Is(err, ErrTooLargeForTier) {
+		t.Errorf("refusal must be purchasable (ErrTooLargeForTier), got %v", err)
+	}
+
+	// ...and the SAME file is accepted for a caller whose tier allows it. This is
+	// the assertion that fails on the old code, where the service constant bound
+	// everyone regardless of plan.
+	if _, err := svc.InitUpload("u", "big.bin", "application/octet-stream", free+1, premium); err != nil {
+		t.Errorf("a Premium caller was refused the size their plan grants: %v", err)
+	}
+}
+
+// TestDeploymentCeilingIsFinal pins the other direction: an operator's limit is
+// not purchasable, so it must not answer with an upgrade prompt.
+func TestDeploymentCeilingIsFinal(t *testing.T) {
+	fs, err := NewFSStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids, _ := id.NewGenerator(1)
+	svc := New(fs, ids, []byte("test-secret"), "http://example").WithMaxSize(1 << 20)
+
+	_, err = svc.InitUpload("u", "big.bin", "application/octet-stream", 2<<20, 4<<30)
+	if err == nil {
+		t.Fatal("a file above the deployment ceiling was accepted")
+	}
+	if errors.Is(err, ErrTooLargeForTier) {
+		t.Error("the deployment ceiling was reported as a plan limit; no upgrade would lift it")
 	}
 }

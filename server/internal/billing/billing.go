@@ -47,6 +47,20 @@ func (s *Service) WithProvider(p Provider) *Service {
 	return s
 }
 
+// SellsTiers reports whether this deployment can actually take money.
+//
+// The distinction it exists to make is between "billing is wired up" and "billing
+// can charge somebody", and conflating those two is how the free tier ends up
+// applied where nothing is for sale. The service is constructed whenever a
+// BillingStore exists — which is always, since both the Postgres and the
+// in-memory store implement it — while an ACQUIRER is genuinely optional: a
+// self-hosted instance with no YooKassa or Stripe credentials has a billing
+// service and no way for anyone to buy anything.
+//
+// Callers use it to choose between the free tier and UngatedEntitlements. Getting
+// that backwards gates features behind a purchase that cannot be made.
+func (s *Service) SellsTiers() bool { return len(s.providers) > 0 }
+
 // WithPrice overrides the catalogue for one (plan, currency).
 func (s *Service) WithPrice(plan model.Plan, currency string, amountMinor int64) *Service {
 	s.prices[priceKey{plan, strings.ToUpper(currency)}] = amountMinor

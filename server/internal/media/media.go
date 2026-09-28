@@ -60,10 +60,23 @@ func New(store ObjectStore, ids *id.Generator, secret []byte, baseURL string) *S
 		secret:  secret,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		ttl:     15 * time.Minute,
-		maxSize: 100 << 20, // 100 MiB
+		maxSize: defaultMaxSize,
 		scanner: HeuristicScanner{},
 		log:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
+}
+
+// WithMaxSize sets the ABSOLUTE ceiling, which no tier may exceed.
+//
+// Distinct from the per-caller limit InitUpload takes: this one is the operator's
+// answer to "how large a file is this deployment willing to store at all", while
+// the entitlement is the product's answer to "how much does this account get".
+// The smaller of the two wins, so raising a tier cannot outrun the disk.
+func (s *Service) WithMaxSize(n int64) *Service {
+	if n > 0 {
+		s.maxSize = n
+	}
+	return s
 }
 
 // WithScanner overrides the malware scanner (e.g. a ClamAV client).
@@ -75,9 +88,30 @@ func (s *Service) WithScanner(sc Scanner) *Service { s.scanner = sc; return s }
 func (s *Service) WithFetchAuthorizer(a FetchAuthorizer) *Service { s.auth = a; return s }
 
 // InitUpload validates the request and returns a signed upload URL.
-func (s *Service) InitUpload(userID, filename, contentType string, size int64) (Ticket, error) {
-	if size <= 0 || size > s.maxSize {
+//
+// limit is the CALLER's ceiling, from their entitlements; zero or negative means
+// the caller's tier is unknown and only the deployment ceiling applies. The
+// effective cap is the smaller of the two.
+//
+// The per-caller limit is a parameter rather than a field because it varies by
+// account, and hard-coding it was a real defect rather than a simplification: the
+// service capped every upload at 100 MiB, which is exactly what the FREE tier
+// promises, so a Premium account was sold 4 GiB and refused at a hundredth of it.
+//
+// ErrTooLargeForTier is returned when the TIER is the binding constraint, so the
+// gateway can answer with an upgrade prompt instead of a flat rejection. When the
+// deployment ceiling is what refuses, no tier change would help and the error
+// says so.
+func (s *Service) InitUpload(userID, filename, contentType string, size, limit int64) (Ticket, error) {
+	if size <= 0 {
 		return Ticket{}, fmt.Errorf("media: size out of range (max %d)", s.maxSize)
+	}
+	if size > s.maxSize {
+		return Ticket{}, fmt.Errorf("media: size out of range (max %d)", s.maxSize)
+	}
+	if limit > 0 && size > limit {
+		return Ticket{}, fmt.Errorf("%w: %d bytes exceeds the %d allowed by your plan",
+			ErrTooLargeForTier, size, limit)
 	}
 	// The ref is a capability token: a snowflake (ordering/debugging) plus 128
 	// bits of crypto-random so it cannot be guessed or enumerated. Combined with

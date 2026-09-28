@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/billing"
 	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/contact"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
@@ -85,6 +86,17 @@ func startGatewayWithPresence(t *testing.T, opts ...func(*gateway.Config)) (stri
 		// guard `Contacts != nil` — are skipped, so a regression in them would pass
 		// the suite unnoticed. With no blocks set it changes nothing else.
 		Contacts: contact.New(st.Contacts, st.Users),
+		// Billing WITHOUT an acquirer, which is the shape every self-hosted
+		// deployment has: a BillingStore always exists (both backends implement
+		// one), so the service is always constructed, while the payment provider is
+		// the genuinely optional part.
+		//
+		// Leaving it nil here is what hid a real defect for a long time. The
+		// entitlement gates asked `Billing == nil`, the harness made that true, and
+		// the suite therefore only ever exercised a branch that no real deployment
+		// reaches — while production fell to the FREE tier and locked secret chats
+		// behind a purchase it could not take.
+		Billing: billing.New(st.Billing, bus, ids, log),
 	}, cfg, log)
 	if err := gw.StartDelivery(); err != nil {
 		t.Fatal(err)

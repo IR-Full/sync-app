@@ -5,7 +5,9 @@ package gateway
 
 import (
 	"context"
+	"errors"
 
+	"github.com/SyncApp-chat/SyncApp/internal/media"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
@@ -22,8 +24,19 @@ func (c *conn) handleMediaInit(ctx context.Context, e wire.Envelope) error {
 	if err := wire.Unmarshal(e.Body, &body); err != nil {
 		return c.replyError(e.RequestID, wire.ErrBadArg, "bad media init")
 	}
-	t, err := c.gw.svc.Media.InitUpload(c.userID, body.Filename, body.ContentType, body.Size)
+	// The caller's ceiling comes from their entitlements. Passing it is what makes
+	// MaxUploadBytes mean anything: the media service used to cap everyone at its
+	// own constant, which happened to equal the FREE tier, so the paid tier's
+	// larger allowance was advertised and never granted.
+	t, err := c.gw.svc.Media.InitUpload(
+		c.userID, body.Filename, body.ContentType, body.Size, c.entitlements(ctx).MaxUploadBytes)
 	if err != nil {
+		// A file refused by the PLAN is purchasable, so it gets the upgrade prompt
+		// rather than a flat rejection; one refused by the deployment ceiling is
+		// final and must not pretend otherwise.
+		if errors.Is(err, media.ErrTooLargeForTier) {
+			return c.replyError(e.RequestID, wire.ErrPremiumRequired, err.Error())
+		}
 		return c.replyError(e.RequestID, wire.ErrBadArg, err.Error())
 	}
 	return c.reply(wire.MsgMediaTicket, e.RequestID, wire.MediaTicketBody{

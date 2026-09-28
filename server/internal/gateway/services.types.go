@@ -129,7 +129,7 @@ type PresenceService interface {
 
 // MediaService issues upload/download tickets (optional).
 type MediaService interface {
-	InitUpload(userID, filename, contentType string, size int64) (media.Ticket, error)
+	InitUpload(userID, filename, contentType string, size, limit int64) (media.Ticket, error)
 	DownloadURL(userID, ref string) (url string, expiresAtMs int64, err error)
 }
 
@@ -150,6 +150,10 @@ type SearchService interface {
 // everybody is on the free tier, which is a tier. The gateway reads entitlements on
 // several paths, so the degradation has to be a real answer and not an error.
 type BillingService interface {
+	// SellsTiers reports whether an acquirer is configured. False means this
+	// deployment has no tiers at all rather than a free one — see the comment on
+	// model.UngatedEntitlements.
+	SellsTiers() bool
 	Plans(country string) []billing.PlanOffer
 	Checkout(ctx context.Context, req billing.CheckoutRequest) (*billing.Checkout, error)
 	Subscription(ctx context.Context, userID string) *model.Subscription

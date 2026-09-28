@@ -110,7 +110,9 @@ func run(log *slog.Logger) error {
 		return err
 	}
 	publicBase := platform.Env("SYNCAPP_PUBLIC_URL", "http://localhost"+wsAddr)
-	mediaSvc := media.New(fsStore, b.IDs, platform.MediaSecret(), publicBase)
+	mediaSvc := media.New(fsStore, b.IDs, platform.MediaSecret(), publicBase).
+		// See cmd/server: the deployment ceiling, above which no tier may go.
+		WithMaxSize(int64(envcfg.Int("SYNCAPP_MEDIA_MAX_BYTES", 0)))
 
 	// Search QUERY path reads the shared index; indexing runs in searchd.
 	var searchBackend search.Backend

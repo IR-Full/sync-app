@@ -32,9 +32,26 @@ tier offers features the server has started refusing, which reads as the app
 breaking rather than as a plan ending.
 */
 
+// sellsTiers reports whether this deployment has anything to sell.
+//
+// It is the condition every handler in this file used to express as
+// `svc.Billing == nil`, which was the wrong question. The billing service is
+// constructed whenever a BillingStore exists, and one always does — both the
+// Postgres and the in-memory store implement it — while an ACQUIRER is the part
+// that is genuinely optional. So the nil check was never true in any real
+// deployment and the branches behind it were dead code.
+//
+// The visible symptom was the one `model.UngatedEntitlements` warns about in its
+// own comment: a self-hosted instance with no acquirer put every account on the
+// FREE tier, which locks secret chats behind a purchase that the same deployment
+// makes impossible.
+func (c *conn) sellsTiers() bool {
+	return c.gw.svc.Billing != nil && c.gw.svc.Billing.SellsTiers()
+}
+
 // handleBillingPlans answers what the caller can buy.
 func (c *conn) handleBillingPlans(ctx context.Context, e wire.Envelope) error {
-	if c.gw.svc.Billing == nil {
+	if !c.sellsTiers() {
 		return c.replyError(e.RequestID, wire.ErrUnsupported, "billing is not enabled")
 	}
 	var body wire.BillingPlansBody
@@ -58,7 +75,7 @@ func (c *conn) handleBillingPlans(ctx context.Context, e wire.Envelope) error {
 
 // handleBillingCheckout starts a payment.
 func (c *conn) handleBillingCheckout(ctx context.Context, e wire.Envelope) error {
-	if c.gw.svc.Billing == nil {
+	if !c.sellsTiers() {
 		return c.replyError(e.RequestID, wire.ErrUnsupported, "billing is not enabled")
 	}
 	// Metered per USER, not per connection. A checkout is cheap to ask for and
@@ -117,8 +134,8 @@ func (c *conn) handleBillingCheckout(ctx context.Context, e wire.Envelope) error
 
 // handleBillingStatus answers the caller's tier and entitlements.
 func (c *conn) handleBillingStatus(ctx context.Context, e wire.Envelope) error {
-	if c.gw.svc.Billing == nil {
-		// No billing configured means there are no TIERS, so everything is granted and
+	if !c.sellsTiers() {
+		// No acquirer means there are no TIERS, so everything is granted and
 		// nothing is for sale. A real answer rather than an error: the client needs its
 		// ceilings either way, and it must not draw an upgrade prompt for a plan this
 		// deployment does not offer.
@@ -132,7 +149,7 @@ func (c *conn) handleBillingStatus(ctx context.Context, e wire.Envelope) error {
 
 // handleBillingCancel stops renewal without withdrawing access.
 func (c *conn) handleBillingCancel(ctx context.Context, e wire.Envelope) error {
-	if c.gw.svc.Billing == nil {
+	if !c.sellsTiers() {
 		return c.replyError(e.RequestID, wire.ErrUnsupported, "billing is not enabled")
 	}
 	sub, err := c.gw.svc.Billing.Cancel(ctx, c.userID)
@@ -187,7 +204,7 @@ func subscriptionToWire(sub *model.Subscription, ent model.Entitlements) wire.Su
 // Getting this wrong is not subtle in effect: it disables secret chats on every
 // deployment that does not take payments, which is most of them.
 func (c *conn) entitlements(ctx context.Context) model.Entitlements {
-	if c.gw.svc.Billing == nil {
+	if !c.sellsTiers() {
 		return model.UngatedEntitlements()
 	}
 	return c.gw.svc.Billing.Entitlements(ctx, c.userID)
