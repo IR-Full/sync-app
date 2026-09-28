@@ -1,4 +1,4 @@
-// gRPC service contracts for the Synapse microservice split. Each domain service
+// gRPC service contracts for the SyncApp microservice split. Each domain service
 // (auth, chat, message, presence, key directory) is exposed here so it can run as
 // a standalone process; the gateway calls them as gRPC clients that satisfy the
 // same Go interfaces the in-process services do (internal/gateway/services.go).
@@ -6,13 +6,13 @@
 // Generated Go lands in internal/rpc/pb. Regenerate with:  make proto
 syntax = "proto3";
 
-// Distinct proto package from body.proto (synapse.v1): both are linked into the
+// Distinct proto package from body.proto (syncapp.v1): both are linked into the
 // same binaries (the gateway/daemons use the wire bodies AND these RPCs), and a
 // shared proto package + duplicate message names (e.g. KeyBundle) would collide
 // in the global protobuf registry at init.
-package synapse.rpc.v1;
+package syncapp.rpc.v1;
 
-option go_package = "github.com/synapse-chat/synapse/internal/rpc/pb;rpcpb";
+option go_package = "github.com/SyncApp-chat/SyncApp/internal/rpc/pb;rpcpb";
 
 // ---- domain messages (mirror internal/model) ----
 
@@ -22,6 +22,18 @@ message User {
   string display_name = 3;
   int64 created_at = 4;
   string avatar_ref = 5;
+  // Privacy settings travel with the user, so a split deployment enforces the
+  // same rules as the monolith. Omitting them is exactly the topology drift the
+  // risk register names: a field the monolith honours that the gRPC contract
+  // drops, turning a privacy setting into a no-op for whoever enabled sharding.
+  string privacy_last_seen = 6;
+  string privacy_avatar = 7;
+  string privacy_groups = 8;
+  // Whether message text may reach the push provider. Carried here for the same
+  // reason as the others: a setting that the split deployment drops is a setting
+  // that becomes a no-op for whoever enabled sharding — and this one failing open
+  // would hand plaintext to a third party.
+  bool privacy_push_preview = 9;
 }
 
 message Session {
@@ -33,6 +45,12 @@ message Session {
   int64 created_at = 6;
   int64 expires_at = 7;
   int64 revoked_at = 8;
+  // The resume token this session most recently rotated away from. Carried across
+  // the split for the same reason every other field is: a value the gRPC wiring
+  // drops is a feature that vanishes when somebody enables sharding — and this one
+  // is what makes a stolen resume token detectable.
+  string prev_resume_token = 9;
+  int64 resume_rotated_at = 10;
 }
 
 message Chat {
@@ -51,6 +69,11 @@ message ChatMember {
   string role = 3;
   int64 joined_at = 4;
   bool muted = 5;
+  // The member's own per-chat settings. muted above is the legacy boolean kept in
+  // step with muted_until; muted_until is what the notification path reads.
+  int64 muted_until = 6;
+  bool pinned = 7;
+  bool archived = 8;
 }
 
 // Attachment and ForwardOrigin mirror their body.proto twins field for field.
@@ -127,11 +150,107 @@ message Identity {
   User user = 2;
 }
 
+// Session management and account deletion. These exist on the gRPC contract and
+// not only on the local service because the gateway talks to ONE interface: a
+// capability that is present in the monolith and absent behind gRPC is a feature
+// that silently disappears when someone enables the split, which is the topology
+// drift the risk register already names.
+message UserIDRequest { string user_id = 1; }
+
+message SessionRow {
+  string id = 1;
+  string user_id = 2;
+  string device_id = 3;
+  int64 created_at = 4;
+  int64 expires_at = 5;
+  int64 revoked_at = 6;
+}
+message SessionsReply { repeated SessionRow sessions = 1; }
+
+message RevokeOwnedRequest {
+  string user_id = 1;
+  string session_id = 2;
+}
+
+message RevokeAllRequest {
+  string user_id = 1;
+  // keep_session_id is spared, which is how "sign out everywhere else" is said.
+  string keep_session_id = 2;
+}
+message RevokeAllReply { int32 revoked = 1; }
+
+message DeleteAccountRequest {
+  string user_id = 1;
+  string password = 2;
+}
+
+// LoginWithCodeRequest is LoginRequest plus the second factor. A separate message
+// rather than an extra field on LoginRequest, so the existing call keeps its exact
+// meaning for any caller that has not moved.
+message LoginWithCodeRequest {
+  string username = 1;
+  string password = 2;
+  string code = 3;
+  string device_id = 4;
+  string platform = 5;
+}
+
+message ChangePasswordRequest {
+  string user_id = 1;
+  string old_password = 2;
+  string new_password = 3;
+  // keep_session_id survives the revoke, so the caller is not signed out of the
+  // device they are using to secure the account.
+  string keep_session_id = 4;
+}
+message ChangePasswordReply { int32 sessions_revoked = 1; }
+
+message BeginTOTPRequest {
+  string user_id = 1;
+  string issuer = 2;
+}
+message BeginTOTPReply {
+  string secret = 1;
+  string uri = 2;
+}
+
+message ConfirmTOTPRequest {
+  string user_id = 1;
+  string code = 2;
+}
+// The recovery codes, returned once. The stored form is a hash, so there is
+// nothing to return later.
+message ConfirmTOTPReply { repeated string recovery_codes = 1; }
+
+message DisableTOTPRequest {
+  string user_id = 1;
+  string password = 2;
+  string code = 3;
+}
+
+message TwoFactorStateReply {
+  bool enabled = 1;
+  int32 recovery_left = 2;
+}
+
 service AuthService {
   rpc Register(RegisterRequest) returns (SessionUser);
   rpc Login(LoginRequest) returns (SessionUser);
   rpc Authenticate(TokenRequest) returns (Identity);
   rpc Resume(ResumeRequest) returns (Identity);
+  rpc ListSessions(UserIDRequest) returns (SessionsReply);
+  rpc RevokeOwned(RevokeOwnedRequest) returns (Empty);
+  rpc RevokeAll(RevokeAllRequest) returns (RevokeAllReply);
+  rpc DeleteAccount(DeleteAccountRequest) returns (Empty);
+
+  // Account security. None of this existed: the password could not be changed by
+  // any path, and there was no second factor at all.
+  rpc LoginWithCode(LoginWithCodeRequest) returns (SessionUser);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordReply);
+  rpc BeginTOTP(BeginTOTPRequest) returns (BeginTOTPReply);
+  rpc ConfirmTOTP(ConfirmTOTPRequest) returns (ConfirmTOTPReply);
+  rpc DisableTOTP(DisableTOTPRequest) returns (Empty);
+  rpc TwoFactorState(UserIDRequest) returns (TwoFactorStateReply);
 }
 
 // ---- Chat service ----
@@ -173,10 +292,41 @@ message UserChatsRequest {
   string after = 2;
   int32 limit = 3;
 }
+
+message UserChatPageRequest {
+  string user_id = 1;
+  string after = 2;
+  int64 after_activity = 3;
+  int32 limit = 4;
+  bool include_archived = 5;
+}
+
+message SetChatFlagsRequest {
+  string chat_id = 1;
+  string user_id = 2;
+  int64 muted_until = 3;
+  bool pinned = 4;
+  bool archived = 5;
+}
+
+message ChatFlagsReply {
+  int64 muted_until = 1;
+  bool pinned = 2;
+  bool archived = 3;
+}
 message ChatSummary {
   Chat chat = 1;
   string my_role = 2;
   string peer_id = 3;
+  // What a chat list draws. Absent here meant the gateway had to fetch history
+  // per chat to render its own list, which is the N+1 this whole change removes —
+  // and in the split deployment it was an N+1 of RPCs.
+  Message last_message = 4;
+  int64 unread_count = 5;
+  int64 last_activity_at = 6;
+  int64 muted_until = 7;
+  bool pinned = 8;
+  bool archived = 9;
 }
 // ChatSummariesReply is one page of summaries. The cursor is not repeated here:
 // it is the id of the last row, so the gateway derives it from the page itself
@@ -185,17 +335,35 @@ message ChatSummariesReply { repeated ChatSummary chats = 1; }
 
 service ChatService {
   rpc EnsureDirect(DirectRequest) returns (Chat);
+  // EnsureSecret is EnsureDirect for the SECRET type. A separate RPC rather than a
+  // type field on DirectRequest, so the existing call keeps its exact meaning.
+  rpc EnsureSecret(DirectRequest) returns (Chat);
   rpc FindDirect(DirectRequest) returns (Chat);
   rpc Get(ChatIDRequest) returns (Chat);
   rpc CreateGroup(CreateGroupRequest) returns (Chat);
   rpc Members(ChatIDRequest) returns (MembersReply);
   rpc UserChats(UserChatsRequest) returns (ChatSummariesReply);
+  // UserChatPage is UserChats with the composite cursor and the archived filter.
+  // Separate rather than extra fields on UserChatsRequest so the old call keeps
+  // its exact meaning for any caller that has not moved.
+  rpc UserChatPage(UserChatPageRequest) returns (ChatSummariesReply);
+  // SetChatFlags writes the CALLER's own mute/pin/archive for a chat.
+  rpc SetChatFlags(SetChatFlagsRequest) returns (ChatFlagsReply);
+  // UserChatIDs lists the chats a user belongs to, ids only — what search needs
+  // to bound a query. UserChats cannot serve it: it pages, and it builds full
+  // summaries that the caller throws away.
+  rpc UserChatIDs(UserIDRequest) returns (MemberIDsReply);
   rpc MemberIDs(ChatIDRequest) returns (MemberIDsReply);
   rpc MemberIDsPage(MemberPageRequest) returns (MemberIDsReply);
   // CanPost/IsMember are used by the message service (messaged is a client of
   // chatd) to authorize writes and reads.
   rpc CanPost(ChatUserRequest) returns (BoolReply);
   rpc IsMember(ChatUserRequest) returns (BoolReply);
+  // CanModerate authorizes acting on ANOTHER member's message (deletion). It is
+  // its own call rather than a flag on CanPost because the two answers differ in
+  // exactly the case that matters: in a group every member may post and only
+  // admins may moderate.
+  rpc CanModerate(ChatUserRequest) returns (BoolReply);
 }
 
 // ---- Message service (broker write path + read path) ----
@@ -307,8 +475,21 @@ message FetchReply {
 }
 message FetchAllReply { repeated KeyBundle bundles = 1; }
 
+// PublishReply mirrors keydir.State across the service boundary. Publishing used to
+// be write-only here, so a gateway talking to a remote keydird could not tell its
+// device what the directory now holds -- and nothing else can tell it, because
+// one-time prekeys are consumed by PEERS fetching bundles.
+message PublishReply {
+  // Prekeys held AFTER this publish was applied and trimmed.
+  int32 one_time_prekeys_left = 1;
+  // Unix millis when the CURRENT signed prekey first appeared; 0 when unknown.
+  int64 signed_prekey_first_seen_ms = 2;
+  // How many prekeys from this request survived the caps.
+  int32 accepted = 3;
+}
+
 service KeyDirService {
-  rpc Publish(PublishRequest) returns (Empty);
+  rpc Publish(PublishRequest) returns (PublishReply);
   rpc Fetch(FetchRequest) returns (FetchReply);
   rpc FetchAll(UserRequest) returns (FetchAllReply);
 }

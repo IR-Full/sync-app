@@ -111,17 +111,25 @@ func mediaRefsOf(m *model.Message) []string {
 	return refs
 }
 
-// Delete tombstones a message. Sender may delete their own; chat admins/owner
-// may delete for all (authorization simplified for MVP to sender-only + members).
+// Delete tombstones a message. The sender may always delete their own; deleting
+// ANOTHER member's message is a moderation action.
+//
+// The distinction is the whole authorization here, and it used to be missing:
+// the non-sender branch asked CanPost, which in a group is true for every
+// member — so anyone in a group could erase anyone else's messages. It only
+// looked correct because in a channel CanPost is already admin-only, which is
+// the one chat type where the two questions happen to agree.
 func (s *Service) Delete(ctx context.Context, userID, chatID, msgID string) (*model.Message, error) {
 	cur, err := s.msgs.GetMessage(ctx, chatID, msgID)
 	if err != nil {
 		return nil, err
 	}
 	if cur.SenderID != userID {
-		// Allow admins/owner too.
-		can, err := s.chats.CanPost(ctx, chatID, userID)
-		if err != nil || !can {
+		can, err := s.chats.CanModerate(ctx, chatID, userID)
+		if err != nil {
+			return nil, err
+		}
+		if !can {
 			return nil, ErrForbidden
 		}
 	}
@@ -164,7 +172,10 @@ func (s *Service) MarkRead(ctx context.Context, userID, chatID string, upToSeq u
 	if err := s.reads.SetRead(ctx, rs); err != nil {
 		return err
 	}
-	s.bus.Publish(ctx, eventbus.Event{
+	// Best effort: the message is already committed, and the outbox relay is
+	// what guarantees the event is not lost. A publish failure here costs
+	// latency, not durability.
+	_ = s.bus.Publish(ctx, eventbus.Event{
 		Subject: eventbus.SubjMessageRead,
 		Key:     chatID,
 		Headers: tracing.Inject(ctx), // propagate trace context to fanout
@@ -312,7 +323,10 @@ func (s *Service) ExpireDue(ctx context.Context, now int64, limit int) (int, err
 		return 0, err
 	}
 	for _, m := range expired {
-		s.bus.Publish(ctx, eventbus.Event{
+		// Best effort: the message is already committed, and the outbox relay is
+		// what guarantees the event is not lost. A publish failure here costs
+		// latency, not durability.
+		_ = s.bus.Publish(ctx, eventbus.Event{
 			Subject: eventbus.SubjMessageDeleted,
 			Key:     m.ChatID,
 			Headers: tracing.Inject(ctx),

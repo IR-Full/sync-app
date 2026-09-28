@@ -37,6 +37,52 @@ func (a *AuthServer) Login(ctx context.Context, r *pb.LoginRequest) (*pb.Session
 	return &pb.SessionUser{Session: pbSession(sess), User: pbUser(user)}, nil
 }
 
+func (a *AuthServer) LoginWithCode(ctx context.Context, r *pb.LoginWithCodeRequest) (*pb.SessionUser, error) {
+	sess, user, err := a.svc.LoginWithCode(ctx, r.Username, r.Password, r.Code, r.DeviceId, r.Platform)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.SessionUser{Session: pbSession(sess), User: pbUser(user)}, nil
+}
+
+func (a *AuthServer) ChangePassword(ctx context.Context, r *pb.ChangePasswordRequest) (*pb.ChangePasswordReply, error) {
+	n, err := a.svc.ChangePassword(ctx, r.UserId, r.OldPassword, r.NewPassword, r.KeepSessionId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.ChangePasswordReply{SessionsRevoked: int32(n)}, nil
+}
+
+func (a *AuthServer) BeginTOTP(ctx context.Context, r *pb.BeginTOTPRequest) (*pb.BeginTOTPReply, error) {
+	secret, uri, err := a.svc.BeginTOTP(ctx, r.UserId, r.Issuer)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.BeginTOTPReply{Secret: secret, Uri: uri}, nil
+}
+
+func (a *AuthServer) ConfirmTOTP(ctx context.Context, r *pb.ConfirmTOTPRequest) (*pb.ConfirmTOTPReply, error) {
+	codes, err := a.svc.ConfirmTOTP(ctx, r.UserId, r.Code)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.ConfirmTOTPReply{RecoveryCodes: codes}, nil
+}
+
+func (a *AuthServer) DisableTOTP(ctx context.Context, r *pb.DisableTOTPRequest) (*pb.Empty, error) {
+	if err := a.svc.DisableTOTP(ctx, r.UserId, r.Password, r.Code); err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.Empty{}, nil
+}
+
+func (a *AuthServer) TwoFactorState(ctx context.Context, r *pb.UserIDRequest) (*pb.TwoFactorStateReply, error) {
+	return &pb.TwoFactorStateReply{
+		Enabled:      a.svc.TwoFactorEnabled(ctx, r.UserId),
+		RecoveryLeft: int32(a.svc.RecoveryCodesLeft(ctx, r.UserId)),
+	}, nil
+}
+
 func (a *AuthServer) Authenticate(ctx context.Context, r *pb.TokenRequest) (*pb.Identity, error) {
 	id, err := a.svc.Authenticate(ctx, r.Token)
 	if err != nil {
@@ -62,6 +108,14 @@ func RegisterChat(s *grpc.Server, svc *chat.Service) {
 
 func (c *ChatServer) EnsureDirect(ctx context.Context, r *pb.DirectRequest) (*pb.Chat, error) {
 	ch, err := c.svc.EnsureDirect(ctx, r.UserA, r.UserB)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return pbChat(ch), nil
+}
+
+func (c *ChatServer) EnsureSecret(ctx context.Context, r *pb.DirectRequest) (*pb.Chat, error) {
+	ch, err := c.svc.EnsureSecret(ctx, r.UserA, r.UserB)
 	if err != nil {
 		return nil, toStatus(err)
 	}
@@ -116,6 +170,39 @@ func (c *ChatServer) UserChats(ctx context.Context, r *pb.UserChatsRequest) (*pb
 	return &pb.ChatSummariesReply{Chats: out}, nil
 }
 
+func (c *ChatServer) UserChatPage(ctx context.Context, r *pb.UserChatPageRequest) (*pb.ChatSummariesReply, error) {
+	list, err := c.svc.UserChatPage(ctx, r.UserId, chat.ChatPage{
+		After: r.After, AfterActivity: r.AfterActivity,
+		Limit: int(r.Limit), IncludeArchived: r.IncludeArchived,
+	})
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	out := make([]*pb.ChatSummary, len(list))
+	for i, s := range list {
+		out[i] = pbChatSummary(s)
+	}
+	return &pb.ChatSummariesReply{Chats: out}, nil
+}
+
+func (c *ChatServer) SetChatFlags(ctx context.Context, r *pb.SetChatFlagsRequest) (*pb.ChatFlagsReply, error) {
+	f, err := c.svc.SetChatFlags(ctx, r.ChatId, r.UserId, model.MemberFlags{
+		MutedUntil: r.MutedUntil, Pinned: r.Pinned, Archived: r.Archived,
+	})
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.ChatFlagsReply{MutedUntil: f.MutedUntil, Pinned: f.Pinned, Archived: f.Archived}, nil
+}
+
+func (c *ChatServer) UserChatIDs(ctx context.Context, r *pb.UserIDRequest) (*pb.MemberIDsReply, error) {
+	ids, err := c.svc.UserChatIDs(ctx, r.UserId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.MemberIDsReply{UserIds: ids}, nil
+}
+
 func (c *ChatServer) MemberIDs(ctx context.Context, r *pb.ChatIDRequest) (*pb.MemberIDsReply, error) {
 	ids, err := c.svc.MemberIDs(ctx, r.ChatId)
 	if err != nil {
@@ -142,6 +229,14 @@ func (c *ChatServer) CanPost(ctx context.Context, r *pb.ChatUserRequest) (*pb.Bo
 
 func (c *ChatServer) IsMember(ctx context.Context, r *pb.ChatUserRequest) (*pb.BoolReply, error) {
 	ok, err := c.svc.IsMember(ctx, r.ChatId, r.UserId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.BoolReply{Ok: ok}, nil
+}
+
+func (c *ChatServer) CanModerate(ctx context.Context, r *pb.ChatUserRequest) (*pb.BoolReply, error) {
+	ok, err := c.svc.CanModerate(ctx, r.ChatId, r.UserId)
 	if err != nil {
 		return nil, toStatus(err)
 	}
@@ -220,15 +315,25 @@ func RegisterKeyDir(s *grpc.Server, dir keydir.Directory) {
 	pb.RegisterKeyDirServiceServer(s, &KeyDirServer{dir: dir})
 }
 
-func (k *KeyDirServer) Publish(ctx context.Context, r *pb.PublishRequest) (*pb.Empty, error) {
-	k.dir.Publish(ctx, r.UserId, r.DeviceId, wire.KeyPublishBody{
+func (k *KeyDirServer) Publish(ctx context.Context, r *pb.PublishRequest) (*pb.PublishReply, error) {
+	st := k.dir.Publish(ctx, r.UserId, r.DeviceId, wire.KeyPublishBody{
 		IdentityKey:     r.IdentityKey,
 		SigningKey:      r.SigningKey,
 		SignedPreKey:    r.SignedPrekey,
 		SignedPreKeySig: r.SignedPrekeySig,
 		PreKeys:         r.Prekeys,
 	})
-	return &pb.Empty{}, nil
+	// A zero time crosses as 0 rather than as the Unix epoch, so the caller can still
+	// tell "unknown" from "published just now" - the gap this reply exists to close.
+	var firstSeenMs int64
+	if !st.SignedPreKeyFirstSeen.IsZero() {
+		firstSeenMs = st.SignedPreKeyFirstSeen.UnixMilli()
+	}
+	return &pb.PublishReply{
+		OneTimePrekeysLeft:      int32(st.OneTimePreKeysLeft),
+		SignedPrekeyFirstSeenMs: firstSeenMs,
+		Accepted:                int32(st.Accepted),
+	}, nil
 }
 
 func (k *KeyDirServer) Fetch(ctx context.Context, r *pb.FetchRequest) (*pb.FetchReply, error) {
@@ -266,4 +371,45 @@ func (m *MessageServer) Forward(ctx context.Context, r *pb.ForwardRequest) (*pb.
 		return nil, toStatus(err)
 	}
 	return &pb.SubmitReply{Message: pbMessage(msg), Duplicate: dup}, nil
+}
+
+// ---- Auth: session management ----
+
+func (a *AuthServer) ListSessions(ctx context.Context, r *pb.UserIDRequest) (*pb.SessionsReply, error) {
+	sessions, err := a.svc.ListSessions(ctx, r.UserId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	out := &pb.SessionsReply{Sessions: make([]*pb.SessionRow, 0, len(sessions))}
+	for _, s := range sessions {
+		// SessionRow, not pb.Session: the latter carries Token and ResumeToken, and
+		// this reply travels to a gateway that hands it to a client.
+		out.Sessions = append(out.Sessions, &pb.SessionRow{
+			Id: s.ID, UserId: s.UserID, DeviceId: s.DeviceID,
+			CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, RevokedAt: s.RevokedAt,
+		})
+	}
+	return out, nil
+}
+
+func (a *AuthServer) RevokeOwned(ctx context.Context, r *pb.RevokeOwnedRequest) (*pb.Empty, error) {
+	if err := a.svc.RevokeOwned(ctx, r.UserId, r.SessionId); err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.Empty{}, nil
+}
+
+func (a *AuthServer) RevokeAll(ctx context.Context, r *pb.RevokeAllRequest) (*pb.RevokeAllReply, error) {
+	n, err := a.svc.RevokeAll(ctx, r.UserId, r.KeepSessionId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.RevokeAllReply{Revoked: int32(n)}, nil
+}
+
+func (a *AuthServer) DeleteAccount(ctx context.Context, r *pb.DeleteAccountRequest) (*pb.Empty, error) {
+	if err := a.svc.DeleteAccount(ctx, r.UserId, r.Password); err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.Empty{}, nil
 }

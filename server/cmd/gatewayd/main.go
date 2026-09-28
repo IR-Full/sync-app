@@ -29,6 +29,7 @@ import (
 	"github.com/SyncApp-chat/SyncApp/internal/call"
 	"github.com/SyncApp-chat/SyncApp/internal/contact"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"github.com/SyncApp-chat/SyncApp/internal/gateway"
 	"github.com/SyncApp-chat/SyncApp/internal/media"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
@@ -57,6 +58,19 @@ func run(log *slog.Logger) error {
 	defer b.Close()
 	log = b.Log
 
+	// Production preflight. gatewayd IS the client edge in the split topology —
+	// it terminates the WebSocket upgrade and signs media URLs — so it is subject
+	// to exactly the policy the monolith is, and for the same reasons. It ran only
+	// in cmd/server for a long time, which meant the deployment people actually
+	// roll out was the one with no preflight at all.
+	//
+	// It runs after Load and before anything is dialled or bound: a config that is
+	// not safe to ship should fail in the first second, not after five gRPC
+	// connections and two listeners.
+	if err := platform.EnforceProduction(func(msg string, args ...any) { log.Warn(msg, args...) }); err != nil {
+		return err
+	}
+
 	// Dial the domain services. Each client satisfies the gateway's interfaces.
 	dial := func(envKey, def, name string) (*grpc.ClientConn, error) {
 		addr := platform.Env(envKey, def)
@@ -68,11 +82,11 @@ func run(log *slog.Logger) error {
 	}
 	conns := map[string]*grpc.ClientConn{}
 	for _, d := range []struct{ env, def, name string }{
-		{"SyncApp_AUTHD_ADDR", "localhost:9001", "authd"},
-		{"SyncApp_CHATD_ADDR", "localhost:9002", "chatd"},
-		{"SyncApp_MESSAGED_ADDR", "localhost:9003", "messaged"},
-		{"SyncApp_PRESENCED_ADDR", "localhost:9004", "presenced"},
-		{"SyncApp_KEYDIRD_ADDR", "localhost:9005", "keydird"},
+		{"SYNCAPP_AUTHD_ADDR", "localhost:9001", "authd"},
+		{"SYNCAPP_CHATD_ADDR", "localhost:9002", "chatd"},
+		{"SYNCAPP_MESSAGED_ADDR", "localhost:9003", "messaged"},
+		{"SYNCAPP_PRESENCED_ADDR", "localhost:9004", "presenced"},
+		{"SYNCAPP_KEYDIRD_ADDR", "localhost:9005", "keydird"},
 	} {
 		conn, err := dial(d.env, d.def, d.name)
 		if err != nil {
@@ -87,20 +101,20 @@ func run(log *slog.Logger) error {
 
 	// Local edge pieces: connection hub, media signing, search query, audit.
 	hub := delivery.NewHub()
-	wsAddr := platform.Env("SyncApp_WS_ADDR", ":8080")
-	tcpAddr := platform.Env("SyncApp_TCP_ADDR", ":7000")
+	wsAddr := platform.Env("SYNCAPP_WS_ADDR", ":8080")
+	tcpAddr := platform.Env("SYNCAPP_TCP_ADDR", ":7000")
 
-	mediaDir := platform.Env("SyncApp_MEDIA_DIR", "./data/media")
+	mediaDir := platform.Env("SYNCAPP_MEDIA_DIR", "./data/media")
 	fsStore, err := media.NewFSStore(mediaDir)
 	if err != nil {
 		return err
 	}
-	publicBase := platform.Env("SyncApp_PUBLIC_URL", "http://localhost"+wsAddr)
+	publicBase := platform.Env("SYNCAPP_PUBLIC_URL", "http://localhost"+wsAddr)
 	mediaSvc := media.New(fsStore, b.IDs, platform.MediaSecret(), publicBase)
 
 	// Search QUERY path reads the shared index; indexing runs in searchd.
 	var searchBackend search.Backend
-	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
+	if dsn := envcfg.Get("SYNCAPP_PG_DSN"); dsn != "" {
 		searchBackend, err = search.NewPostgresBackend(ctx, dsn)
 		if err != nil {
 			return err
@@ -146,8 +160,14 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	if os.Getenv("SyncApp_REQUIRE_TLS") == "1" && tlsConf == nil {
-		return errors.New("SyncApp_REQUIRE_TLS=1 but TLS is not configured")
+	// Belt and braces behind the preflight: that one reads the environment, this
+	// one checks what was actually built. platform.RequireTLS rather than a
+	// literal comparison against "1" — the flag is also spelled "true"/"yes"
+	// everywhere else, and a check that recognised only one of the three made
+	// SYNCAPP_REQUIRE_TLS=true mean production for the node-id guard and
+	// development for this one, inside a single process.
+	if platform.RequireTLS() && tlsConf == nil {
+		return errors.New("SYNCAPP_REQUIRE_TLS is set but TLS is not configured; set SYNCAPP_TLS_CERT/KEY")
 	}
 
 	ln, err := net.Listen("tcp", tcpAddr)
@@ -163,7 +183,7 @@ func run(log *slog.Logger) error {
 			log.Error("tcp serve", "err", err)
 		}
 	}()
-	if tlsConf != nil && os.Getenv("SyncApp_QUIC") == "1" {
+	if tlsConf != nil && envcfg.Get("SYNCAPP_QUIC") == "1" {
 		go func() {
 			if err := gw.ServeQUIC(ctx, tcpAddr, tlsConf); err != nil {
 				log.Error("quic serve", "err", err)
@@ -176,7 +196,7 @@ func run(log *slog.Logger) error {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
 	mux.Handle("/metrics", promhttp.Handler())
 	mediaSvc.RegisterHTTP(mux)
-	if os.Getenv("SyncApp_PPROF") == "1" {
+	if envcfg.Get("SYNCAPP_PPROF") == "1" {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	}
@@ -208,28 +228,28 @@ func run(log *slog.Logger) error {
 func buildGatewayConfig(nodeID int64, log *slog.Logger) gateway.Config {
 	cfg := gateway.DefaultConfig()
 	cfg.NodeID = strconv.FormatInt(nodeID, 10)
-	if v := os.Getenv("SyncApp_SEND_RATE"); v != "" {
+	if v := envcfg.Get("SYNCAPP_SEND_RATE"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			cfg.SendRate, cfg.SendBurst = f, f*2
 		}
 	}
-	if origins := os.Getenv("SyncApp_ALLOWED_ORIGINS"); origins != "" {
+	if origins := envcfg.Get("SYNCAPP_ALLOWED_ORIGINS"); origins != "" {
 		cfg.AllowedOrigins = strings.Split(origins, ",")
 	}
-	if v := os.Getenv("SyncApp_MAX_CONNS_PER_IP"); v != "" {
+	if v := envcfg.Get("SYNCAPP_MAX_CONNS_PER_IP"); v != "" {
 		if n, e := strconv.Atoi(v); e == nil {
 			cfg.MaxConnsPerIP = n
 		}
 	}
-	if v := os.Getenv("SyncApp_ACCEPT_RATE_PER_IP"); v != "" {
+	if v := envcfg.Get("SYNCAPP_ACCEPT_RATE_PER_IP"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			cfg.AcceptRatePerIP = f
 		}
 	}
-	if admins := os.Getenv("SyncApp_ADMIN_USERS"); admins != "" {
+	if admins := envcfg.Get("SYNCAPP_ADMIN_USERS"); admins != "" {
 		cfg.AdminUsers = strings.Split(admins, ",")
 	}
-	if mods := os.Getenv("SyncApp_MODERATOR_USERS"); mods != "" {
+	if mods := envcfg.Get("SYNCAPP_MODERATOR_USERS"); mods != "" {
 		cfg.ModeratorUsers = strings.Split(mods, ",")
 	}
 	return cfg

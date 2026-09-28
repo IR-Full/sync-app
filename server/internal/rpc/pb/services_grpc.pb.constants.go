@@ -2,23 +2,30 @@ package rpcpb
 
 import grpc "google.golang.org/grpc"
 
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Register_FullMethodName     = "/SyncApp.rpc.v1.AuthService/Register"
-	AuthService_Login_FullMethodName        = "/SyncApp.rpc.v1.AuthService/Login"
-	AuthService_Authenticate_FullMethodName = "/SyncApp.rpc.v1.AuthService/Authenticate"
-	AuthService_Resume_FullMethodName       = "/SyncApp.rpc.v1.AuthService/Resume"
+	AuthService_Register_FullMethodName       = "/syncapp.rpc.v1.AuthService/Register"
+	AuthService_Login_FullMethodName          = "/syncapp.rpc.v1.AuthService/Login"
+	AuthService_Authenticate_FullMethodName   = "/syncapp.rpc.v1.AuthService/Authenticate"
+	AuthService_Resume_FullMethodName         = "/syncapp.rpc.v1.AuthService/Resume"
+	AuthService_ListSessions_FullMethodName   = "/syncapp.rpc.v1.AuthService/ListSessions"
+	AuthService_RevokeOwned_FullMethodName    = "/syncapp.rpc.v1.AuthService/RevokeOwned"
+	AuthService_RevokeAll_FullMethodName      = "/syncapp.rpc.v1.AuthService/RevokeAll"
+	AuthService_DeleteAccount_FullMethodName  = "/syncapp.rpc.v1.AuthService/DeleteAccount"
+	AuthService_LoginWithCode_FullMethodName  = "/syncapp.rpc.v1.AuthService/LoginWithCode"
+	AuthService_ChangePassword_FullMethodName = "/syncapp.rpc.v1.AuthService/ChangePassword"
+	AuthService_BeginTOTP_FullMethodName      = "/syncapp.rpc.v1.AuthService/BeginTOTP"
+	AuthService_ConfirmTOTP_FullMethodName    = "/syncapp.rpc.v1.AuthService/ConfirmTOTP"
+	AuthService_DisableTOTP_FullMethodName    = "/syncapp.rpc.v1.AuthService/DisableTOTP"
+	AuthService_TwoFactorState_FullMethodName = "/syncapp.rpc.v1.AuthService/TwoFactorState"
 )
 
-// AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
+// AuthServiceClient is the client API for AuthService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 var AuthService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "SyncApp.rpc.v1.AuthService",
+	ServiceName: "syncapp.rpc.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -37,34 +44,83 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Resume",
 			Handler:    _AuthService_Resume_Handler,
 		},
+		{
+			MethodName: "ListSessions",
+			Handler:    _AuthService_ListSessions_Handler,
+		},
+		{
+			MethodName: "RevokeOwned",
+			Handler:    _AuthService_RevokeOwned_Handler,
+		},
+		{
+			MethodName: "RevokeAll",
+			Handler:    _AuthService_RevokeAll_Handler,
+		},
+		{
+			MethodName: "DeleteAccount",
+			Handler:    _AuthService_DeleteAccount_Handler,
+		},
+		{
+			MethodName: "LoginWithCode",
+			Handler:    _AuthService_LoginWithCode_Handler,
+		},
+		{
+			MethodName: "ChangePassword",
+			Handler:    _AuthService_ChangePassword_Handler,
+		},
+		{
+			MethodName: "BeginTOTP",
+			Handler:    _AuthService_BeginTOTP_Handler,
+		},
+		{
+			MethodName: "ConfirmTOTP",
+			Handler:    _AuthService_ConfirmTOTP_Handler,
+		},
+		{
+			MethodName: "DisableTOTP",
+			Handler:    _AuthService_DisableTOTP_Handler,
+		},
+		{
+			MethodName: "TwoFactorState",
+			Handler:    _AuthService_TwoFactorState_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/SyncApp/v1/services.proto",
+	Metadata: "proto/syncapp/v1/services.proto",
 }
 
 const (
-	ChatService_EnsureDirect_FullMethodName  = "/SyncApp.rpc.v1.ChatService/EnsureDirect"
-	ChatService_FindDirect_FullMethodName    = "/SyncApp.rpc.v1.ChatService/FindDirect"
-	ChatService_Get_FullMethodName           = "/SyncApp.rpc.v1.ChatService/Get"
-	ChatService_CreateGroup_FullMethodName   = "/SyncApp.rpc.v1.ChatService/CreateGroup"
-	ChatService_Members_FullMethodName       = "/SyncApp.rpc.v1.ChatService/Members"
-	ChatService_UserChats_FullMethodName     = "/SyncApp.rpc.v1.ChatService/UserChats"
-	ChatService_MemberIDs_FullMethodName     = "/SyncApp.rpc.v1.ChatService/MemberIDs"
-	ChatService_MemberIDsPage_FullMethodName = "/SyncApp.rpc.v1.ChatService/MemberIDsPage"
-	ChatService_CanPost_FullMethodName       = "/SyncApp.rpc.v1.ChatService/CanPost"
-	ChatService_IsMember_FullMethodName      = "/SyncApp.rpc.v1.ChatService/IsMember"
+	ChatService_EnsureDirect_FullMethodName  = "/syncapp.rpc.v1.ChatService/EnsureDirect"
+	ChatService_EnsureSecret_FullMethodName  = "/syncapp.rpc.v1.ChatService/EnsureSecret"
+	ChatService_FindDirect_FullMethodName    = "/syncapp.rpc.v1.ChatService/FindDirect"
+	ChatService_Get_FullMethodName           = "/syncapp.rpc.v1.ChatService/Get"
+	ChatService_CreateGroup_FullMethodName   = "/syncapp.rpc.v1.ChatService/CreateGroup"
+	ChatService_Members_FullMethodName       = "/syncapp.rpc.v1.ChatService/Members"
+	ChatService_UserChats_FullMethodName     = "/syncapp.rpc.v1.ChatService/UserChats"
+	ChatService_UserChatPage_FullMethodName  = "/syncapp.rpc.v1.ChatService/UserChatPage"
+	ChatService_SetChatFlags_FullMethodName  = "/syncapp.rpc.v1.ChatService/SetChatFlags"
+	ChatService_UserChatIDs_FullMethodName   = "/syncapp.rpc.v1.ChatService/UserChatIDs"
+	ChatService_MemberIDs_FullMethodName     = "/syncapp.rpc.v1.ChatService/MemberIDs"
+	ChatService_MemberIDsPage_FullMethodName = "/syncapp.rpc.v1.ChatService/MemberIDsPage"
+	ChatService_CanPost_FullMethodName       = "/syncapp.rpc.v1.ChatService/CanPost"
+	ChatService_IsMember_FullMethodName      = "/syncapp.rpc.v1.ChatService/IsMember"
+	ChatService_CanModerate_FullMethodName   = "/syncapp.rpc.v1.ChatService/CanModerate"
 )
 
-// ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
+// ChatServiceClient is the client API for ChatService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 var ChatService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "SyncApp.rpc.v1.ChatService",
+	ServiceName: "syncapp.rpc.v1.ChatService",
 	HandlerType: (*ChatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "EnsureDirect",
 			Handler:    _ChatService_EnsureDirect_Handler,
+		},
+		{
+			MethodName: "EnsureSecret",
+			Handler:    _ChatService_EnsureSecret_Handler,
 		},
 		{
 			MethodName: "FindDirect",
@@ -87,6 +143,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_UserChats_Handler,
 		},
 		{
+			MethodName: "UserChatPage",
+			Handler:    _ChatService_UserChatPage_Handler,
+		},
+		{
+			MethodName: "SetChatFlags",
+			Handler:    _ChatService_SetChatFlags_Handler,
+		},
+		{
+			MethodName: "UserChatIDs",
+			Handler:    _ChatService_UserChatIDs_Handler,
+		},
+		{
 			MethodName: "MemberIDs",
 			Handler:    _ChatService_MemberIDs_Handler,
 		},
@@ -102,24 +170,28 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "IsMember",
 			Handler:    _ChatService_IsMember_Handler,
 		},
+		{
+			MethodName: "CanModerate",
+			Handler:    _ChatService_CanModerate_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/SyncApp/v1/services.proto",
+	Metadata: "proto/syncapp/v1/services.proto",
 }
 
 const (
-	MessageService_Submit_FullMethodName   = "/SyncApp.rpc.v1.MessageService/Submit"
-	MessageService_History_FullMethodName  = "/SyncApp.rpc.v1.MessageService/History"
-	MessageService_Thread_FullMethodName   = "/SyncApp.rpc.v1.MessageService/Thread"
-	MessageService_Forward_FullMethodName  = "/SyncApp.rpc.v1.MessageService/Forward"
-	MessageService_MarkRead_FullMethodName = "/SyncApp.rpc.v1.MessageService/MarkRead"
+	MessageService_Submit_FullMethodName   = "/syncapp.rpc.v1.MessageService/Submit"
+	MessageService_History_FullMethodName  = "/syncapp.rpc.v1.MessageService/History"
+	MessageService_Thread_FullMethodName   = "/syncapp.rpc.v1.MessageService/Thread"
+	MessageService_Forward_FullMethodName  = "/syncapp.rpc.v1.MessageService/Forward"
+	MessageService_MarkRead_FullMethodName = "/syncapp.rpc.v1.MessageService/MarkRead"
 )
 
-// MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
+// MessageServiceClient is the client API for MessageService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 var MessageService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "SyncApp.rpc.v1.MessageService",
+	ServiceName: "syncapp.rpc.v1.MessageService",
 	HandlerType: (*MessageServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -144,21 +216,21 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/SyncApp/v1/services.proto",
+	Metadata: "proto/syncapp/v1/services.proto",
 }
 
 const (
-	PresenceService_Online_FullMethodName    = "/SyncApp.rpc.v1.PresenceService/Online"
-	PresenceService_Heartbeat_FullMethodName = "/SyncApp.rpc.v1.PresenceService/Heartbeat"
-	PresenceService_Offline_FullMethodName   = "/SyncApp.rpc.v1.PresenceService/Offline"
-	PresenceService_Typing_FullMethodName    = "/SyncApp.rpc.v1.PresenceService/Typing"
+	PresenceService_Online_FullMethodName    = "/syncapp.rpc.v1.PresenceService/Online"
+	PresenceService_Heartbeat_FullMethodName = "/syncapp.rpc.v1.PresenceService/Heartbeat"
+	PresenceService_Offline_FullMethodName   = "/syncapp.rpc.v1.PresenceService/Offline"
+	PresenceService_Typing_FullMethodName    = "/syncapp.rpc.v1.PresenceService/Typing"
 )
 
-// PresenceService_ServiceDesc is the grpc.ServiceDesc for PresenceService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
+// PresenceServiceClient is the client API for PresenceService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 var PresenceService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "SyncApp.rpc.v1.PresenceService",
+	ServiceName: "syncapp.rpc.v1.PresenceService",
 	HandlerType: (*PresenceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -179,20 +251,20 @@ var PresenceService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/SyncApp/v1/services.proto",
+	Metadata: "proto/syncapp/v1/services.proto",
 }
 
 const (
-	KeyDirService_Publish_FullMethodName  = "/SyncApp.rpc.v1.KeyDirService/Publish"
-	KeyDirService_Fetch_FullMethodName    = "/SyncApp.rpc.v1.KeyDirService/Fetch"
-	KeyDirService_FetchAll_FullMethodName = "/SyncApp.rpc.v1.KeyDirService/FetchAll"
+	KeyDirService_Publish_FullMethodName  = "/syncapp.rpc.v1.KeyDirService/Publish"
+	KeyDirService_Fetch_FullMethodName    = "/syncapp.rpc.v1.KeyDirService/Fetch"
+	KeyDirService_FetchAll_FullMethodName = "/syncapp.rpc.v1.KeyDirService/FetchAll"
 )
 
-// KeyDirService_ServiceDesc is the grpc.ServiceDesc for KeyDirService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
+// KeyDirServiceClient is the client API for KeyDirService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 var KeyDirService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "SyncApp.rpc.v1.KeyDirService",
+	ServiceName: "syncapp.rpc.v1.KeyDirService",
 	HandlerType: (*KeyDirServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -209,5 +281,5 @@ var KeyDirService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/SyncApp/v1/services.proto",
+	Metadata: "proto/syncapp/v1/services.proto",
 }

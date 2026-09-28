@@ -9,9 +9,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.35.1
-// source: proto/SyncApp/v1/services.proto
+// source: proto/syncapp/v1/services.proto
 
-// Distinct proto package from body.proto (SyncApp.v1): both are linked into the
+// Distinct proto package from body.proto (syncapp.v1): both are linked into the
 // same binaries (the gateway/daemons use the wire bodies AND these RPCs), and a
 // shared proto package + duplicate message names (e.g. KeyBundle) would collide
 // in the global protobuf registry at init.
@@ -20,7 +20,6 @@ package rpcpb
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -70,25 +69,158 @@ func (c *authServiceClient) Resume(ctx context.Context, in *ResumeRequest, opts 
 	return out, nil
 }
 
+func (c *authServiceClient) ListSessions(ctx context.Context, in *UserIDRequest, opts ...grpc.CallOption) (*SessionsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SessionsReply)
+	err := c.cc.Invoke(ctx, AuthService_ListSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RevokeOwned(ctx context.Context, in *RevokeOwnedRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, AuthService_RevokeOwned_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RevokeAll(ctx context.Context, in *RevokeAllRequest, opts ...grpc.CallOption) (*RevokeAllReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeAllReply)
+	err := c.cc.Invoke(ctx, AuthService_RevokeAll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) DeleteAccount(ctx context.Context, in *DeleteAccountRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, AuthService_DeleteAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) LoginWithCode(ctx context.Context, in *LoginWithCodeRequest, opts ...grpc.CallOption) (*SessionUser, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SessionUser)
+	err := c.cc.Invoke(ctx, AuthService_LoginWithCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ChangePassword(ctx context.Context, in *ChangePasswordRequest, opts ...grpc.CallOption) (*ChangePasswordReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangePasswordReply)
+	err := c.cc.Invoke(ctx, AuthService_ChangePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) BeginTOTP(ctx context.Context, in *BeginTOTPRequest, opts ...grpc.CallOption) (*BeginTOTPReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BeginTOTPReply)
+	err := c.cc.Invoke(ctx, AuthService_BeginTOTP_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) ConfirmTOTP(ctx context.Context, in *ConfirmTOTPRequest, opts ...grpc.CallOption) (*ConfirmTOTPReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfirmTOTPReply)
+	err := c.cc.Invoke(ctx, AuthService_ConfirmTOTP_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) DisableTOTP(ctx context.Context, in *DisableTOTPRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, AuthService_DisableTOTP_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) TwoFactorState(ctx context.Context, in *UserIDRequest, opts ...grpc.CallOption) (*TwoFactorStateReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TwoFactorStateReply)
+	err := c.cc.Invoke(ctx, AuthService_TwoFactorState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AuthServiceServer is the server API for AuthService service.
+// All implementations must embed UnimplementedAuthServiceServer
+// for forward compatibility.
+
 func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*SessionUser, error) {
 	return nil, status.Error(codes.Unimplemented, "method Register not implemented")
 }
-
 func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*SessionUser, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
 }
-
 func (UnimplementedAuthServiceServer) Authenticate(context.Context, *TokenRequest) (*Identity, error) {
 	return nil, status.Error(codes.Unimplemented, "method Authenticate not implemented")
 }
-
 func (UnimplementedAuthServiceServer) Resume(context.Context, *ResumeRequest) (*Identity, error) {
 	return nil, status.Error(codes.Unimplemented, "method Resume not implemented")
 }
-
+func (UnimplementedAuthServiceServer) ListSessions(context.Context, *UserIDRequest) (*SessionsReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSessions not implemented")
+}
+func (UnimplementedAuthServiceServer) RevokeOwned(context.Context, *RevokeOwnedRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeOwned not implemented")
+}
+func (UnimplementedAuthServiceServer) RevokeAll(context.Context, *RevokeAllRequest) (*RevokeAllReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeAll not implemented")
+}
+func (UnimplementedAuthServiceServer) DeleteAccount(context.Context, *DeleteAccountRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAccount not implemented")
+}
+func (UnimplementedAuthServiceServer) LoginWithCode(context.Context, *LoginWithCodeRequest) (*SessionUser, error) {
+	return nil, status.Error(codes.Unimplemented, "method LoginWithCode not implemented")
+}
+func (UnimplementedAuthServiceServer) ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangePassword not implemented")
+}
+func (UnimplementedAuthServiceServer) BeginTOTP(context.Context, *BeginTOTPRequest) (*BeginTOTPReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method BeginTOTP not implemented")
+}
+func (UnimplementedAuthServiceServer) ConfirmTOTP(context.Context, *ConfirmTOTPRequest) (*ConfirmTOTPReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConfirmTOTP not implemented")
+}
+func (UnimplementedAuthServiceServer) DisableTOTP(context.Context, *DisableTOTPRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DisableTOTP not implemented")
+}
+func (UnimplementedAuthServiceServer) TwoFactorState(context.Context, *UserIDRequest) (*TwoFactorStateReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method TwoFactorState not implemented")
+}
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
+func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
 
-func (UnimplementedAuthServiceServer) testEmbeddedByValue() {}
+// UnsafeAuthServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuthServiceServer will
+// result in compilation errors.
 
 func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 	// If the following call panics, it indicates UnimplementedAuthServiceServer was
@@ -173,6 +305,190 @@ func _AuthService_Resume_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_ListSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListSessions(ctx, req.(*UserIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RevokeOwned_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeOwnedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RevokeOwned(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RevokeOwned_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RevokeOwned(ctx, req.(*RevokeOwnedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RevokeAll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeAllRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RevokeAll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RevokeAll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RevokeAll(ctx, req.(*RevokeAllRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_DeleteAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).DeleteAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_DeleteAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).DeleteAccount(ctx, req.(*DeleteAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_LoginWithCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginWithCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).LoginWithCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_LoginWithCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).LoginWithCode(ctx, req.(*LoginWithCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ChangePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ChangePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ChangePassword(ctx, req.(*ChangePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_BeginTOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BeginTOTPRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).BeginTOTP(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_BeginTOTP_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).BeginTOTP(ctx, req.(*BeginTOTPRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_ConfirmTOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmTOTPRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ConfirmTOTP(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ConfirmTOTP_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ConfirmTOTP(ctx, req.(*ConfirmTOTPRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_DisableTOTP_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableTOTPRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).DisableTOTP(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_DisableTOTP_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).DisableTOTP(ctx, req.(*DisableTOTPRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_TwoFactorState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).TwoFactorState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_TwoFactorState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).TwoFactorState(ctx, req.(*UserIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+
 func NewChatServiceClient(cc grpc.ClientConnInterface) ChatServiceClient {
 	return &chatServiceClient{cc}
 }
@@ -181,6 +497,16 @@ func (c *chatServiceClient) EnsureDirect(ctx context.Context, in *DirectRequest,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Chat)
 	err := c.cc.Invoke(ctx, ChatService_EnsureDirect_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) EnsureSecret(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Chat)
+	err := c.cc.Invoke(ctx, ChatService_EnsureSecret_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +563,36 @@ func (c *chatServiceClient) UserChats(ctx context.Context, in *UserChatsRequest,
 	return out, nil
 }
 
+func (c *chatServiceClient) UserChatPage(ctx context.Context, in *UserChatPageRequest, opts ...grpc.CallOption) (*ChatSummariesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChatSummariesReply)
+	err := c.cc.Invoke(ctx, ChatService_UserChatPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SetChatFlags(ctx context.Context, in *SetChatFlagsRequest, opts ...grpc.CallOption) (*ChatFlagsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChatFlagsReply)
+	err := c.cc.Invoke(ctx, ChatService_SetChatFlags_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UserChatIDs(ctx context.Context, in *UserIDRequest, opts ...grpc.CallOption) (*MemberIDsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MemberIDsReply)
+	err := c.cc.Invoke(ctx, ChatService_UserChatIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) MemberIDs(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*MemberIDsReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MemberIDsReply)
@@ -277,49 +633,71 @@ func (c *chatServiceClient) IsMember(ctx context.Context, in *ChatUserRequest, o
 	return out, nil
 }
 
+func (c *chatServiceClient) CanModerate(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BoolReply)
+	err := c.cc.Invoke(ctx, ChatService_CanModerate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ChatServiceServer is the server API for ChatService service.
+// All implementations must embed UnimplementedChatServiceServer
+// for forward compatibility.
+
 func (UnimplementedChatServiceServer) EnsureDirect(context.Context, *DirectRequest) (*Chat, error) {
 	return nil, status.Error(codes.Unimplemented, "method EnsureDirect not implemented")
 }
-
+func (UnimplementedChatServiceServer) EnsureSecret(context.Context, *DirectRequest) (*Chat, error) {
+	return nil, status.Error(codes.Unimplemented, "method EnsureSecret not implemented")
+}
 func (UnimplementedChatServiceServer) FindDirect(context.Context, *DirectRequest) (*Chat, error) {
 	return nil, status.Error(codes.Unimplemented, "method FindDirect not implemented")
 }
-
 func (UnimplementedChatServiceServer) Get(context.Context, *ChatIDRequest) (*Chat, error) {
 	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
 }
-
 func (UnimplementedChatServiceServer) CreateGroup(context.Context, *CreateGroupRequest) (*Chat, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateGroup not implemented")
 }
-
 func (UnimplementedChatServiceServer) Members(context.Context, *ChatIDRequest) (*MembersReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Members not implemented")
 }
-
 func (UnimplementedChatServiceServer) UserChats(context.Context, *UserChatsRequest) (*ChatSummariesReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method UserChats not implemented")
 }
-
+func (UnimplementedChatServiceServer) UserChatPage(context.Context, *UserChatPageRequest) (*ChatSummariesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method UserChatPage not implemented")
+}
+func (UnimplementedChatServiceServer) SetChatFlags(context.Context, *SetChatFlagsRequest) (*ChatFlagsReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetChatFlags not implemented")
+}
+func (UnimplementedChatServiceServer) UserChatIDs(context.Context, *UserIDRequest) (*MemberIDsReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method UserChatIDs not implemented")
+}
 func (UnimplementedChatServiceServer) MemberIDs(context.Context, *ChatIDRequest) (*MemberIDsReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method MemberIDs not implemented")
 }
-
 func (UnimplementedChatServiceServer) MemberIDsPage(context.Context, *MemberPageRequest) (*MemberIDsReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method MemberIDsPage not implemented")
 }
-
 func (UnimplementedChatServiceServer) CanPost(context.Context, *ChatUserRequest) (*BoolReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanPost not implemented")
 }
-
 func (UnimplementedChatServiceServer) IsMember(context.Context, *ChatUserRequest) (*BoolReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method IsMember not implemented")
 }
-
+func (UnimplementedChatServiceServer) CanModerate(context.Context, *ChatUserRequest) (*BoolReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method CanModerate not implemented")
+}
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
+func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
 
-func (UnimplementedChatServiceServer) testEmbeddedByValue() {}
+// UnsafeChatServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ChatServiceServer will
+// result in compilation errors.
 
 func RegisterChatServiceServer(s grpc.ServiceRegistrar, srv ChatServiceServer) {
 	// If the following call panics, it indicates UnimplementedChatServiceServer was
@@ -346,6 +724,24 @@ func _ChatService_EnsureDirect_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).EnsureDirect(ctx, req.(*DirectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_EnsureSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DirectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).EnsureSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_EnsureSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).EnsureSecret(ctx, req.(*DirectRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -440,6 +836,60 @@ func _ChatService_UserChats_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_UserChatPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserChatPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UserChatPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UserChatPage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UserChatPage(ctx, req.(*UserChatPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SetChatFlags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetChatFlagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetChatFlags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetChatFlags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetChatFlags(ctx, req.(*SetChatFlagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UserChatIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UserIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UserChatIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UserChatIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UserChatIDs(ctx, req.(*UserIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_MemberIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ChatIDRequest)
 	if err := dec(in); err != nil {
@@ -512,6 +962,28 @@ func _ChatService_IsMember_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_CanModerate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChatUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CanModerate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CanModerate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CanModerate(ctx, req.(*ChatUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+
 func NewMessageServiceClient(cc grpc.ClientConnInterface) MessageServiceClient {
 	return &messageServiceClient{cc}
 }
@@ -566,29 +1038,31 @@ func (c *messageServiceClient) MarkRead(ctx context.Context, in *MarkReadRequest
 	return out, nil
 }
 
+// MessageServiceServer is the server API for MessageService service.
+// All implementations must embed UnimplementedMessageServiceServer
+// for forward compatibility.
+
 func (UnimplementedMessageServiceServer) Submit(context.Context, *SubmitRequest) (*SubmitReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Submit not implemented")
 }
-
 func (UnimplementedMessageServiceServer) History(context.Context, *HistoryRequest) (*HistoryReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method History not implemented")
 }
-
 func (UnimplementedMessageServiceServer) Thread(context.Context, *ThreadRequest) (*HistoryReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Thread not implemented")
 }
-
 func (UnimplementedMessageServiceServer) Forward(context.Context, *ForwardRequest) (*SubmitReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Forward not implemented")
 }
-
 func (UnimplementedMessageServiceServer) MarkRead(context.Context, *MarkReadRequest) (*Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkRead not implemented")
 }
-
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
+func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
 
-func (UnimplementedMessageServiceServer) testEmbeddedByValue() {}
+// UnsafeMessageServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MessageServiceServer will
+// result in compilation errors.
 
 func RegisterMessageServiceServer(s grpc.ServiceRegistrar, srv MessageServiceServer) {
 	// If the following call panics, it indicates UnimplementedMessageServiceServer was
@@ -691,6 +1165,10 @@ func _MessageService_MarkRead_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+// MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+
 func NewPresenceServiceClient(cc grpc.ClientConnInterface) PresenceServiceClient {
 	return &presenceServiceClient{cc}
 }
@@ -735,25 +1213,28 @@ func (c *presenceServiceClient) Typing(ctx context.Context, in *TypingRequest, o
 	return out, nil
 }
 
+// PresenceServiceServer is the server API for PresenceService service.
+// All implementations must embed UnimplementedPresenceServiceServer
+// for forward compatibility.
+
 func (UnimplementedPresenceServiceServer) Online(context.Context, *UserRequest) (*Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Online not implemented")
 }
-
 func (UnimplementedPresenceServiceServer) Heartbeat(context.Context, *UserRequest) (*Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Heartbeat not implemented")
 }
-
 func (UnimplementedPresenceServiceServer) Offline(context.Context, *UserRequest) (*Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Offline not implemented")
 }
-
 func (UnimplementedPresenceServiceServer) Typing(context.Context, *TypingRequest) (*Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Typing not implemented")
 }
-
 func (UnimplementedPresenceServiceServer) mustEmbedUnimplementedPresenceServiceServer() {}
+func (UnimplementedPresenceServiceServer) testEmbeddedByValue()                         {}
 
-func (UnimplementedPresenceServiceServer) testEmbeddedByValue() {}
+// UnsafePresenceServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PresenceServiceServer will
+// result in compilation errors.
 
 func RegisterPresenceServiceServer(s grpc.ServiceRegistrar, srv PresenceServiceServer) {
 	// If the following call panics, it indicates UnimplementedPresenceServiceServer was
@@ -838,13 +1319,17 @@ func _PresenceService_Typing_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+// PresenceService_ServiceDesc is the grpc.ServiceDesc for PresenceService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+
 func NewKeyDirServiceClient(cc grpc.ClientConnInterface) KeyDirServiceClient {
 	return &keyDirServiceClient{cc}
 }
 
-func (c *keyDirServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*Empty, error) {
+func (c *keyDirServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(PublishReply)
 	err := c.cc.Invoke(ctx, KeyDirService_Publish_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -872,21 +1357,25 @@ func (c *keyDirServiceClient) FetchAll(ctx context.Context, in *UserRequest, opt
 	return out, nil
 }
 
-func (UnimplementedKeyDirServiceServer) Publish(context.Context, *PublishRequest) (*Empty, error) {
+// KeyDirServiceServer is the server API for KeyDirService service.
+// All implementations must embed UnimplementedKeyDirServiceServer
+// for forward compatibility.
+
+func (UnimplementedKeyDirServiceServer) Publish(context.Context, *PublishRequest) (*PublishReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Publish not implemented")
 }
-
 func (UnimplementedKeyDirServiceServer) Fetch(context.Context, *FetchRequest) (*FetchReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Fetch not implemented")
 }
-
 func (UnimplementedKeyDirServiceServer) FetchAll(context.Context, *UserRequest) (*FetchAllReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method FetchAll not implemented")
 }
-
 func (UnimplementedKeyDirServiceServer) mustEmbedUnimplementedKeyDirServiceServer() {}
+func (UnimplementedKeyDirServiceServer) testEmbeddedByValue()                       {}
 
-func (UnimplementedKeyDirServiceServer) testEmbeddedByValue() {}
+// UnsafeKeyDirServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to KeyDirServiceServer will
+// result in compilation errors.
 
 func RegisterKeyDirServiceServer(s grpc.ServiceRegistrar, srv KeyDirServiceServer) {
 	// If the following call panics, it indicates UnimplementedKeyDirServiceServer was
@@ -952,3 +1441,7 @@ func _KeyDirService_FetchAll_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+// KeyDirService_ServiceDesc is the grpc.ServiceDesc for KeyDirService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)

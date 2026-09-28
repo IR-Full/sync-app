@@ -41,18 +41,37 @@ public final class AppContainer: ObservableObject {
         self.syncEngine = sync
 
         let keychain = KeychainStore()
-        let auth = AuthRepositoryImpl(client: client, store: store, sync: sync, keychain: keychain)
-        let chats = ChatRepositoryImpl(client: client, store: store, sync: sync)
-        let messages = MessageRepositoryImpl(client: client, store: store, sync: sync)
+
+        // The secret-chat pipeline. Built here because it is the only place that knows
+        // the device id, the Keychain and the cache at once — and it is handed to the
+        // engine rather than created by it, so a test can drive the engine without a
+        // Keychain to write to.
+        let secret = SecretChatService(
+            client: client,
+            store: store,
+            keychain: keychain,
+            deviceID: DeviceIdentity.current(keychain: keychain)
+        )
+        Task { await sync.attach(secret: secret) }
+
+        let auth = AuthRepositoryImpl(
+            client: client, store: store, sync: sync, keychain: keychain, secret: secret
+        )
+        let chats = ChatRepositoryImpl(client: client, store: store, sync: sync, secret: secret)
+        let messages = MessageRepositoryImpl(client: client, store: store, sync: sync, secret: secret)
         let contacts = ContactRepositoryImpl(client: client, store: store, sync: sync)
         let search = SearchRepositoryImpl(client: client)
         let media = MediaRepositoryImpl(client: client)
         let settings = SettingsRepositoryImpl()
-        let push = PushRepositoryImpl(client: client)
+        let push = PushRepositoryImpl(client: client, store: store, sync: sync)
+        // `auth` is passed in for the local wipe that has to follow revoking this
+        // device's own session, or deleting the account. Constructed above, so this is
+        // ordinary ordering rather than a cycle.
+        let security = AccountSecurityRepositoryImpl(client: client, sync: sync, auth: auth)
 
         self.viewFactory = ViewFactory(
             chats: chats, messages: messages, contacts: contacts,
-            search: search, media: media, auth: auth
+            search: search, media: media, auth: auth, security: security
         )
         self.appModel = AppModel(auth: auth, settings: settings, push: push)
     }

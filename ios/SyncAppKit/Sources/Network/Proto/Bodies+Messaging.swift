@@ -477,6 +477,48 @@ public struct HistoryOKBody: ProtoMessage, Sendable, Equatable {
     }
 }
 
+/// `HISTORY_PAGE` — one backfill page delivered as a SINGLE frame.
+///
+/// `HISTORY` answers with up to a hundred messages, and the original shape sent
+/// each as its own `NEW` frame: a hundred envelopes, a hundred protobuf bodies
+/// and a hundred trips through the connection's single writer to answer one
+/// request. This carries the same messages in one.
+///
+/// Arrives only when `CAP_BATCHING` was negotiated in `HELLO`, so the
+/// per-message stream remains the fallback and both shapes carry exactly the
+/// same messages — a page is a transport optimisation, not a different answer.
+/// A client that handles only one of them must not advertise the capability.
+public struct HistoryPageBody: ProtoMessage, Sendable, Equatable {
+    public var messages: [NewMessageBody] = []
+    /// The RESOLVED chat id, even when the request addressed "@handle": this
+    /// frame is the only one that says which chat the page came from.
+    public var chatID = ""
+    public var nextBefore: UInt64 = 0
+    public var done = false
+
+    public init() {}
+
+    public func encode(to w: inout ProtoWriter) {
+        w.repeatedMessage(1, messages)
+        w.string(2, chatID)
+        w.uint64(3, nextBefore)
+        w.bool(4, done)
+    }
+
+    public init(from r: inout ProtoReader) throws {
+        self.init()
+        while let f = try r.next() {
+            switch f.number {
+            case 1: messages.append(try r.message(NewMessageBody.self))
+            case 2: chatID = try r.string()
+            case 3: nextBefore = try r.uint64()
+            case 4: done = try r.bool()
+            default: try r.skip(f)
+            }
+        }
+    }
+}
+
 /// `REACT` — toggle. Sending the emoji you already have removes it.
 public struct ReactBody: ProtoMessage, Sendable, Equatable {
     public var chatID = ""

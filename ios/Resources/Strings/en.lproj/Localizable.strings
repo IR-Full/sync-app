@@ -132,3 +132,83 @@
 "profile.sign.out" = "Sign out";
 "profile.sign.out.confirm" = "Sign out?";
 "profile.sign.out.message" = "Cached chats and messages on this device will be deleted.";
+
+/* Chat list: pin, archive, mute presets */
+"chats.pin" = "Pin";
+"chats.unpin" = "Unpin";
+"chats.pinned" = "Pinned";
+"chats.archive" = "Archive";
+"chats.unarchive" = "Unarchive";
+"chats.archive.title" = "Archived";
+"chats.archive.empty.title" = "Nothing archived";
+"chats.archive.empty.message" = "Swipe a chat to archive it. Archived chats stay here and stop appearing in the main list.";
+"chats.mute.hour" = "For 1 hour";
+"chats.mute.eightHours" = "For 8 hours";
+"chats.mute.week" = "For a week";
+"chats.mute.forever" = "Until I turn it back on";
+
+/* Secret chats */
+"chat.secret.badge" = "End-to-end encrypted";
+"chat.secret.title" = "Secret chat";
+"chat.secret.new" = "New secret chat";
+"chat.secret.hint" = "Messages are encrypted on this device and can only be read on your devices and theirs. The server relays ciphertext and cannot decrypt it.";
+"chat.secret.premium" = "Secret chats are part of Premium.";
+"chat.secret.noDevices" = "They have no device set up for secret chats yet.";
+"chat.secret.safety" = "Safety number";
+"chat.secret.safety.hint" = "Compare this number with the one on their device. If the two match, nobody is between you. If it changes, the conversation has a new key — ask why before continuing.";
+
+/* Account security */
+"security.title" = "Password & security";
+"security.password" = "Change password";
+"security.password.current" = "Current password";
+"security.password.new" = "New password";
+"security.password.confirm" = "Repeat new password";
+"security.password.mismatch" = "The two new passwords do not match.";
+"security.password.changed" = "Password changed. Other sessions signed out: %d.";
+"security.twoFactor" = "Two-factor authentication";
+"security.twoFactor.on" = "On";
+"security.twoFactor.off" = "Off";
+"security.twoFactor.enable" = "Turn on";
+"security.twoFactor.disable" = "Turn off";
+"security.twoFactor.secret" = "Setup key";
+"security.twoFactor.code" = "6-digit code";
+"security.twoFactor.scan" = "Add this key to your authenticator app, then enter the code it shows.";
+"security.twoFactor.recovery" = "Recovery codes";
+"security.twoFactor.recovery.hint" = "Save these now. They are shown once and each works a single time — they are the only way back in if you lose your authenticator.";
+"security.twoFactor.recoveryLeft" = "Recovery codes left: %d";
+"security.code.required" = "Enter the code from your authenticator app.";
+"security.code.invalid" = "That code did not work. Try the next one, or use a recovery code.";
+
+/* Sessions — the device list and the revokes. */
+"security.sessions" = "Active sessions";
+"security.sessions.hint" = "Every device signed into this account. Signing one out stops it immediately — it does not wait for the session to expire.";
+"security.sessions.empty" = "No other sessions.";
+"security.sessions.thisDevice" = "this device";
+"security.sessions.unknownDevice" = "Unknown device";
+"security.sessions.revoke" = "Sign out";
+"security.sessions.revokeOthers" = "Sign out all other devices";
+"security.sessions.revokeOthers.confirm" = "Sign out every other device?";
+"security.sessions.revoked" = "Sessions signed out: %d.";
+"security.sessions.signedOutHere" = "This device has been signed out.";
+
+/* Account deletion */
+"security.delete" = "Delete account";
+"security.delete.detail" = "Your account, devices, contacts, drafts and memberships are erased. Messages you sent stay in other people's chats with your name and their contents removed. This cannot be undone.";
+"security.delete.confirm" = "Delete this account permanently?";
+"security.delete.done" = "Your account has been deleted.";
+
+/* Premium */
+"premium.title" = "Premium";
+"premium.subtitle" = "Secret chats, bigger uploads, folders and more.";
+"premium.current" = "Your plan";
+"premium.plan.free" = "Free";
+"premium.plan.premium" = "Premium";
+"premium.until" = "Paid through %@";
+"premium.cancelling" = "Cancels at the end of the period";
+"premium.cancel" = "Cancel subscription";
+"premium.subscribe" = "Subscribe";
+"premium.method.card" = "Bank card";
+"premium.method.sbp" = "SBP";
+"premium.pay" = "Continue to payment";
+"premium.qr" = "Scan this in your bank app";
+"premium.unavailable" = "Payments are not configured on this server.";

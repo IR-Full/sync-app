@@ -6,12 +6,12 @@
 // Backends are selected by environment. With none set it runs fully in-memory
 // (great for `go run` and demos). Set the DSNs to use the Docker infra:
 //
-//	SyncApp_PG_DSN     postgres://... (enables durable storage)
-//	SyncApp_REDIS_ADDR host:6379      (enables Redis presence)
-//	SyncApp_NATS_URL   nats://...      (enables NATS event bus)
-//	SyncApp_TCP_ADDR   default :7000   (raw-TCP binary protocol)
-//	SyncApp_WS_ADDR    default :8080   (WebSocket + /healthz)
-//	SyncApp_NODE_ID    default 1       (snowflake node id, 0..1023)
+//	SYNCAPP_PG_DSN     postgres://... (enables durable storage)
+//	SYNCAPP_REDIS_ADDR host:6379      (enables Redis presence)
+//	SYNCAPP_NATS_URL   nats://...      (enables NATS event bus)
+//	SYNCAPP_TCP_ADDR   default :7000   (raw-TCP binary protocol)
+//	SYNCAPP_WS_ADDR    default :8080   (WebSocket + /healthz)
+//	SYNCAPP_NODE_ID    default 1       (snowflake node id, 0..1023)
 package main
 
 import (
@@ -32,10 +32,12 @@ import (
 
 	"github.com/SyncApp-chat/SyncApp/internal/audit"
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/billing"
 	"github.com/SyncApp-chat/SyncApp/internal/call"
 	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/contact"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"github.com/SyncApp-chat/SyncApp/internal/fanout"
 	"github.com/SyncApp-chat/SyncApp/internal/gateway"
 	"github.com/SyncApp-chat/SyncApp/internal/invite"
@@ -79,14 +81,17 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Distributed tracing (no-op unless SyncApp_TRACE=stdout / OTLP configured).
+	// Distributed tracing (no-op unless SYNCAPP_TRACE=stdout / OTLP configured).
 	shutdownTracing, err := tracing.Init(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = shutdownTracing(context.Background()) }()
 
-	nodeID, releaseNode := resolveNodeID(ctx, log)
+	nodeID, releaseNode, err := resolveNodeID(ctx, log)
+	if err != nil {
+		return err
+	}
 	defer releaseNode()
 	ids, err := id.NewGenerator(nodeID)
 	if err != nil {
@@ -97,12 +102,12 @@ func run(log *slog.Logger) error {
 	// runs its own gateway pool + data plane, users connect to the nearest, and
 	// chats are home-region pinned (cross-region traffic flows over the event
 	// bus). Here it is informational, stamped into logs for correlation.
-	region := env("SyncApp_REGION", "local")
+	region := env("SYNCAPP_REGION", "local")
 	log = log.With("region", region, "node", nodeID)
 
 	// --- storage ---
 	var stores store.Stores
-	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
+	if dsn := envcfg.Get("SYNCAPP_PG_DSN"); dsn != "" {
 		pg, err := postgres.Connect(ctx, dsn)
 		if err != nil {
 			return err
@@ -115,12 +120,12 @@ func run(log *slog.Logger) error {
 		log.Info("storage: postgres")
 	} else {
 		stores = memory.New().Stores()
-		log.Info("storage: in-memory (set SyncApp_PG_DSN for durable storage)")
+		log.Info("storage: in-memory (set SYNCAPP_PG_DSN for durable storage)")
 	}
 
 	// --- event bus ---
 	var bus eventbus.Bus
-	if url := os.Getenv("SyncApp_NATS_URL"); url != "" {
+	if url := envcfg.Get("SYNCAPP_NATS_URL"); url != "" {
 		bus, err = eventbus.NewNATS(url)
 		if err != nil {
 			return err
@@ -130,19 +135,19 @@ func run(log *slog.Logger) error {
 		bus = eventbus.NewMemory()
 		log.Info("eventbus: in-memory")
 	}
-	defer bus.Close()
+	defer func() { _ = bus.Close() }() // process is exiting; nothing to recover
 
 	// --- presence backend + cross-node router + resume buffer ---
 	var pbackend presence.Backend
 	var rtr router.Router
 	var replayBuf replay.Buffer
-	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
-		pbackend, err = presence.NewRedisBackend(addr, os.Getenv("SyncApp_REDIS_PASSWORD"), 0)
+	if addr := envcfg.Get("SYNCAPP_REDIS_ADDR"); addr != "" {
+		pbackend, err = presence.NewRedisBackend(addr, envcfg.Get("SYNCAPP_REDIS_PASSWORD"), 0)
 		if err != nil {
 			return err
 		}
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
-		defer rdb.Close()
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
+		defer func() { _ = rdb.Close() }()
 		// Wrap in a circuit breaker + local fallback: a Redis outage degrades to
 		// same-node delivery instead of a total routing failure.
 		rtr = router.NewResilient(router.NewRedis(rdb, 60*time.Second), log)
@@ -157,7 +162,10 @@ func run(log *slog.Logger) error {
 
 	// --- services ---
 	hub := delivery.NewHub()
-	authSvc := auth.New(stores.Users, stores.Sessions, ids)
+	authSvc := auth.New(stores.Users, stores.Sessions, ids).
+		// The second factor. Optional at the service level so a deployment without
+		// the store keeps single-factor login rather than a half-built one.
+		WithTwoFactor(stores.TwoFactor)
 	chatSvc := chat.New(stores.Chats, ids)
 	msgSvc := message.New(stores.Messages, stores.Reads, chatSvc, bus, ids)
 	msgBroker := message.NewBroker(msgSvc, log)
@@ -171,7 +179,24 @@ func run(log *slog.Logger) error {
 	schedSvc := schedule.New(stores.Schedule, chatSvc, msgSvc, ids, log)
 	go schedSvc.Run(ctx, 5*time.Second) // dispatches due sends + reaps self-destructed
 
-	fan := fanout.New(bus, chatSvc, rtr, log)
+	// Presence is gated on the sender's privacy setting. The gate is built from
+	// the user directory and the address book, which fanout has no other reason
+	// to know about — so it asks through a one-method interface and the gateway
+	// answers (internal/gateway/presence_audience.go).
+	fan := fanout.New(bus, chatSvc, rtr, log).
+		WithPresenceAudience(gateway.NewPresenceAudience(gateway.Services{
+			Users:    stores.Users,
+			Contacts: contactSvc,
+		})).
+		// And notifications are gated on the recipient's mute setting. The column
+		// has existed since the first migration with nothing reading it, so until
+		// this line muting a chat did nothing at all.
+		WithMuteChecker(chatSvc).
+		// Message text reaches the push provider only for accounts that asked for
+		// it. Without this the payload carried a preview of every message to
+		// Apple/Google — the server volunteering the plaintext that E2E exists to
+		// keep from it.
+		WithPreviewPolicy(gateway.NewPreviewPolicy(stores.Users))
 	if err := fan.Start(); err != nil {
 		return err
 	}
@@ -183,7 +208,7 @@ func run(log *slog.Logger) error {
 	// Search indexer (consumes message events). Shared Postgres index when a DSN
 	// is set (visible across nodes), else in-memory.
 	var searchBackend search.Backend
-	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
+	if dsn := envcfg.Get("SYNCAPP_PG_DSN"); dsn != "" {
 		searchBackend, err = search.NewPostgresBackend(ctx, dsn)
 		if err != nil {
 			return err
@@ -210,26 +235,30 @@ func run(log *slog.Logger) error {
 	// tokens the provider reports as dead — without it, a user who uninstalls the
 	// app costs a failed delivery on every message they are ever sent.
 	notifySvc := notify.New(bus,
-		notify.ProviderFor(os.Getenv("SyncApp_PUSH_ENDPOINT"), os.Getenv("SyncApp_PUSH_KEY"), log), log).
+		notify.ProviderFor(envcfg.Get("SYNCAPP_PUSH_ENDPOINT"), envcfg.Get("SYNCAPP_PUSH_KEY"), log), log).
 		WithDevices(notify.StoreDevices{Users: stores.Users})
 	if err := notifySvc.Start(); err != nil {
 		return err
 	}
 
 	// --- listeners ---
-	tcpAddr := env("SyncApp_TCP_ADDR", ":7000")
-	wsAddr := env("SyncApp_WS_ADDR", ":8080")
+	tcpAddr := env("SYNCAPP_TCP_ADDR", ":7000")
+	wsAddr := env("SYNCAPP_WS_ADDR", ":8080")
+
+	// Production preflight. Runs before anything is built: a deployment that
+	// declares itself production and is not safe to ship should fail in the first
+	// second, not after opening a database pool and binding three listeners.
+	if err := platform.EnforceProduction(func(msg string, args ...any) { log.Warn(msg, args...) }); err != nil {
+		return err
+	}
 
 	// Media service (needs the public base URL for signed links).
-	mediaDir := env("SyncApp_MEDIA_DIR", "./data/media")
+	mediaDir := env("SYNCAPP_MEDIA_DIR", "./data/media")
 	fsStore, err := media.NewFSStore(mediaDir)
 	if err != nil {
 		return err
 	}
-	publicBase := env("SyncApp_PUBLIC_URL", "http://localhost"+wsAddr)
-	if os.Getenv("SyncApp_MEDIA_SECRET") == "" {
-		log.Warn("SyncApp_MEDIA_SECRET not set — using an insecure dev default; set it (from a secrets manager) before production")
-	}
+	publicBase := env("SYNCAPP_PUBLIC_URL", "http://localhost"+wsAddr)
 	mediaSvc := media.New(fsStore, ids, platform.MediaSecret(), publicBase).WithLogger(log)
 	// Blobs are collected, not leaked: the message log answers "is this still
 	// referenced?", which is the only safe basis for deleting one — a forward
@@ -244,9 +273,9 @@ func run(log *slog.Logger) error {
 
 	// E2E key directory (shared across nodes when Redis is configured).
 	var keyDir keydir.Directory
-	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
-		defer rdb.Close()
+	if addr := envcfg.Get("SYNCAPP_REDIS_ADDR"); addr != "" {
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
+		defer func() { _ = rdb.Close() }()
 		keyDir = keydir.NewRedis(rdb, log)
 	} else {
 		keyDir = keydir.NewMemory()
@@ -256,43 +285,80 @@ func run(log *slog.Logger) error {
 	// and across nodes when Redis is present, which is the only place a limit can
 	// live if a user's second connection lands on a different pod.
 	var userLimits ratelimit.Shared
-	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
-		defer rdb.Close()
+	if addr := envcfg.Get("SYNCAPP_REDIS_ADDR"); addr != "" {
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
+		defer func() { _ = rdb.Close() }()
 		userLimits = ratelimit.NewRedisShared(rdb, "user", 2, 20)
 		log.Info("per-user limits: redis (shared across nodes)")
 	}
 
 	gwCfg := gateway.DefaultConfig()
 	gwCfg.NodeID = strconv.FormatInt(nodeID, 10)
-	if v := os.Getenv("SyncApp_SEND_RATE"); v != "" {
+	if v := envcfg.Get("SYNCAPP_SEND_RATE"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			gwCfg.SendRate, gwCfg.SendBurst = f, f*2
 		}
 	}
-	if origins := os.Getenv("SyncApp_ALLOWED_ORIGINS"); origins != "" {
+	if origins := envcfg.Get("SYNCAPP_ALLOWED_ORIGINS"); origins != "" {
 		gwCfg.AllowedOrigins = strings.Split(origins, ",")
-	} else {
-		log.Warn("SyncApp_ALLOWED_ORIGINS not set — WebSocket accepts any origin (dev only); set your web origins before production")
 	}
 	// Per-IP accept guard (connection-flood / reconnect-storm defense). Off by
 	// default so dev and tests are unaffected; set both in production.
-	if v := os.Getenv("SyncApp_MAX_CONNS_PER_IP"); v != "" {
+	if v := envcfg.Get("SYNCAPP_MAX_CONNS_PER_IP"); v != "" {
 		if n, e := strconv.Atoi(v); e == nil {
 			gwCfg.MaxConnsPerIP = n
 		}
 	}
-	if v := os.Getenv("SyncApp_ACCEPT_RATE_PER_IP"); v != "" {
+	if v := envcfg.Get("SYNCAPP_ACCEPT_RATE_PER_IP"); v != "" {
 		if f, e := strconv.ParseFloat(v, 64); e == nil {
 			gwCfg.AcceptRatePerIP = f
 		}
 	}
-	if admins := os.Getenv("SyncApp_ADMIN_USERS"); admins != "" {
+	// Hops allowed to speak for a client through X-Forwarded-For. Unset means the
+	// header is ignored, which is right for a direct deployment and wrong for one
+	// behind an ingress — where, unset, the per-IP guard sees one address for the
+	// whole internet.
+	if v := envcfg.Get("SYNCAPP_TRUSTED_PROXIES"); v != "" {
+		gwCfg.TrustedProxies = strings.Split(v, ",")
+	}
+	if admins := envcfg.Get("SYNCAPP_ADMIN_USERS"); admins != "" {
 		gwCfg.AdminUsers = strings.Split(admins, ",")
 	}
-	if mods := os.Getenv("SyncApp_MODERATOR_USERS"); mods != "" {
+	if mods := envcfg.Get("SYNCAPP_MODERATOR_USERS"); mods != "" {
 		gwCfg.ModeratorUsers = strings.Split(mods, ",")
 	}
+	// --- billing ---
+	//
+	// Optional by construction: with no acquirer credentials configured the service
+	// still runs and every account is on the free tier. That is a coherent
+	// deployment — a self-hosted instance with no payments — rather than a broken
+	// one, which is why the gateway reads ENTITLEMENTS rather than asking whether
+	// billing exists.
+	var billingSvc *billing.Service
+	if stores.Billing != nil {
+		billingSvc = billing.New(stores.Billing, bus, ids, log)
+		if shop := envcfg.Get("SYNCAPP_YOOKASSA_SHOP_ID"); shop != "" {
+			billingSvc = billingSvc.WithProvider(&billing.YooKassa{
+				Endpoint:      envcfg.GetDefault("SYNCAPP_YOOKASSA_ENDPOINT", "https://api.yookassa.ru/v3/payments"),
+				ShopID:        shop,
+				SecretKey:     envcfg.Get("SYNCAPP_YOOKASSA_SECRET"),
+				WebhookSecret: envcfg.Get("SYNCAPP_YOOKASSA_WEBHOOK_SECRET"),
+			})
+			log.Info("billing: yookassa enabled (card + sbp)")
+		}
+		if key := envcfg.Get("SYNCAPP_STRIPE_SECRET"); key != "" {
+			billingSvc = billingSvc.WithProvider(&billing.Stripe{
+				Endpoint:      envcfg.GetDefault("SYNCAPP_STRIPE_ENDPOINT", "https://api.stripe.com/v1/payment_intents"),
+				SecretKey:     key,
+				WebhookSecret: envcfg.Get("SYNCAPP_STRIPE_WEBHOOK_SECRET"),
+			})
+			log.Info("billing: stripe enabled (card)")
+		}
+		// The expiry sweep closes lapsed subscriptions and re-announces entitlements.
+		// Without it a cancelled plan keeps granting access until somebody notices.
+		go billingSvc.RunExpiry(ctx)
+	}
+
 	auditSink := audit.NewLogSink(log)
 
 	gw := gateway.New(gateway.Services{
@@ -311,7 +377,10 @@ func run(log *slog.Logger) error {
 		Users:      stores.Users,
 		Hub:        hub,
 		KeyDir:     keyDir,
+		SecretQ:    stores.SecretQ,
+		IDs:        ids,
 		Media:      mediaSvc,
+		Billing:    billingSvc,
 		Search:     searchSvc,
 		Audit:      auditSink,
 		Bus:        bus,
@@ -322,17 +391,23 @@ func run(log *slog.Logger) error {
 	if err := gw.StartDelivery(); err != nil {
 		return err
 	}
+	// Collect undelivered secret envelopes past their TTL. Every queued row is a
+	// record of who messaged whom and when, so the collector is part of the
+	// privacy promise rather than storage hygiene — it runs whether or not the
+	// queue is under pressure.
+	go gw.RunSecretQueueCollector(ctx)
 
 	// TLS terminates at the gateway edge; the custom protocol rides inside it.
 	tlsConf, err := platform.BuildTLSConfig(log)
 	if err != nil {
 		return err
 	}
-	// Mandatory-TLS policy: with SyncApp_REQUIRE_TLS=1 the server refuses to start
-	// in plaintext, so a misconfiguration can never silently expose cleartext
-	// traffic in production. The plaintext path stays available for local dev.
-	if os.Getenv("SyncApp_REQUIRE_TLS") == "1" && tlsConf == nil {
-		return fmt.Errorf("SyncApp_REQUIRE_TLS=1 but TLS is not configured; set SyncApp_TLS_CERT/KEY (or SyncApp_TLS_SELFSIGNED=1 for dev)")
+	// Belt and braces behind the preflight: that one reads the environment, this
+	// one checks what was actually built. They can only disagree if BuildTLSConfig
+	// grows a path the preflight does not know about, which is exactly when a
+	// second check earns its keep.
+	if platform.RequireTLS() && tlsConf == nil {
+		return fmt.Errorf("SYNCAPP_REQUIRE_TLS=1 but TLS is not configured; set SYNCAPP_TLS_CERT/KEY (or SYNCAPP_TLS_SELFSIGNED=1 for dev)")
 	}
 
 	ln, err := net.Listen("tcp", tcpAddr)
@@ -350,16 +425,16 @@ func run(log *slog.Logger) error {
 	}()
 
 	// QUIC listens on the same address over UDP (requires TLS). Enable with
-	// SyncApp_QUIC=1; gives mobile clients connection migration + no HOL blocking.
-	if tlsConf != nil && os.Getenv("SyncApp_QUIC") == "1" {
+	// SYNCAPP_QUIC=1; gives mobile clients connection migration + no HOL blocking.
+	if tlsConf != nil && envcfg.Get("SYNCAPP_QUIC") == "1" {
 		go func() {
 			log.Info("gateway listening (quic)", "addr", tcpAddr)
 			if err := gw.ServeQUIC(ctx, tcpAddr, tlsConf); err != nil {
 				log.Error("quic serve", "err", err)
 			}
 		}()
-	} else if os.Getenv("SyncApp_QUIC") == "1" {
-		log.Warn("SyncApp_QUIC=1 ignored: QUIC requires TLS (set SyncApp_TLS_* or SyncApp_TLS_SELFSIGNED=1)")
+	} else if envcfg.Get("SYNCAPP_QUIC") == "1" {
+		log.Warn("SYNCAPP_QUIC=1 ignored: QUIC requires TLS (set SYNCAPP_TLS_* or SYNCAPP_TLS_SELFSIGNED=1)")
 	}
 
 	mux := http.NewServeMux()
@@ -370,7 +445,14 @@ func run(log *slog.Logger) error {
 	})
 	mux.Handle("/metrics", promhttp.Handler()) // Prometheus scrape target
 	mediaSvc.RegisterHTTP(mux)                 // /media/upload/*, /media/download/*
-	if os.Getenv("SyncApp_PPROF") == "1" {
+	if billingSvc != nil {
+		// Provider callbacks. The one HTTP surface here that is unauthenticated by
+		// construction — an acquirer has no credential of ours to present — so the
+		// only thing between a stranger and a free subscription is the signature on
+		// the body. See internal/billing/http.go.
+		billing.NewHandler(billingSvc, log).Register(mux)
+	}
+	if envcfg.Get("SYNCAPP_PPROF") == "1" {
 		// Live profiling (CPU/heap/goroutine/block). Gated because it exposes
 		// internals — bind to an internal port / behind auth in production.
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -412,29 +494,43 @@ func run(log *slog.Logger) error {
 }
 
 // resolveNodeID picks a unique Snowflake node id (0..1023). Precedence:
-//  1. explicit SyncApp_NODE_ID (e.g. a Kubernetes StatefulSet ordinal);
+//  1. explicit SYNCAPP_NODE_ID (e.g. a Kubernetes StatefulSet ordinal);
 //  2. a distributed lease from Redis (guarantees uniqueness across instances);
-//  3. a hostname-derived id with a loud warning (collision possible).
+//  3. a hostname-derived id — DEV ONLY (see below).
+//
+// The node id is 10 bits of every snowflake this process mints, so two instances
+// that hash to the same value mint colliding message and session ids. With 1024
+// slots that is likely long before a thousand nodes (~50% at 38), and duplicate
+// ids are silent corruption rather than a degraded mode — so a deployment that
+// declares itself production (SYNCAPP_REQUIRE_TLS=1) gets an error instead of a
+// guess.
 //
 // It returns the id and a release func (no-op unless a lease was taken).
-func resolveNodeID(ctx context.Context, log *slog.Logger) (int64, func()) {
-	if v := os.Getenv("SyncApp_NODE_ID"); v != "" {
+func resolveNodeID(ctx context.Context, log *slog.Logger) (int64, func(), error) {
+	if v := envcfg.Get("SYNCAPP_NODE_ID"); v != "" {
 		n, err := strconv.ParseInt(v, 10, 64)
 		if err != nil || n < 0 || n > 1023 {
-			log.Warn("invalid SyncApp_NODE_ID; falling back to 0", "value", v)
-			return 0, func() {}
+			return 0, nil, fmt.Errorf("invalid SYNCAPP_NODE_ID %q: want an integer in 0..1023", v)
 		}
-		return n, func() {}
+		return n, func() {}, nil
 	}
-	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
+	leaseAttempted := false
+	if addr := envcfg.Get("SYNCAPP_REDIS_ADDR"); addr != "" {
+		leaseAttempted = true
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
 		n, release, err := nodeid.Lease(ctx, rdb, 30*time.Second)
 		if err == nil {
 			log.Info("node id leased from Redis", "node_id", n)
-			return n, func() { release(); _ = rdb.Close() }
+			return n, func() { release(); _ = rdb.Close() }, nil
 		}
-		log.Warn("node-id lease failed; falling back to hostname", "err", err)
+		log.Error("node-id lease failed", "err", err)
 		_ = rdb.Close()
+	}
+	if platform.RequireTLS() {
+		if leaseAttempted {
+			return 0, nil, errors.New("node-id lease failed and SYNCAPP_REQUIRE_TLS=1: refusing to guess a node id from the hostname (would risk colliding snowflake ids); fix Redis or set SYNCAPP_NODE_ID")
+		}
+		return 0, nil, errors.New("SYNCAPP_REQUIRE_TLS=1 requires an explicit SYNCAPP_NODE_ID or SYNCAPP_REDIS_ADDR for a unique node id")
 	}
 	host, _ := os.Hostname()
 	var h uint32 = 2166136261
@@ -443,9 +539,9 @@ func resolveNodeID(ctx context.Context, log *slog.Logger) (int64, func()) {
 		h *= 16777619
 	}
 	n := int64(h % 1024)
-	log.Warn("node id derived from hostname — set SyncApp_NODE_ID or SyncApp_REDIS_ADDR to guarantee uniqueness",
+	log.Warn("node id derived from hostname — UNSAFE for multi-node: set SYNCAPP_NODE_ID or SYNCAPP_REDIS_ADDR",
 		"host", host, "node_id", n)
-	return n, func() {}
+	return n, func() {}, nil
 }
 
 func env(key, def string) string {

@@ -19,7 +19,19 @@ default and the reason. Deviations are called out as tradeoffs.
 | **V1** (this repo) | Media pipeline (signed URLs, AV scan), push notifications (pluggable provider), full-text search, moderation/abuse rules, rate/flood limiting, **RBAC + audit log**, **observability stack** (Prometheus/Tempo/Grafana) | **[implemented]** |
 | **V1 remaining** | QR desktop login, admin API | **[designed]** |
 | **Product surface** (this repo) | Emoji reactions, threads, typed attachments (voice notes, round video notes, files, images), polls with live tallies, **voice/video call signaling**, contacts + blocking, forwarding with provenance, self-destructing messages, scheduled send, pinned messages, cross-device drafts, public chat handles, invite links, admin roles | **[implemented]** |
-| **V2** | Secret (E2E) chats — **Double Ratchet crypto [implemented] + server relay + multi-device sync [implemented]**; **JetStream durable replay [implemented]**; multi-region active-active, wide-column message store, federation-grade abuse ML | **[mixed — crypto+durable-bus built, multi-region designed]** |
+| **V2** | Secret (E2E) chats — Double Ratchet crypto + server relay + multi-device sync; **JetStream durable replay [implemented]**; multi-region active-active, wide-column message store, federation-grade abuse ML | **[mixed — durable bus built; E2E built with two open defects and only in the web client; multi-region designed]** |
+
+> **E2E status, stated plainly.** The primitives and their composition are
+> correct. The 2026-09-18 audit found two defects that undid what the mode is
+> for — the signed-prekey signature was verified only when the bundle supplied
+> one, and `Session.Decrypt` committed ratchet state before the AEAD
+> authenticated the message — and **both are now fixed**, with tests asserting
+> the bypass fails. What remains is coverage, not correctness: **Android and iOS
+> now implement E2E** — the ratchet, X3DH, safety numbers and TOFU pinning are
+> ported to web, Android and iOS — but **iOS has no screen that shows a safety
+> number**, so pinning protects nobody there yet. The cross-language interop
+> scripts still cannot run, because the `e2epeer` binary they drive is not in the
+> repository. See [`SECURITY.md`](SECURITY.md) §6.
 
 **Explicitly NOT in the first version** (dangerous complexity to defer):
 E2E encryption, multi-region replication, a bespoke wide-column store, exactly-once
@@ -27,7 +39,8 @@ semantics, and voice/video **media**. Each multiplies operational surface for li
 MVP value. Start Postgres-only, single-region, at-least-once with idempotency.
 
 Two of those deferrals have since been taken up, and the line drawn matters: E2E
-crypto landed in full, while for calls only the **signaling** did. Media never
+crypto landed — with the caveats noted above — while for calls only the
+**signaling** did. Media never
 flows through the server — the SDP/ICE payloads it relays are opaque to it, and
 carrying the media plane (an SFU, transcoding, bandwidth estimation) remains out
 of scope. The rest of the product surface above is message-layer work that reuses
@@ -216,7 +229,7 @@ Alice SEND{chat,dedup=k,text} ─▶ Gateway
 - **What the server can read:** all cloud-chat content. **Cannot** recover
   passwords (argon2id, one-way).
 
-### B. Secret-chat mode (optional) **[crypto implemented: `pkg/e2e`; server relay implemented]**
+### B. Secret-chat mode (optional) **[crypto implemented: `pkg/e2e`; server relay implemented; no mobile client]**
 
 - **E2E:** Signal-style **X3DH** key agreement + **Double Ratchet**
   (X25519 + HKDF-SHA256 + ChaCha20-Poly1305). All standard, audited primitives —
@@ -232,6 +245,31 @@ Alice SEND{chat,dedup=k,text} ─▶ Gateway
 - **Rotation:** the ratchet rotates message keys every message; forward secrecy +
   post-compromise security.
 - **What the server can read:** ciphertext + routing metadata only.
+
+**Hardened on 2026-09-18** (the mode shipped with these open, so they are worth
+naming rather than quietly closing):
+
+- The X3DH signature check was skipped when the bundle carried no signature, and
+  `KEY_PUBLISH` did not require one — the MITM-by-directory defense was bypassed
+  by deletion rather than by attack. Verification is now unconditional on both
+  sides, and the gateway refuses to store an unsigned or non-verifying bundle.
+- `Session.Decrypt` mutated `rk`/`ckr`/`cks`/`dhs`/`dhr` before `aeadOpen`
+  authenticated the frame, and `SECRET_SEND` is addressable by any authenticated
+  user to any device — so one forged frame permanently broke a live session. The
+  ratchet now stages on a copy and adopts on success, and retained skipped keys
+  are bounded with oldest-first eviction.
+- `KEY_FETCH`/`KEY_FETCH_ALL` ignored blocking; both now apply it, answering a
+  blocked caller exactly as they answer an account with nothing published.
+  Published keys are length-validated and directory entries expire (`EntryTTL`).
+
+**Still open in this mode:**
+
+- The client half is web-only. Android and iOS carry the capability bit (
+  correctly un-advertised) and nothing behind it.
+- No shipped client pins identity keys (`pkg/e2e/trust.go` is server-side Go) or
+  surfaces a safety number.
+- The cross-language interop scripts in `client/scripts/` need a Go `e2epeer`
+  binary that does not exist, and CI does not run them.
 
 **Ratcheting vs cloud-sync tradeoff:** cloud sync gives multi-device history,
 server search, and instant new-device onboarding, at the cost of server-readable
@@ -410,8 +448,8 @@ millions of MAU; the first thing to move is the message table (largest, append-
 heaviest) once a single primary's write/IO saturates — the `MessageStore`
 interface makes that swap local. Two scale-out paths are **implemented** behind
 that interface: a **chat_id-sharded message store** (`internal/store/sharded`,
-wired via `SyncApp_MESSAGE_SHARD_DSNS`) that spreads writes across N Postgres
-shards, and an optional **read replica** (`SyncApp_PG_REPLICA_DSN`) that serves
+wired via `SYNCAPP_MESSAGE_SHARD_DSNS`) that spreads writes across N Postgres
+shards, and an optional **read replica** (`SYNCAPP_PG_REPLICA_DSN`) that serves
 history/read-receipt queries off the primary. A shard is a COMPLETE message store, not a partial one: it
 carries the full schema and stages its own outbox, which the relay drains per
 shard — a relay pointed only at the primary would silently lose the events of
@@ -470,7 +508,7 @@ push job.
 
 - **Persistent TCP + WebSocket + QUIC** — same binary protocol over all three
   (native → TCP, browsers → WSS, mobile → QUIC). QUIC (`internal/gateway/quic.go`,
-  enable with `SyncApp_QUIC=1`) gives **connection migration** (survives WiFi↔LTE
+  enable with `SYNCAPP_QUIC=1`) gives **connection migration** (survives WiFi↔LTE
   IP changes without reconnect), no head-of-line blocking, and a faster TLS 1.3
   handshake; the frame codec is stream-generic so all transports share it.
   **[implemented]**
@@ -538,8 +576,8 @@ not indexable** (server has only ciphertext) — search is a cloud-chat feature.
 - **Tracing:** OpenTelemetry (`internal/tracing`); W3C trace context **propagated
   through the event bus** (injected into event headers, extracted in fanout), so a
   trace follows send→outbox→fanout. Exporter: stdout (dev) or **OTLP/HTTP**
-  (`SyncApp_OTLP_ENDPOINT`), else no-op. **[implemented]**
-- **Profiling:** `/debug/pprof/` gated by `SyncApp_PPROF=1`. **[implemented]**
+  (`SYNCAPP_OTLP_ENDPOINT`), else no-op. **[implemented]**
+- **Profiling:** `/debug/pprof/` gated by `SYNCAPP_PPROF=1`. **[implemented]**
 - **Logging:** structured `slog`; a dedicated **audit** channel (`internal/audit`)
   for security events (login, chat export). **[implemented]**
 - **Dashboards:** `deploy/observability` compose brings up Prometheus + Tempo +
@@ -553,11 +591,12 @@ not indexable** (server has only ciphertext) — search is a cloud-chat feature.
 
 ## Section 14 — Security hardening **[core implemented; see SECURITY.md for the audit]**
 
-**Implemented:** per-connection token-bucket flood control (`pkg/ratelimit`,
-`ErrFlood`); a **per-username login limiter** (brute-force throttle across all
+**Implemented:** per-connection token-bucket flood control on **state-changing**
+messages (`pkg/ratelimit`, `ErrFlood`) — reads are outside it, see below; a
+**per-username login limiter** (brute-force throttle across all
 connections); handshake/idle read deadlines (slow-loris defense); argon2id
 password hashing with timing-equalized login and a **hash-concurrency semaphore**
-(`SyncApp_AUTH_HASH_CONCURRENCY`) so an auth flood can't OOM the node with
+(`SYNCAPP_AUTH_HASH_CONCURRENCY`) so an auth flood can't OOM the node with
 parallel 64 MiB hashes; **session/resume tokens hashed at rest (SHA-256)** so a DB
 leak yields no usable credentials; explicit register-vs-login (no silent account
 creation/enumeration); 16 MiB frame cap + zip-bomb-guarded decompression + a
@@ -566,16 +605,29 @@ an **append-only audit log** (`internal/audit`) for login/export; moderation
 (banned-term + spam-velocity); media URLs HMAC-signed with expiry and
 constant-time verification (plus `nosniff`/attachment on serve), an **AV scan**
 hook (EICAR) on upload; a **per-IP accept guard** (rate + concurrency caps,
-`SyncApp_MAX_CONNS_PER_IP`/`_ACCEPT_RATE_PER_IP`) rejecting floods before
-handshake; a **mandatory-TLS policy** switch (`SyncApp_REQUIRE_TLS`); **mTLS**
+`SYNCAPP_MAX_CONNS_PER_IP`/`_ACCEPT_RATE_PER_IP`) rejecting floods before
+handshake; a **mandatory-TLS policy** switch (`SYNCAPP_REQUIRE_TLS`); **mTLS**
 helper (`pkg/mtls`); **circuit breaker** guarding external deps; **E2E safety
 numbers** (`e2e.SafetyNumber`) for directory-MITM detection; E2E ciphertext the
 server cannot read. A **CI pipeline** CVE-scans deps (govulncheck) and runs SAST
 (gosec) + the race detector + fuzzing on every push.
 
+**Known gaps (audit of 2026-09-18):** reads (`HISTORY`, `CHAT_LIST`, `THREAD`,
+`READ`, `*_SYNC`, `*_LIST`) are charged to no budget at all, and `HISTORY` both
+amplifies (one frame in, up to 100 out) and resolves `@handle`, making it a free
+username-enumeration primitive; `SYNCAPP_REQUIRE_TLS=1` does not force a real
+media secret, an origin allow-list, or the per-IP guard, so an insecure
+the production config now fails closed (`platform.EnforceProduction`, in the
+monolith and in `gatewayd`); the per-IP guard resolves a forwarded address from
+configured trusted proxies only; session revocation and account deletion are
+reachable from every client. What remains is listed in
+[`SECURITY.md`](SECURITY.md) — as of 2026-09-27 that is the missing iOS
+safety-number screen, plus deployment-layer work.
+
 **Designed:** hard brute-force lockout, device fingerprint / IP reputation
 signals, upstream L4 DDoS scrubber, secret management (Vault/KMS), TOFU
-identity-key pinning. Full analysis and threat model in [SECURITY.md](SECURITY.md).
+identity-key pinning **in a shipped client** (the Go package exists; no client
+calls it). Full analysis and threat model in [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -691,10 +743,11 @@ premature E2E/multi-region complexity. Mitigate by load-testing #5 before #6.
 | Reconnect storm after gateway restart | Med | High | Resume + replay buffer + jittered backoff + accept rate-limit + graceful drain; the retried sends it produces are duplicates, so a failed write batch **bisects** instead of falling back to one transaction per message (which would collapse write throughput exactly at the peak) |
 | Multi-node delivery / split-brain | Med | High | Shared router (Redis) + bus node-targeting + SKIP-LOCKED outbox (no double-publish) |
 | Slow consumers stalling delivery | Med | Med | Bounded queues, drop-and-resync (implemented) |
-| Postgres write saturation | Med | High | **chat_id-sharded message store (implemented, `internal/store/sharded`)** → Scylla; **read replica for history/receipts (implemented, `SyncApp_PG_REPLICA_DSN`)** |
+| Postgres write saturation | Med | High | **chat_id-sharded message store (implemented, `internal/store/sharded`)** → Scylla; **read replica for history/receipts (implemented, `SYNCAPP_PG_REPLICA_DSN`)** |
 | Duplicate delivery confusing clients | High | Low | Client dedup by message_id (at-least-once by design) |
 | **Topology drift** — behaviour depends on the deployment: a field the monolith delivers is dropped by the gRPC contract, or an optional store capability (threads, the self-destruct reaper, media reference checks) is not forwarded by a decorator and the FEATURE disappears for whoever enabled sharding | Med | High | Domain fields mirrored in `services.proto`; capabilities forwarded by `internal/store/sharded` with compile-time assertions; both paths tested against the real thing — a gRPC hop and real Postgres shards |
 | Premature E2E/multi-region | Med | High | Explicitly deferred to V2 |
+| **E2E shipped as a claim ahead of the code** — the prekey signature was optional and the ratchet committed state before authenticating, so secret chats read as a finished feature while two gates were open; mobile had none of it | High | High | Both defects fixed with tests that assert the bypass fails, and the documentation now leads with the defect list rather than the feature list. Coverage has since caught up: web, Android and iOS all implement the ratchet, X3DH, safety numbers and pinning. What is left is one UI gap (no safety-number screen on iOS) and the unrunnable interop scripts, both tracked in `SECURITY.md` |
 | Protocol parser exploited by malformed input | Low | High | Magic + length cap + zip-bomb guard + `FuzzParser` |
 
 ### MVP cut list (ship without)

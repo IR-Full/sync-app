@@ -138,6 +138,90 @@ public enum MsgType: UInt16, Sendable, CaseIterable {
     /// because (chat, user, up-to-seq) is exactly a delivery cursor.
     case delivered = 128
 
+    /// Erase this account. The password is re-confirmed even though the socket
+    /// is already authenticated: a session token lives on the device, so
+    /// otherwise anyone holding an unlocked phone could destroy the account
+    /// behind it.
+    case accountDelete = 129
+    /// The erasure is done. Every session was revoked before this was sent, so
+    /// it is the last frame the connection carries.
+    case accountDeleted = 130
+
+    // Session management. The auth service could always list and revoke
+    // sessions; nothing could ask it to, so "log out" was a purely local gesture
+    // — the device forgot its token while the session stayed valid until it
+    // expired, and a lost phone kept access for the whole TTL. These four close
+    // that, and they were the last part of the protocol this platform did not
+    // speak.
+    case sessionList = 131
+    case sessions = 132
+    case sessionRevoke = 133
+    case sessionRevoked = 134
+
+    /// A page of history as a SINGLE frame, replacing up to a hundred `NEW`
+    /// envelopes for one request. Sent only to peers that negotiated
+    /// `CAP_BATCHING`, so the per-message stream remains the fallback and both
+    /// shapes carry exactly the same messages.
+    case historyPage = 135
+
+    // Per-user privacy: who may see last-seen and the avatar, who may add this
+    // account to a group, and whether message text may reach the push provider.
+    case privacyGet = 136
+    case privacySet = 137
+    case privacy = 138
+
+    /// Durable secret chats.
+    ///
+    /// `secretSend` was a pure relay: the gateway published to whichever nodes held
+    /// the recipient and discarded the count, so a message sent while the peer was
+    /// offline was dropped — nothing stored, no push, and no reply to the sender,
+    /// which drew "sent" regardless. These four make it survivable.
+    case secretAck = 139
+    case secretSync = 140
+    case secretSynced = 141
+    case secretAcked = 142
+
+    /// Per-member chat settings.
+    ///
+    /// `muted` existed in the server schema from its first migration with nothing
+    /// reading it and no message to set it, so muting a chat was impossible while
+    /// looking supported from every other angle.
+    case chatFlags = 143
+    case chatFlagsSet = 144
+
+    /// Account security. The password could not be CHANGED by any path — so a leaked
+    /// one meant a permanently lost account — and there was no second factor at all.
+    case passwordChange = 145
+    case passwordChanged = 146
+    case totpSetup = 147
+    case totpSetupInfo = 148
+    case totpConfirm = 149
+    case totpDisable = 150
+    case totpState = 151
+
+    /// Billing. `subscription` is both a reply and a server PUSH: it changes without
+    /// the client asking, and until the client hears about it it goes on offering
+    /// features the server has started refusing.
+    case billingPlans = 152
+    case billingOffers = 153
+    case billingCheckout = 154
+    case billingPayment = 155
+    case billingStatus = 156
+    case subscription = 157
+    case billingCancel = 158
+
+    /// `KEY_STATE` answers `KEY_PUBLISH` with what the directory now holds for this
+    /// device: prekeys left, the age of the stored signed prekey, and how many of the
+    /// keys just sent were kept.
+    ///
+    /// It is the only channel for that information. One-time prekeys are consumed by
+    /// PEERS fetching bundles, so a device cannot watch its own balance fall - the local
+    /// count drops only when a message decrypts with a key, which misses every fetch
+    /// that never became a message. Without this the directory empties while the device
+    /// believes it is full, and every session started afterwards silently uses three
+    /// Diffie-Hellmans instead of four.
+    case keyState = 159
+
     /// Anything this client build does not know about. Received unknown types are
     /// skipped, never treated as an error.
     case unknown = 65535
@@ -228,6 +312,37 @@ public enum MsgType: UInt16, Sendable, CaseIterable {
         case .profileSet: return "PROFILE_SET"
         case .profile: return "PROFILE"
         case .delivered: return "DELIVERED"
+        case .accountDelete: return "ACCOUNT_DELETE"
+        case .accountDeleted: return "ACCOUNT_DELETED"
+        case .sessionList: return "SESSION_LIST"
+        case .sessions: return "SESSIONS"
+        case .sessionRevoke: return "SESSION_REVOKE"
+        case .sessionRevoked: return "SESSION_REVOKED"
+        case .historyPage: return "HISTORY_PAGE"
+        case .privacyGet: return "PRIVACY_GET"
+        case .privacySet: return "PRIVACY_SET"
+        case .privacy: return "PRIVACY"
+        case .secretAck: return "SECRET_ACK"
+        case .secretSync: return "SECRET_SYNC"
+        case .secretSynced: return "SECRET_SYNCED"
+        case .secretAcked: return "SECRET_ACKED"
+        case .chatFlags: return "CHAT_FLAGS"
+        case .chatFlagsSet: return "CHAT_FLAGS_SET"
+        case .passwordChange: return "PASSWORD_CHANGE"
+        case .passwordChanged: return "PASSWORD_CHANGED"
+        case .totpSetup: return "TOTP_SETUP"
+        case .totpSetupInfo: return "TOTP_SETUP_INFO"
+        case .totpConfirm: return "TOTP_CONFIRM"
+        case .totpDisable: return "TOTP_DISABLE"
+        case .totpState: return "TOTP_STATE"
+        case .billingPlans: return "BILLING_PLANS"
+        case .billingOffers: return "BILLING_OFFERS"
+        case .billingCheckout: return "BILLING_CHECKOUT"
+        case .billingPayment: return "BILLING_PAYMENT"
+        case .billingStatus: return "BILLING_STATUS"
+        case .subscription: return "SUBSCRIPTION"
+        case .billingCancel: return "BILLING_CANCEL"
+        case .keyState: return "KEY_STATE"
         case .unknown: return "UNKNOWN"
         }
     }

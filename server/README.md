@@ -58,7 +58,12 @@ into separate deployables later, but it runs today as one process.
 - **Public chat handles**, revocable **invite links** (128-bit codes, use/expiry caps,
   atomic redemption), **owner/admin roles** with last-owner protection
 - **E2E secret chats**: X3DH + Double Ratchet (`pkg/e2e`), Ed25519 signed prekeys,
-  **multi-device sync**; server relays opaque ciphertext
+  **multi-device sync**; server relays opaque ciphertext.
+  Prekey signatures are mandatory (a bundle without one is refused at publish and
+  at use), the ratchet commits state only after authenticating, and the directory
+  honours blocking and expires entries. Ported to **web, Android and iOS**, each
+  pinned against `pkg/e2e` with fixed vectors; iOS is still missing the
+  safety-number screen. See [`SECURITY.md`](SECURITY.md) §6.
 - **Transactional outbox** (FOR UPDATE SKIP LOCKED + LISTEN/NOTIFY) → **JetStream durable consumers**
 - **Compression**: zstd + shared dictionary (negotiated), gzip fallback
 - **QoS lanes**: control > messages > typing/presence; ephemeral frames droppable under load
@@ -70,7 +75,7 @@ into separate deployables later, but it runs today as one process.
 - Snowflake IDs (Redis-leased node id); pluggable storage: **in-memory** (zero setup) or **Postgres + Redis + NATS**
 
 **New here?** Read [GUIDE.md](GUIDE.md) — a from-scratch, beginner-friendly walkthrough
-of everything (in Russian).
+of everything ([in Russian](GUIDE.ru.md)).
 
 ## Requirements
 
@@ -155,9 +160,9 @@ go run ./cmd/client -ws ws://localhost:8080/ws -user carol -pass secret123
 ```bash
 docker compose up -d          # Postgres, Redis, NATS
 
-SyncApp_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp?sslmode=disable" \
-SyncApp_REDIS_ADDR="localhost:6379" \
-SyncApp_NATS_URL="nats://localhost:4222" \
+SYNCAPP_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp?sslmode=disable" \
+SYNCAPP_REDIS_ADDR="localhost:6379" \
+SYNCAPP_NATS_URL="nats://localhost:4222" \
 go run ./cmd/server
 ```
 
@@ -184,17 +189,17 @@ topology, the shared-state requirement, and the gRPC-hop latency tradeoff.
 ### Observability stack (optional)
 
 ```bash
-SyncApp_OTLP_ENDPOINT=localhost:4318 go run ./cmd/server   # ship traces via OTLP
+SYNCAPP_OTLP_ENDPOINT=localhost:4318 go run ./cmd/server   # ship traces via OTLP
 docker compose -f deploy/observability/docker-compose.yml up -d  # Prometheus + Tempo + Grafana
 ```
 
 Grafana at http://localhost:3000 (Explore → Prometheus / Tempo). `/metrics` exposes
-histograms for send→ack latency and fanout lag; `SyncApp_PPROF=1` mounts `/debug/pprof/`.
+histograms for send→ack latency and fanout lag; `SYNCAPP_PPROF=1` mounts `/debug/pprof/`.
 
 ### QUIC transport (optional)
 
 ```bash
-SyncApp_TLS_SELFSIGNED=1 SyncApp_QUIC=1 go run ./cmd/server
+SYNCAPP_TLS_SELFSIGNED=1 SYNCAPP_QUIC=1 go run ./cmd/server
 go run ./cmd/client -quic -insecure -addr localhost:7000 -register -user dave -pass secret123
 ```
 
@@ -205,32 +210,32 @@ WiFi↔LTE) and no head-of-line blocking.
 
 | Variable                  | Default        | Meaning                                  |
 |---------------------------|----------------|------------------------------------------|
-| `SyncApp_TCP_ADDR`        | `:7000`        | raw-TCP binary-protocol listener         |
-| `SyncApp_WS_ADDR`         | `:8080`        | WebSocket (`/ws`) + `/healthz`           |
-| `SyncApp_PG_DSN`          | *(unset)*      | Postgres DSN — enables durable storage   |
-| `SyncApp_PG_REPLICA_DSN`  | *(unset)*      | read-replica DSN — offloads history/read-receipt queries |
-| `SyncApp_MESSAGE_SHARD_DSNS` | *(unset)*   | comma list of Postgres DSNs — shard the message write path by chat_id |
-| `SyncApp_REDIS_ADDR`      | *(unset)*      | Redis addr — enables Redis presence      |
-| `SyncApp_REDIS_PASSWORD`  | *(unset)*      | Redis password                           |
-| `SyncApp_NATS_URL`        | *(unset)*      | NATS URL — enables NATS event bus        |
-| `SyncApp_NODE_ID`         | *(hostname)*   | snowflake node id (0–1023); set explicitly per instance |
-| `SyncApp_TLS_CERT`/`_KEY` | *(unset)*      | enable TLS 1.3 with a cert/key pair      |
-| `SyncApp_TLS_SELFSIGNED`  | *(unset)*      | `1` = ephemeral self-signed TLS (dev)    |
-| `SyncApp_QUIC`            | *(unset)*      | `1` = also listen on QUIC (UDP; requires TLS) |
-| `SyncApp_REQUIRE_TLS`     | *(unset)*      | `1` = refuse to start without TLS (no silent plaintext) |
-| `SyncApp_MAX_CONNS_PER_IP`| *(unset)*      | cap concurrent connections per source IP (flood guard) |
-| `SyncApp_ACCEPT_RATE_PER_IP`| *(unset)*    | cap new connections/sec per source IP (storm guard) |
-| `SyncApp_ALLOWED_ORIGINS` | *(unset)*      | comma list of allowed WebSocket origins  |
-| `SyncApp_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs          |
-| `SyncApp_ADMIN_USERS`     | *(unset)*      | comma list of platform-admin user ids (RBAC) |
-| `SyncApp_MODERATOR_USERS` | *(unset)*      | comma list of moderator user ids (RBAC)  |
-| `SyncApp_TRACE`           | *(unset)*      | `stdout` prints OpenTelemetry spans      |
-| `SyncApp_OTLP_ENDPOINT`   | *(unset)*      | OTLP/HTTP collector (e.g. `localhost:4318`) |
-| `SyncApp_PPROF`           | *(unset)*      | `1` mounts `/debug/pprof/`               |
-| `SyncApp_WRITE_BATCH`     | `on`           | `off` disables group-commit batching     |
-| `SyncApp_AUTH_HASH_CONCURRENCY` | *(NumCPU)* | max concurrent argon2id hashes (auth-flood guard) |
-| `SyncApp_SEND_RATE`       | `20`           | per-connection msgs/sec flood limit (raise for load tests) |
-| `SyncApp_REGION`          | `local`        | region label (multi-region hook)         |
+| `SYNCAPP_TCP_ADDR`        | `:7000`        | raw-TCP binary-protocol listener         |
+| `SYNCAPP_WS_ADDR`         | `:8080`        | WebSocket (`/ws`) + `/healthz`           |
+| `SYNCAPP_PG_DSN`          | *(unset)*      | Postgres DSN — enables durable storage   |
+| `SYNCAPP_PG_REPLICA_DSN`  | *(unset)*      | read-replica DSN — offloads history/read-receipt queries |
+| `SYNCAPP_MESSAGE_SHARD_DSNS` | *(unset)*   | comma list of Postgres DSNs — shard the message write path by chat_id |
+| `SYNCAPP_REDIS_ADDR`      | *(unset)*      | Redis addr — enables Redis presence      |
+| `SYNCAPP_REDIS_PASSWORD`  | *(unset)*      | Redis password                           |
+| `SYNCAPP_NATS_URL`        | *(unset)*      | NATS URL — enables NATS event bus        |
+| `SYNCAPP_NODE_ID`         | *(hostname)*   | snowflake node id (0–1023); set explicitly per instance |
+| `SYNCAPP_TLS_CERT`/`_KEY` | *(unset)*      | enable TLS 1.3 with a cert/key pair      |
+| `SYNCAPP_TLS_SELFSIGNED`  | *(unset)*      | `1` = ephemeral self-signed TLS (dev)    |
+| `SYNCAPP_QUIC`            | *(unset)*      | `1` = also listen on QUIC (UDP; requires TLS) |
+| `SYNCAPP_REQUIRE_TLS`     | *(unset)*      | `1` = refuse to start without TLS (no silent plaintext) |
+| `SYNCAPP_MAX_CONNS_PER_IP`| *(unset)*      | cap concurrent connections per source IP (flood guard) |
+| `SYNCAPP_ACCEPT_RATE_PER_IP`| *(unset)*    | cap new connections/sec per source IP (storm guard) |
+| `SYNCAPP_ALLOWED_ORIGINS` | *(unset)*      | comma list of allowed WebSocket origins. **Unset = every origin is accepted** (CSWSH); `REQUIRE_TLS=1` does not currently demand it |
+| `SYNCAPP_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs. **The dev default is a hardcoded constant**; anyone who knows it forges upload/download URLs. `REQUIRE_TLS=1` does not currently demand it |
+| `SYNCAPP_ADMIN_USERS`     | *(unset)*      | comma list of platform-admin user ids (RBAC) |
+| `SYNCAPP_MODERATOR_USERS` | *(unset)*      | comma list of moderator user ids (RBAC)  |
+| `SYNCAPP_TRACE`           | *(unset)*      | `stdout` prints OpenTelemetry spans      |
+| `SYNCAPP_OTLP_ENDPOINT`   | *(unset)*      | OTLP/HTTP collector (e.g. `localhost:4318`) |
+| `SYNCAPP_PPROF`           | *(unset)*      | `1` mounts `/debug/pprof/`               |
+| `SYNCAPP_WRITE_BATCH`     | `on`           | `off` disables group-commit batching     |
+| `SYNCAPP_AUTH_HASH_CONCURRENCY` | *(NumCPU)* | max concurrent argon2id hashes (auth-flood guard) |
+| `SYNCAPP_SEND_RATE`       | `20`           | per-connection msgs/sec flood limit (raise for load tests) |
+| `SYNCAPP_REGION`          | `local`        | region label (multi-region hook)         |
 
 Any subset can be set; unset backends fall back to in-memory.
 
@@ -255,30 +260,30 @@ and `internal/gateway/fleet_integration_test.go` drives a gateway whose services
 are **all** remote — so the microservice split cannot quietly drop a field the
 monolith delivers.
 Integration tests needing infra skip unless their env DSN is set
-(`SyncApp_TEST_PG_DSN`, `SyncApp_TEST_REDIS_ADDR`).
+(`SYNCAPP_TEST_PG_DSN`, `SYNCAPP_TEST_REDIS_ADDR`).
 
-**Sharded message store.** `SyncApp_TEST_SHARD_DSNS` (two or more comma-separated
+**Sharded message store.** `SYNCAPP_TEST_SHARD_DSNS` (two or more comma-separated
 DSNs) runs `internal/store/sharded` and `internal/platform` against real shards:
 co-location and gap-free per-chat sequence on each backend, one outbox per shard,
 and the capabilities that cross shards — the self-destruct reaper and the media
 reference check — reaching data the hash placed in a shard nobody named.
 
-Give every DSN a database of its own, including versus `SyncApp_TEST_PG_DSN`. The
+Give every DSN a database of its own, including versus `SYNCAPP_TEST_PG_DSN`. The
 outbox is a global table that both suites drain, so two of them pointed at one
 database delete each other's staged events:
 
 ```bash
-SyncApp_TEST_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp_primary?sslmode=disable" SyncApp_TEST_SHARD_DSNS="postgres://SyncApp:SyncApp@localhost:5433/SyncApp?sslmode=disable,postgres://SyncApp:SyncApp@localhost:5434/SyncApp?sslmode=disable"   go test ./...
+SYNCAPP_TEST_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SYNCAPP_primary?sslmode=disable" SYNCAPP_TEST_SHARD_DSNS="postgres://SyncApp:SyncApp@localhost:5433/SyncApp?sslmode=disable,postgres://SyncApp:SyncApp@localhost:5434/SyncApp?sslmode=disable"   go test ./...
 ```
 
 ### Load test
 
 ```bash
-SyncApp_SEND_RATE=100000 go run ./cmd/server            # raise the flood cap
+SYNCAPP_SEND_RATE=100000 go run ./cmd/server            # raise the flood cap
 go run ./cmd/loadtest -addr localhost:7000 -conns 200 -msgs 50   # throughput mode
 
 # idle-scale mode: hold N connections open, report per-connection server cost
-SyncApp_PPROF=1 go run ./cmd/server
+SYNCAPP_PPROF=1 go run ./cmd/server
 go run ./cmd/loadtest -addr localhost:7000 -conns 5000 -idle 30s
 ```
 

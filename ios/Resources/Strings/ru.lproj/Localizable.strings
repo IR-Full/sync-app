@@ -132,3 +132,84 @@
 "profile.sign.out" = "Выйти";
 "profile.sign.out.confirm" = "Выйти из аккаунта?";
 "profile.sign.out.message" = "Кэш чатов и сообщений на этом устройстве будет удалён.";
+
+/* Список чатов: закрепление, архив, отключение звука */
+"chats.pin" = "Закрепить";
+"chats.unpin" = "Открепить";
+"chats.pinned" = "Закреплён";
+"chats.archive" = "В архив";
+"chats.unarchive" = "Из архива";
+"chats.archive.title" = "Архив";
+"chats.archive.empty.title" = "В архиве пусто";
+"chats.archive.empty.message" = "Смахните чат, чтобы убрать его в архив. Архивные чаты останутся здесь и перестанут появляться в основном списке.";
+"chats.mute.hour" = "На час";
+"chats.mute.eightHours" = "На 8 часов";
+"chats.mute.week" = "На неделю";
+"chats.mute.forever" = "Пока не включу снова";
+
+/* Секретные чаты */
+"chat.secret.badge" = "Сквозное шифрование";
+"chat.secret.title" = "Секретный чат";
+"chat.secret.new" = "Новый секретный чат";
+"chat.secret.hint" = "Сообщения шифруются на этом устройстве, прочитать их можно только на ваших устройствах и на устройствах собеседника. Сервер передаёт шифртекст и не может его расшифровать.";
+"chat.secret.premium" = "Секретные чаты входят в Premium.";
+"chat.secret.noDevices" = "У собеседника пока нет устройства, готового к секретным чатам.";
+"chat.secret.safety" = "Код безопасности";
+"chat.secret.safety.hint" = "Сравните этот код с тем, что показан на устройстве собеседника. Совпадают — между вами никого нет. Изменился — у переписки новый ключ, стоит выяснить почему.";
+
+/* Безопасность аккаунта */
+"security.title" = "Пароль и безопасность";
+"security.password" = "Сменить пароль";
+"security.password.current" = "Текущий пароль";
+"security.password.new" = "Новый пароль";
+"security.password.confirm" = "Повторите новый пароль";
+"security.password.mismatch" = "Новые пароли не совпадают.";
+"security.password.changed" = "Пароль изменён. Других сеансов завершено: %d.";
+"security.twoFactor" = "Двухфакторная аутентификация";
+"security.twoFactor.on" = "Включена";
+"security.twoFactor.off" = "Выключена";
+"security.twoFactor.enable" = "Включить";
+"security.twoFactor.disable" = "Выключить";
+"security.twoFactor.secret" = "Ключ для настройки";
+"security.twoFactor.code" = "Код из 6 цифр";
+"security.twoFactor.scan" = "Добавьте этот ключ в приложение-аутентификатор и введите код, который оно покажет.";
+"security.twoFactor.recovery" = "Коды восстановления";
+"security.twoFactor.recovery.hint" = "Сохраните их сейчас. Они показываются один раз, каждый срабатывает однократно — это единственный способ войти, если аутентификатор потерян.";
+"security.twoFactor.recoveryLeft" = "Осталось кодов восстановления: %d";
+"security.code.required" = "Введите код из приложения-аутентификатора.";
+"security.code.invalid" = "Код не подошёл. Попробуйте следующий или код восстановления.";
+
+/* Sessions — the device list and the revokes. */
+"security.sessions" = "Активные сеансы";
+"security.sessions.hint" = "Все устройства, на которых выполнен вход в этот аккаунт. Завершение сеанса действует сразу — оно не ждёт истечения срока.";
+"security.sessions.empty" = "Других сеансов нет.";
+"security.sessions.thisDevice" = "это устройство";
+"security.sessions.unknownDevice" = "Неизвестное устройство";
+"security.sessions.revoke" = "Завершить";
+"security.sessions.revokeOthers" = "Завершить на всех других устройствах";
+"security.sessions.revokeOthers.confirm" = "Завершить сеансы на всех других устройствах?";
+"security.sessions.revoked" = "Сеансов завершено: %d.";
+"security.sessions.signedOutHere" = "Сеанс на этом устройстве завершён.";
+
+/* Account deletion */
+"security.delete" = "Удалить аккаунт";
+"security.delete.detail" = "Аккаунт, устройства, контакты, черновики и участия в чатах будут удалены. Отправленные вами сообщения останутся в чужих чатах без вашего имени и без содержимого. Отменить это нельзя.";
+"security.delete.confirm" = "Удалить аккаунт безвозвратно?";
+"security.delete.done" = "Аккаунт удалён.";
+
+
+/* Premium */
+"premium.title" = "Premium";
+"premium.subtitle" = "Секретные чаты, большие загрузки, папки и другое.";
+"premium.current" = "Ваш тариф";
+"premium.plan.free" = "Бесплатный";
+"premium.plan.premium" = "Premium";
+"premium.until" = "Оплачено до %@";
+"premium.cancelling" = "Отменится в конце периода";
+"premium.cancel" = "Отменить подписку";
+"premium.subscribe" = "Оформить";
+"premium.method.card" = "Банковская карта";
+"premium.method.sbp" = "СБП";
+"premium.pay" = "Перейти к оплате";
+"premium.qr" = "Отсканируйте в приложении банка";
+"premium.unavailable" = "На этом сервере платежи не настроены.";

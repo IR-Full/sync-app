@@ -231,9 +231,35 @@ func (s *Service) Members(ctx context.Context, chatID string) ([]*model.ChatMemb
 // rather than failing the page: the list is a view, and one missing row must
 // not cost the client the other ninety-nine.
 func (s *Service) UserChats(ctx context.Context, userID, after string, limit int) ([]model.ChatSummary, error) {
-	if limit <= 0 || limit > maxChatPage {
-		limit = defaultChatPage
+	return s.UserChatPage(ctx, userID, ChatPage{After: after, Limit: limit})
+}
+
+// UserChatPage is UserChats with the cursor and filters a real chat list needs.
+//
+// The fast path is one query (store.ChatSummaryReader) ordered by ACTIVITY, with
+// the last message, unread count and the caller's flags included. The slow path is
+// the original row-at-a-time walk, kept because the capability can only exist
+// where the message log is reachable from the same query as the chat metadata — a
+// sharded message tier cannot answer it, and degrading to a correct-but-expensive
+// list is better than not having one.
+//
+// The two paths differ in ORDER (activity vs chat id), which is a visible
+// difference and is the point: the fast path is the correct order and the fallback
+// is what the store can manage. A client is told which it got by whether
+// LastActivityAt is set.
+func (s *Service) UserChatPage(ctx context.Context, userID string, p ChatPage) ([]model.ChatSummary, error) {
+	if p.Limit <= 0 || p.Limit > maxChatPage {
+		p.Limit = defaultChatPage
 	}
+	if reader, ok := s.chats.(store.ChatSummaryReader); ok {
+		return reader.UserChatSummaries(ctx, userID, p.AfterActivity, p.After, p.Limit, p.IncludeArchived)
+	}
+	return s.userChatsSlow(ctx, userID, p.After, p.Limit)
+}
+
+// userChatsSlow is the pre-capability walk: read every id, sort, then two or three
+// reads per row. Retained for backends that cannot answer the page in one query.
+func (s *Service) userChatsSlow(ctx context.Context, userID, after string, limit int) ([]model.ChatSummary, error) {
 	ids, err := s.chats.ListUserChats(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -265,7 +291,9 @@ func (s *Service) UserChats(ctx context.Context, userID, after string, limit int
 		} else if !errors.Is(err, store.ErrNotFound) {
 			return nil, err
 		}
-		if c.Type == model.ChatDirect {
+		// Is1To1, not equality against ChatDirect: a secret chat is also two-party
+		// and titleless, so the row cannot be named without its peer either.
+		if c.Type.Is1To1() {
 			members, err := s.chats.ListMembers(ctx, id)
 			if err != nil {
 				return nil, err
@@ -280,6 +308,27 @@ func (s *Service) UserChats(ctx context.Context, userID, after string, limit int
 		out = append(out, sum)
 	}
 	return out, nil
+}
+
+// EnsureSecret returns the canonical SECRET chat for a pair, creating it if
+// absent.
+//
+// Canonical per pair, like a direct chat and for a stronger reason: a second
+// secret chat with the same person would appear as a second row in the list with
+// its own badge and its own history, and nothing in the product could explain
+// which was which. The ratchet sessions underneath are still per DEVICE pair —
+// this row is the conversation, not the session.
+//
+// It coexists with the ordinary direct chat with that person. Both must be
+// reachable, since choosing the secret one is the whole point of having it.
+func (s *Service) EnsureSecret(ctx context.Context, userA, userB string) (*model.Chat, error) {
+	if userA == userB {
+		// A secret chat with yourself has no second party to run a ratchet against,
+		// so there is no session and nothing to encrypt to. Refused rather than
+		// created empty.
+		return nil, ErrSecretSelfChat
+	}
+	return s.chats.GetOrCreatePair(ctx, model.ChatSecret, userA, userB, s.ids.NextString())
 }
 
 // MemberIDs returns a chat's member ids. It is for chats small enough to handle
@@ -340,6 +389,16 @@ func (s *Service) IsMember(ctx context.Context, chatID, userID string) (bool, er
 	return member, err
 }
 
+// UserChatIDs lists the chats a user belongs to, ids only.
+//
+// It exists for search, which needs the whole set at once to bound a query rather
+// than one chat at a time to test a candidate. UserChats cannot serve that: it
+// pages, and it loads each chat's row and the caller's membership row to build a
+// summary — all of which search throws away.
+func (s *Service) UserChatIDs(ctx context.Context, userID string) ([]string, error) {
+	return s.chats.ListUserChats(ctx, userID)
+}
+
 // MemberRole returns a user's role in a chat (ok=false when not a member). It is
 // the point-lookup shape the invite service needs: "what may this ONE person do
 // here?" must not cost a walk of everyone who is here.
@@ -373,6 +432,30 @@ func (s *Service) CanPin(ctx context.Context, chatID, userID string) (bool, erro
 	return role == model.RoleAdmin || role == model.RoleOwner, nil
 }
 
+// CanModerate reports whether a user may act on SOMEBODY ELSE's message in a
+// chat — today that means deleting it.
+//
+// It is deliberately not CanPost. CanPost answers "may this person add to the
+// conversation", which in a group is true for every member; moderation answers
+// "may this person remove what another member said", which is not. Using the
+// first for the second let any member of a group erase anyone's messages, and
+// the two questions only ever coincided in channels, where posting is already
+// restricted to admins.
+//
+// A 1:1 chat is the exception, and for the same reason it is an exception in
+// CanPin: there is no hierarchy between two participants, and each may already
+// delete their own side. Telegram draws the line in the same place.
+func (s *Service) CanModerate(ctx context.Context, chatID, userID string) (bool, error) {
+	typ, role, member, err := s.roleOf(ctx, chatID, userID)
+	if err != nil || !member {
+		return false, err
+	}
+	if typ.Is1To1() {
+		return true, nil
+	}
+	return role == model.RoleAdmin || role == model.RoleOwner, nil
+}
+
 // AddMember adds a user to a chat and invalidates the cached authorization view,
 // so a member who just joined via an invite can post immediately instead of
 // waiting for the cache TTL.
@@ -396,4 +479,33 @@ func (s *Service) SetMemberRole(ctx context.Context, chatID, userID string, role
 	}
 	s.invalidate(chatID)
 	return nil
+}
+
+// SetChatFlags writes one member's private per-chat settings and returns what was
+// stored.
+//
+// It returns the stored value rather than nothing so a client that raced two
+// changes converges on the server's state instead of on whichever request it sent
+// last. Membership is the authorization and it comes from the store's own
+// predicate: a non-member's write matches no row and is reported as ErrNotFound
+// rather than creating one.
+func (s *Service) SetChatFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) (model.MemberFlags, error) {
+	fs, ok := s.chats.(store.MemberFlagStore)
+	if !ok {
+		return model.MemberFlags{}, store.ErrUnsupported
+	}
+	if err := fs.SetMemberFlags(ctx, chatID, userID, f); err != nil {
+		return model.MemberFlags{}, err
+	}
+	return fs.GetMemberFlags(ctx, chatID, userID)
+}
+
+// ChatFlags reads one member's settings. Used by the notification path to decide
+// whether a push is wanted at all.
+func (s *Service) ChatFlags(ctx context.Context, chatID, userID string) (model.MemberFlags, error) {
+	fs, ok := s.chats.(store.MemberFlagStore)
+	if !ok {
+		return model.MemberFlags{}, nil // no store support: nothing is muted
+	}
+	return fs.GetMemberFlags(ctx, chatID, userID)
 }

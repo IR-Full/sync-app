@@ -15,6 +15,10 @@ import (
 type Chats interface {
 	CanPost(ctx context.Context, chatID, userID string) (bool, error)
 	IsMember(ctx context.Context, chatID, userID string) (bool, error)
+	// CanModerate authorizes acting on a message somebody ELSE wrote. Separate
+	// from CanPost because in a group the two answers differ for every ordinary
+	// member: they may post, and they may not delete what their neighbours said.
+	CanModerate(ctx context.Context, chatID, userID string) (bool, error)
 }
 
 // Service implements message write/read and read receipts.

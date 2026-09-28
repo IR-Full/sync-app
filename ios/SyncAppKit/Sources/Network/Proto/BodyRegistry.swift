@@ -21,6 +21,11 @@ public enum BodyRegistry {
         switch type {
         case .ping, .pong, .transportAck, .unknown:
             return false
+        // Requests whose whole meaning is the type: "tell me my TOTP state",
+        // "tell me my subscription", "cancel it". The session says who is asking, so
+        // a body would have nothing to put in it.
+        case .totpSetup, .billingStatus, .billingCancel, .sessionList:
+            return false
         default:
             return true
         }

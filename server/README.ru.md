@@ -10,8 +10,9 @@ Production-подобный MVP платформы обмена сообщени
 можно было вынести в отдельные развёртывания, но сегодня всё работает как один
 процесс.
 
-> **Впервые здесь?** Прочитайте [GUIDE.md](GUIDE.md) — подробный разбор всего «с
-> нуля», от протокола до сквозного шифрования.
+> **Впервые здесь?** Прочитайте [GUIDE.ru.md](GUIDE.ru.md) — подробный разбор
+> всего «с нуля», от протокола до сквозного шифрования
+> ([по-английски](GUIDE.md)).
 
 ## Что работает end-to-end
 
@@ -46,7 +47,13 @@ Production-подобный MVP платформы обмена сообщени
 - **Пересылка** с источником, который переживает удаление оригинала, **самоуничтожающиеся сообщения** (репер-надгробия), **отложенная отправка** (захват строк SKIP LOCKED, права перепроверяются в момент выстрела)
 - **Закреплённые сообщения** (общие для чата, с правами админа) и **черновики**, синхронные только между своими устройствами
 - **Публичные адреса чатов**, отзываемые **пригласительные ссылки** (128-битный код, лимиты по числу входов и сроку, атомарное погашение), **роли владельца/админа** с защитой последнего владельца
-- **Секретные E2E-чаты**: X3DH + Double Ratchet (`pkg/e2e`), Ed25519-подписи предключей, **мультиустройственная синхронизация**; сервер видит только шифртекст
+- **Секретные E2E-чаты**: X3DH + Double Ratchet (`pkg/e2e`), Ed25519-подписи предключей, **мультиустройственная синхронизация**; сервер видит только шифртекст.
+  Подпись предключа обязательна (bundle без неё отклоняется и при публикации, и
+  при использовании), храповик коммитит состояние только после аутентификации, а
+  каталог соблюдает блокировку и истекает по TTL. Портировано в **веб-клиент, на
+  Android и на iOS**, каждый порт закреплён против `pkg/e2e` фиксированными
+  векторами; на iOS ещё нет экрана safety number. См.
+  [`SECURITY.ru.md`](SECURITY.ru.md) §6.
 - **Транзакционный outbox** (FOR UPDATE SKIP LOCKED + LISTEN/NOTIFY) → **durable-консьюмеры JetStream**
 - **Сжатие**: zstd + общий словарь (согласуется), gzip как fallback
 - **QoS-полосы**: control > messages > typing/presence; эфемерное дропается под нагрузкой
@@ -135,7 +142,7 @@ go run ./cmd/client -register -user bob -pass secret123
 ```bash
 go run ./cmd/client -ws ws://localhost:8080/ws -register -user carol -pass secret123
 # QUIC (требует TLS на сервере):
-SyncApp_TLS_SELFSIGNED=1 SyncApp_QUIC=1 go run ./cmd/server
+SYNCAPP_TLS_SELFSIGNED=1 SYNCAPP_QUIC=1 go run ./cmd/server
 go run ./cmd/client -quic -insecure -addr localhost:7000 -register -user dave -pass secret123
 ```
 
@@ -144,9 +151,9 @@ go run ./cmd/client -quic -insecure -addr localhost:7000 -register -user dave -p
 ```bash
 docker compose up -d          # Postgres, Redis, NATS
 
-SyncApp_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp?sslmode=disable" \
-SyncApp_REDIS_ADDR="localhost:6379" \
-SyncApp_NATS_URL="nats://localhost:4222" \
+SYNCAPP_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp?sslmode=disable" \
+SYNCAPP_REDIS_ADDR="localhost:6379" \
+SYNCAPP_NATS_URL="nats://localhost:4222" \
 go run ./cmd/server
 ```
 
@@ -173,36 +180,36 @@ go run ./cmd/client -addr localhost:7000 -register -user alice -pass secret123
 ### Стек наблюдаемости (опционально)
 
 ```bash
-SyncApp_OTLP_ENDPOINT=localhost:4318 go run ./cmd/server            # слать трейсы по OTLP
+SYNCAPP_OTLP_ENDPOINT=localhost:4318 go run ./cmd/server            # слать трейсы по OTLP
 docker compose -f deploy/observability/docker-compose.yml up -d     # Prometheus + Tempo + Grafana
 ```
 
 Grafana на http://localhost:3000 (Explore → Prometheus / Tempo). `/metrics` отдаёт
-гистограммы латентности send→ack и лага fanout; `SyncApp_PPROF=1` монтирует `/debug/pprof/`.
+гистограммы латентности send→ack и лага fanout; `SYNCAPP_PPROF=1` монтирует `/debug/pprof/`.
 
 ### Переменные окружения сервера
 
 | Переменная                | По умолчанию   | Значение                                 |
 |---------------------------|----------------|------------------------------------------|
-| `SyncApp_TCP_ADDR`        | `:7000`        | слушатель бинарного протокола (raw TCP)  |
-| `SyncApp_WS_ADDR`         | `:8080`        | WebSocket (`/ws`) + `/healthz` + `/metrics` |
-| `SyncApp_PG_DSN`          | *(не задано)*  | DSN Postgres — включает надёжное хранение |
-| `SyncApp_REDIS_ADDR`      | *(не задано)*  | адрес Redis — presence/router/keydir/resume |
-| `SyncApp_NATS_URL`        | *(не задано)*  | URL NATS — шина событий (JetStream)      |
-| `SyncApp_NODE_ID`         | *(hostname)*   | номер узла Snowflake (0–1023); иначе лиз из Redis |
-| `SyncApp_TLS_CERT`/`_KEY` | *(не задано)*  | включить TLS 1.3 парой сертификат/ключ   |
-| `SyncApp_TLS_SELFSIGNED`  | *(не задано)*  | `1` = самоподписанный TLS (dev)          |
-| `SyncApp_QUIC`            | *(не задано)*  | `1` = слушать также QUIC (UDP; требует TLS) |
-| `SyncApp_REQUIRE_TLS`     | *(не задано)*  | `1` = не стартовать без TLS (нет тихого plaintext) |
-| `SyncApp_MAX_CONNS_PER_IP`| *(не задано)*  | лимит одновременных соединений с одного IP (антифлуд) |
-| `SyncApp_ACCEPT_RATE_PER_IP`| *(не задано)*| лимит новых соединений/сек с одного IP (антишторм) |
-| `SyncApp_ALLOWED_ORIGINS` | *(не задано)*  | список разрешённых origin для WebSocket  |
-| `SyncApp_MEDIA_SECRET`    | dev-значение   | ключ HMAC для подписи медиа-ссылок        |
-| `SyncApp_ADMIN_USERS` / `_MODERATOR_USERS` | *(не задано)* | id админов/модераторов (RBAC) |
-| `SyncApp_TRACE` / `SyncApp_OTLP_ENDPOINT` | *(не задано)* | трейсинг: stdout / OTLP-коллектор |
-| `SyncApp_PPROF`           | *(не задано)*  | `1` монтирует `/debug/pprof/`            |
-| `SyncApp_WRITE_BATCH`     | `on`           | `off` отключает групповой коммит записи  |
-| `SyncApp_REGION`          | `local`        | метка региона (хук мультирегиона)        |
+| `SYNCAPP_TCP_ADDR`        | `:7000`        | слушатель бинарного протокола (raw TCP)  |
+| `SYNCAPP_WS_ADDR`         | `:8080`        | WebSocket (`/ws`) + `/healthz` + `/metrics` |
+| `SYNCAPP_PG_DSN`          | *(не задано)*  | DSN Postgres — включает надёжное хранение |
+| `SYNCAPP_REDIS_ADDR`      | *(не задано)*  | адрес Redis — presence/router/keydir/resume |
+| `SYNCAPP_NATS_URL`        | *(не задано)*  | URL NATS — шина событий (JetStream)      |
+| `SYNCAPP_NODE_ID`         | *(hostname)*   | номер узла Snowflake (0–1023); иначе лиз из Redis |
+| `SYNCAPP_TLS_CERT`/`_KEY` | *(не задано)*  | включить TLS 1.3 парой сертификат/ключ   |
+| `SYNCAPP_TLS_SELFSIGNED`  | *(не задано)*  | `1` = самоподписанный TLS (dev)          |
+| `SYNCAPP_QUIC`            | *(не задано)*  | `1` = слушать также QUIC (UDP; требует TLS) |
+| `SYNCAPP_REQUIRE_TLS`     | *(не задано)*  | `1` = не стартовать без TLS (нет тихого plaintext) |
+| `SYNCAPP_MAX_CONNS_PER_IP`| *(не задано)*  | лимит одновременных соединений с одного IP (антифлуд) |
+| `SYNCAPP_ACCEPT_RATE_PER_IP`| *(не задано)*| лимит новых соединений/сек с одного IP (антишторм) |
+| `SYNCAPP_ALLOWED_ORIGINS` | *(не задано)*  | список разрешённых origin для WebSocket  |
+| `SYNCAPP_MEDIA_SECRET`    | dev-значение   | ключ HMAC для подписи медиа-ссылок. **Dev-значение — константа в коде**; кто её знает, подделывает ссылки на загрузку и скачивание. `REQUIRE_TLS=1` его пока не требует |
+| `SYNCAPP_ADMIN_USERS` / `_MODERATOR_USERS` | *(не задано)* | id админов/модераторов (RBAC) |
+| `SYNCAPP_TRACE` / `SYNCAPP_OTLP_ENDPOINT` | *(не задано)* | трейсинг: stdout / OTLP-коллектор |
+| `SYNCAPP_PPROF`           | *(не задано)*  | `1` монтирует `/debug/pprof/`            |
+| `SYNCAPP_WRITE_BATCH`     | `on`           | `off` отключает групповой коммит записи  |
+| `SYNCAPP_REGION`          | `local`        | метка региона (хук мультирегиона)        |
 
 Любое подмножество можно задать; незаданные бэкенды падают обратно на режим «в памяти».
 
@@ -227,31 +234,31 @@ gRPC-хоп, а `internal/gateway/fleet_integration_test.go` поднимает 
 **все** сервисы удалённые, — чтобы разделённый деплой не терял поля, которые
 монолит доставляет.
 Тесты, которым нужна инфраструктура, пропускаются без env-DSN
-(`SyncApp_TEST_PG_DSN`, `SyncApp_TEST_REDIS_ADDR`, `SyncApp_TEST_NATS_URL`).
+(`SYNCAPP_TEST_PG_DSN`, `SYNCAPP_TEST_REDIS_ADDR`, `SYNCAPP_TEST_NATS_URL`).
 
-**Шардированное хранилище сообщений.** `SyncApp_TEST_SHARD_DSNS` (два и более DSN
+**Шардированное хранилище сообщений.** `SYNCAPP_TEST_SHARD_DSNS` (два и более DSN
 через запятую) прогоняет `internal/store/sharded` и `internal/platform` на
 настоящих шардах: co-location и беспробельный per-chat seq на каждом бэкенде,
 свой outbox у каждого шарда и способности, которые ходят по всем шардам, —
 репер самоуничтожения и проверка ссылок на медиа — доходящие до данных, которые
 хеш положил в шард, никем не названный.
 
-Каждому DSN нужна **своя база**, в том числе отдельно от `SyncApp_TEST_PG_DSN`:
+Каждому DSN нужна **своя база**, в том числе отдельно от `SYNCAPP_TEST_PG_DSN`:
 outbox — общая таблица, которую оба набора тестов вычищают, поэтому два DSN на
 одну базу означают, что тесты удаляют друг у друга застейдженные события:
 
 ```bash
-SyncApp_TEST_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SyncApp_primary?sslmode=disable" SyncApp_TEST_SHARD_DSNS="postgres://SyncApp:SyncApp@localhost:5433/SyncApp?sslmode=disable,postgres://SyncApp:SyncApp@localhost:5434/SyncApp?sslmode=disable"   go test ./...
+SYNCAPP_TEST_PG_DSN="postgres://SyncApp:SyncApp@localhost:5432/SYNCAPP_primary?sslmode=disable" SYNCAPP_TEST_SHARD_DSNS="postgres://SyncApp:SyncApp@localhost:5433/SyncApp?sslmode=disable,postgres://SyncApp:SyncApp@localhost:5434/SyncApp?sslmode=disable"   go test ./...
 ```
 
 ### Нагрузочный тест
 
 ```bash
-SyncApp_SEND_RATE=100000 go run ./cmd/server
+SYNCAPP_SEND_RATE=100000 go run ./cmd/server
 go run ./cmd/loadtest -addr localhost:7000 -conns 200 -msgs 50   # режим throughput
 
 # режим idle-scale: держать N соединений и мерить стоимость на соединение
-SyncApp_PPROF=1 go run ./cmd/server
+SYNCAPP_PPROF=1 go run ./cmd/server
 go run ./cmd/loadtest -addr localhost:7000 -conns 5000 -idle 30s
 ```
 

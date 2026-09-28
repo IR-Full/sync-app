@@ -26,6 +26,10 @@ public final class AppModel: ObservableObject {
     @Published public var pendingChatID: String?
     @Published public var alertMessage: String?
 
+    /// The conversation currently on screen, or nil. Set by `ChatView` while it is
+    /// visible, and read when deciding whether a push deserves a banner.
+    public private(set) var visibleChatID: String?
+
     private let auth: any AuthRepository
     private let settingsRepository: any SettingsRepository
     private let push: any PushRepository
@@ -68,10 +72,68 @@ public final class AppModel: ObservableObject {
         phase = .signedIn(account)
     }
 
+    /// Reconnects when the app comes back to the foreground and we are signed in
+    /// but offline.
+    ///
+    /// The client backs off and redials on its own, so this is not the primary
+    /// path — it is the one that covers the cases backoff cannot: a connect that
+    /// failed at launch (nothing schedules a retry, since `connect` reports the
+    /// failure to its caller), and a return from a long suspension where the next
+    /// backoff sleep may be minutes away while the user is looking at the screen
+    /// now. Reconnecting is idempotent when the connection is already up, and the
+    /// guard keeps it from firing on every incidental phase change.
+    public func didEnterForeground() async {
+        guard case .signedIn = phase, connection != .online else { return }
+        do {
+            let account = try await auth.restoreSession()
+            phase = .signedIn(account)
+        } catch {
+            // A dead credential arrives separately as a session expiry, which
+            // already routes to the login screen; anything else is a transient
+            // network failure the client keeps retrying. Neither is worth an alert
+            // the user did not ask for.
+        }
+    }
+
+    /// Called by `ChatView` as it appears and disappears. Not `@Published`: only
+    /// the notification decision reads it, and republishing it would redraw the
+    /// whole tree every time the user opens a chat.
+    public func setVisibleChat(_ chatID: String?) {
+        visibleChatID = chatID
+    }
+
+    /// Whether a notification for this chat should be shown as a banner.
+    ///
+    /// False for the conversation already on screen: the message is about to
+    /// appear in it, and a banner over the top of it is noise. The server cannot
+    /// make this call — it has no idea which screen is open.
+    public func shouldPresentNotification(forChatID chatID: String) -> Bool {
+        guard case .signedIn = phase else { return true }
+        return chatID.isEmpty || chatID != visibleChatID
+    }
+
     public func signOut() async {
         await push.unregister()
         await auth.logout()
         pendingChatID = nil
+        phase = .signedOut
+    }
+
+    /// Returns to the login screen after the session ended somewhere ELSE in the app,
+    /// with the local wipe already done.
+    ///
+    /// Two callers, both from the security screen: revoking this device's own session,
+    /// and deleting the account. `AccountSecurityRepository` performs the wipe itself in
+    /// both cases — it has to, because forgetting it would leave a deleted account's
+    /// chats on screen — so this must NOT repeat `auth.logout()`. What is left is the
+    /// part only the root knows: unregister the push token and change the phase.
+    ///
+    /// Unregistering still happens here rather than in the repository, because a push
+    /// token is a property of the app's relationship with APNs, not of the account row.
+    public func accountSessionEnded(message: String?) async {
+        await push.unregister()
+        pendingChatID = nil
+        alertMessage = message
         phase = .signedOut
     }
 

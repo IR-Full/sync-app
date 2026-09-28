@@ -8,10 +8,13 @@ package platform
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -19,9 +22,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
+	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 	"github.com/SyncApp-chat/SyncApp/internal/nodeid"
 	"github.com/SyncApp-chat/SyncApp/internal/presence"
 	"github.com/SyncApp-chat/SyncApp/internal/replay"
@@ -63,16 +70,19 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	}
 	b.closers = append(b.closers, func() { _ = shutdownTracing(context.Background()) })
 
-	b.NodeID = resolveNodeID(ctx, log, b)
+	b.NodeID, err = resolveNodeID(ctx, log, b)
+	if err != nil {
+		return nil, err
+	}
 	b.IDs, err = id.NewGenerator(b.NodeID)
 	if err != nil {
 		return nil, err
 	}
-	b.Region = Env("SyncApp_REGION", "local")
+	b.Region = Env("SYNCAPP_REGION", "local")
 	b.Log = log.With("region", b.Region, "node", b.NodeID)
 
 	// Storage.
-	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
+	if dsn := envcfg.Get("SYNCAPP_PG_DSN"); dsn != "" {
 		pg, err := postgres.Connect(ctx, dsn)
 		if err != nil {
 			return nil, err
@@ -89,7 +99,7 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	}
 
 	// Event bus.
-	if url := os.Getenv("SyncApp_NATS_URL"); url != "" {
+	if url := envcfg.Get("SYNCAPP_NATS_URL"); url != "" {
 		b.Bus, err = eventbus.NewNATS(url)
 		if err != nil {
 			return nil, err
@@ -102,12 +112,12 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	b.closers = append(b.closers, func() { _ = b.Bus.Close() })
 
 	// Redis-backed presence / router / resume.
-	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
-		b.Presence, err = presence.NewRedisBackend(addr, os.Getenv("SyncApp_REDIS_PASSWORD"), 0)
+	if addr := envcfg.Get("SYNCAPP_REDIS_ADDR"); addr != "" {
+		b.Presence, err = presence.NewRedisBackend(addr, envcfg.Get("SYNCAPP_REDIS_PASSWORD"), 0)
 		if err != nil {
 			return nil, err
 		}
-		b.Redis = redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
+		b.Redis = redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
 		b.closers = append(b.closers, func() { _ = b.Redis.Close() })
 		b.Router = router.NewResilient(router.NewRedis(b.Redis, 60*time.Second), b.Log)
 		b.Replay = replay.NewRedis(b.Redis, 10*time.Minute)
@@ -119,14 +129,14 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 		b.Log.Info("presence+router+resume: in-memory (single-node)")
 	}
 
-	// Message write path: sharded by chat_id across SyncApp_MESSAGE_SHARD_DSNS when
+	// Message write path: sharded by chat_id across SYNCAPP_MESSAGE_SHARD_DSNS when
 	// set (each shard is a full Postgres, but only its messages/chat_seq/outbox are
 	// used — chat metadata stays in the primary store). Each shard allocates a
 	// gap-free per-chat seq locally (chat_seq), and each has its own outbox that a
 	// relay must drain. Default: the single primary store.
 	b.MessageStore = b.Stores.Messages
 	b.MsgOutbox = []store.OutboxStore{b.Stores.Outbox}
-	if dsns := os.Getenv("SyncApp_MESSAGE_SHARD_DSNS"); dsns != "" {
+	if dsns := envcfg.Get("SYNCAPP_MESSAGE_SHARD_DSNS"); dsns != "" {
 		var msgShards []store.MessageStore
 		var obShards []store.OutboxStore
 		for _, d := range strings.Split(dsns, ",") {
@@ -152,21 +162,45 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 	return b, nil
 }
 
-func resolveNodeID(ctx context.Context, log *slog.Logger, b *Backends) int64 {
-	if v := os.Getenv("SyncApp_NODE_ID"); v != "" {
+// resolveNodeID picks the Snowflake node id (0..1023). Precedence: explicit
+// SYNCAPP_NODE_ID, then a Redis lease (unique by construction), then a
+// hostname hash.
+//
+// The hash is a CONVENIENCE FOR SINGLE-NODE DEV ONLY, and the reason matters: the
+// node id is 10 bits of every id this process mints, so two instances that hash
+// to the same value mint colliding message and session ids — and with 1024 slots
+// a collision is likely well before a thousand nodes (birthday bound: ~50% at 38).
+// Duplicate ids are silent data corruption, not a degraded mode, so a deployment
+// that declares itself production (SYNCAPP_REQUIRE_TLS=1) is refused rather than
+// allowed to run on a guess.
+func resolveNodeID(ctx context.Context, log *slog.Logger, b *Backends) (int64, error) {
+	if v := envcfg.Get("SYNCAPP_NODE_ID"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 && n <= 1023 {
-			return n
+			return n, nil
 		}
-		log.Warn("invalid SyncApp_NODE_ID; using 0", "value", v)
-		return 0
+		return 0, fmt.Errorf("invalid SYNCAPP_NODE_ID %q: want an integer in 0..1023", v)
 	}
-	if addr := os.Getenv("SyncApp_REDIS_ADDR"); addr != "" {
-		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: os.Getenv("SyncApp_REDIS_PASSWORD")})
-		if n, release, err := nodeid.Lease(ctx, rdb, 30*time.Second); err == nil {
+	leaseAttempted := false
+	if addr := envcfg.Get("SYNCAPP_REDIS_ADDR"); addr != "" {
+		leaseAttempted = true
+		rdb := redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
+		n, release, err := nodeid.Lease(ctx, rdb, 30*time.Second)
+		if err == nil {
 			b.closers = append(b.closers, func() { release(); _ = rdb.Close() })
-			return n
+			log.Info("node id leased from Redis", "node_id", n)
+			return n, nil
 		}
+		log.Error("node-id lease failed", "err", err)
 		_ = rdb.Close()
+	}
+	if RequireTLS() {
+		// Redis was configured, so this IS a multi-node deployment whose coordinator
+		// is unreachable. Falling back here would mint ids that may already belong to
+		// a peer.
+		if leaseAttempted {
+			return 0, errors.New("node-id lease failed and SYNCAPP_REQUIRE_TLS=1: refusing to guess a node id from the hostname (would risk colliding snowflake ids); fix Redis or set SYNCAPP_NODE_ID")
+		}
+		return 0, errors.New("SYNCAPP_REQUIRE_TLS=1 requires an explicit SYNCAPP_NODE_ID or SYNCAPP_REDIS_ADDR for a unique node id")
 	}
 	host, _ := os.Hostname()
 	var h uint32 = 2166136261
@@ -174,15 +208,18 @@ func resolveNodeID(ctx context.Context, log *slog.Logger, b *Backends) int64 {
 		h ^= uint32(host[i])
 		h *= 16777619
 	}
-	return int64(h % 1024)
+	n := int64(h % 1024)
+	log.Warn("node id derived from hostname — UNSAFE for multi-node: set SYNCAPP_NODE_ID or SYNCAPP_REDIS_ADDR",
+		"host", host, "node_id", n)
+	return n, nil
 }
 
-// serverCreds returns mTLS transport credentials when SyncApp_MTLS_* is set, or
+// serverCreds returns mTLS transport credentials when SYNCAPP_MTLS_* is set, or
 // insecure credentials for local/dev.
 func serverCreds(log *slog.Logger) credentials.TransportCredentials {
-	ca, cert, key := os.Getenv("SyncApp_MTLS_CA"), os.Getenv("SyncApp_MTLS_CERT"), os.Getenv("SyncApp_MTLS_KEY")
+	ca, cert, key := envcfg.Get("SYNCAPP_MTLS_CA"), envcfg.Get("SYNCAPP_MTLS_CERT"), envcfg.Get("SYNCAPP_MTLS_KEY")
 	if ca == "" || cert == "" || key == "" {
-		log.Warn("mTLS disabled between services — set SyncApp_MTLS_CA/CERT/KEY in production")
+		log.Warn("mTLS disabled between services — set SYNCAPP_MTLS_CA/CERT/KEY in production")
 		return insecure.NewCredentials()
 	}
 	tc, err := mtls.ServerConfig(ca, cert, key)
@@ -195,7 +232,7 @@ func serverCreds(log *slog.Logger) credentials.TransportCredentials {
 
 // clientCreds mirrors serverCreds for dialing a peer service.
 func clientCreds(serverName string, log *slog.Logger) credentials.TransportCredentials {
-	ca, cert, key := os.Getenv("SyncApp_MTLS_CA"), os.Getenv("SyncApp_MTLS_CERT"), os.Getenv("SyncApp_MTLS_KEY")
+	ca, cert, key := envcfg.Get("SYNCAPP_MTLS_CA"), envcfg.Get("SYNCAPP_MTLS_CERT"), envcfg.Get("SYNCAPP_MTLS_KEY")
 	if ca == "" || cert == "" || key == "" {
 		return insecure.NewCredentials()
 	}
@@ -216,7 +253,11 @@ func ServeGRPC(ctx context.Context, addr, metricsAddr string, log *slog.Logger, 
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(serverCreds(log)))
+	srv := grpc.NewServer(
+		grpc.Creds(serverCreds(log)),
+		grpc.UnaryInterceptor(recoverUnary(log)),
+		grpc.StreamInterceptor(recoverStream(log)),
+	)
 	register(srv)
 
 	if metricsAddr != "" {
@@ -229,6 +270,40 @@ func ServeGRPC(ctx context.Context, addr, metricsAddr string, log *slog.Logger, 
 	}()
 	log.Info("grpc listening", "addr", addr)
 	return srv.Serve(lis)
+}
+
+// recoverUnary turns a panic in a handler into an INTERNAL error for that one
+// call. Without it a panic in any RPC handler unwinds the serving goroutine and
+// takes the whole daemon down — every other in-flight request with it — which
+// turns one bad argument into an outage of authd, chatd or messaged.
+func recoverUnary(log *slog.Logger) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				metrics.PanicsRecovered.WithLabelValues("grpc.unary").Inc()
+				log.Error("recovered panic in grpc handler",
+					"method", info.FullMethod, "panic", r, "stack", string(debug.Stack()))
+				// The panic text may quote request data, so it is logged, not returned.
+				err = status.Error(codes.Internal, "internal error")
+			}
+		}()
+		return handler(ctx, req)
+	}
+}
+
+// recoverStream is recoverUnary for streaming handlers.
+func recoverStream(log *slog.Logger) grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				metrics.PanicsRecovered.WithLabelValues("grpc.stream").Inc()
+				log.Error("recovered panic in grpc stream handler",
+					"method", info.FullMethod, "panic", r, "stack", string(debug.Stack()))
+				err = status.Error(codes.Internal, "internal error")
+			}
+		}()
+		return handler(srv, ss)
+	}
 }
 
 // RunWorker serves /metrics + /healthz on metricsAddr (if set) and blocks until

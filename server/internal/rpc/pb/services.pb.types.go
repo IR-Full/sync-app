@@ -14,6 +14,18 @@ type User struct {
 	DisplayName string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	CreatedAt   int64  `protobuf:"varint,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	AvatarRef   string `protobuf:"bytes,5,opt,name=avatar_ref,json=avatarRef,proto3" json:"avatar_ref,omitempty"`
+	// Privacy settings travel with the user, so a split deployment enforces the
+	// same rules as the monolith. Omitting them is exactly the topology drift the
+	// risk register names: a field the monolith honours that the gRPC contract
+	// drops, turning a privacy setting into a no-op for whoever enabled sharding.
+	PrivacyLastSeen string `protobuf:"bytes,6,opt,name=privacy_last_seen,json=privacyLastSeen,proto3" json:"privacy_last_seen,omitempty"`
+	PrivacyAvatar   string `protobuf:"bytes,7,opt,name=privacy_avatar,json=privacyAvatar,proto3" json:"privacy_avatar,omitempty"`
+	PrivacyGroups   string `protobuf:"bytes,8,opt,name=privacy_groups,json=privacyGroups,proto3" json:"privacy_groups,omitempty"`
+	// Whether message text may reach the push provider. Carried here for the same
+	// reason as the others: a setting that the split deployment drops is a setting
+	// that becomes a no-op for whoever enabled sharding — and this one failing open
+	// would hand plaintext to a third party.
+	PrivacyPushPreview bool `protobuf:"varint,9,opt,name=privacy_push_preview,json=privacyPushPreview,proto3" json:"privacy_push_preview,omitempty"`
 }
 
 type Session struct {
@@ -29,6 +41,12 @@ type Session struct {
 	CreatedAt   int64  `protobuf:"varint,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	ExpiresAt   int64  `protobuf:"varint,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	RevokedAt   int64  `protobuf:"varint,8,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
+	// The resume token this session most recently rotated away from. Carried across
+	// the split for the same reason every other field is: a value the gRPC wiring
+	// drops is a feature that vanishes when somebody enables sharding — and this one
+	// is what makes a stolen resume token detectable.
+	PrevResumeToken string `protobuf:"bytes,9,opt,name=prev_resume_token,json=prevResumeToken,proto3" json:"prev_resume_token,omitempty"`
+	ResumeRotatedAt int64  `protobuf:"varint,10,opt,name=resume_rotated_at,json=resumeRotatedAt,proto3" json:"resume_rotated_at,omitempty"`
 }
 
 type Chat struct {
@@ -55,13 +73,12 @@ type ChatMember struct {
 	Role     string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	JoinedAt int64  `protobuf:"varint,4,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
 	Muted    bool   `protobuf:"varint,5,opt,name=muted,proto3" json:"muted,omitempty"`
+	// The member's own per-chat settings. muted above is the legacy boolean kept in
+	// step with muted_until; muted_until is what the notification path reads.
+	MutedUntil int64 `protobuf:"varint,6,opt,name=muted_until,json=mutedUntil,proto3" json:"muted_until,omitempty"`
+	Pinned     bool  `protobuf:"varint,7,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Archived   bool  `protobuf:"varint,8,opt,name=archived,proto3" json:"archived,omitempty"`
 }
-
-// Attachment and ForwardOrigin mirror their body.proto twins field for field.
-// They are redeclared rather than imported because the two files are deliberately
-// separate proto packages (see the note at the top): the shapes are the same
-// domain types crossing a different boundary — service-to-service, not
-// client-to-server.
 type Attachment struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -88,10 +105,6 @@ type ForwardOrigin struct {
 	MessageId string `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
 	SenderId  string `protobuf:"bytes,3,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 }
-
-// Message must carry EVERY field a client can observe: the gateway renders its
-// wire body straight from this, so a field missing here is a field no client on
-// the split deployment can ever see — even though the monolith shows it.
 type Message struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -173,6 +186,155 @@ type Identity struct {
 	Session *Session `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
 	User    *User    `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 }
+type UserIDRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+}
+
+type SessionRow struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id        string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId    string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	DeviceId  string `protobuf:"bytes,3,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	CreatedAt int64  `protobuf:"varint,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ExpiresAt int64  `protobuf:"varint,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	RevokedAt int64  `protobuf:"varint,6,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
+}
+
+type SessionsReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Sessions []*SessionRow `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+}
+
+type RevokeOwnedRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId    string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+}
+
+type RevokeAllRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// keep_session_id is spared, which is how "sign out everywhere else" is said.
+	KeepSessionId string `protobuf:"bytes,2,opt,name=keep_session_id,json=keepSessionId,proto3" json:"keep_session_id,omitempty"`
+}
+
+type RevokeAllReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Revoked int32 `protobuf:"varint,1,opt,name=revoked,proto3" json:"revoked,omitempty"`
+}
+
+type DeleteAccountRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId   string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+}
+type LoginWithCodeRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Code     string `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	DeviceId string `protobuf:"bytes,4,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	Platform string `protobuf:"bytes,5,opt,name=platform,proto3" json:"platform,omitempty"`
+}
+
+type ChangePasswordRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId      string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	OldPassword string `protobuf:"bytes,2,opt,name=old_password,json=oldPassword,proto3" json:"old_password,omitempty"`
+	NewPassword string `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	// keep_session_id survives the revoke, so the caller is not signed out of the
+	// device they are using to secure the account.
+	KeepSessionId string `protobuf:"bytes,4,opt,name=keep_session_id,json=keepSessionId,proto3" json:"keep_session_id,omitempty"`
+}
+
+type ChangePasswordReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SessionsRevoked int32 `protobuf:"varint,1,opt,name=sessions_revoked,json=sessionsRevoked,proto3" json:"sessions_revoked,omitempty"`
+}
+
+type BeginTOTPRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Issuer string `protobuf:"bytes,2,opt,name=issuer,proto3" json:"issuer,omitempty"`
+}
+
+type BeginTOTPReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Secret string `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	Uri    string `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
+}
+
+type ConfirmTOTPRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Code   string `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+}
+type ConfirmTOTPReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RecoveryCodes []string `protobuf:"bytes,1,rep,name=recovery_codes,json=recoveryCodes,proto3" json:"recovery_codes,omitempty"`
+}
+
+type DisableTOTPRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId   string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Code     string `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+}
+
+type TwoFactorStateReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Enabled      bool  `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	RecoveryLeft int32 `protobuf:"varint,2,opt,name=recovery_left,json=recoveryLeft,proto3" json:"recovery_left,omitempty"`
+}
 
 type DirectRequest struct {
 	state         protoimpl.MessageState
@@ -217,10 +379,6 @@ type MemberIDsReply struct {
 
 	UserIds []string `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
 }
-
-// MemberPageRequest walks membership by keyset: ids after `after_user_id`,
-// ordered, at most `limit`. Fanout needs this to stream a million-member channel
-// instead of materializing it.
 type MemberPageRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -248,11 +406,6 @@ type BoolReply struct {
 
 	Ok bool `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
 }
-
-// UserChatsRequest pages a user's chat list by keyset over the chat id. The
-// whole summary is built inside the chat service: assembling it at the gateway
-// would cost one Get (plus one Members for every direct chat) per row, turning
-// one screen of chats into a burst of round trips.
 type UserChatsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -263,6 +416,40 @@ type UserChatsRequest struct {
 	Limit  int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 }
 
+type UserChatPageRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId          string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	After           string `protobuf:"bytes,2,opt,name=after,proto3" json:"after,omitempty"`
+	AfterActivity   int64  `protobuf:"varint,3,opt,name=after_activity,json=afterActivity,proto3" json:"after_activity,omitempty"`
+	Limit           int32  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	IncludeArchived bool   `protobuf:"varint,5,opt,name=include_archived,json=includeArchived,proto3" json:"include_archived,omitempty"`
+}
+
+type SetChatFlagsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ChatId     string `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	UserId     string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MutedUntil int64  `protobuf:"varint,3,opt,name=muted_until,json=mutedUntil,proto3" json:"muted_until,omitempty"`
+	Pinned     bool   `protobuf:"varint,4,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Archived   bool   `protobuf:"varint,5,opt,name=archived,proto3" json:"archived,omitempty"`
+}
+
+type ChatFlagsReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	MutedUntil int64 `protobuf:"varint,1,opt,name=muted_until,json=mutedUntil,proto3" json:"muted_until,omitempty"`
+	Pinned     bool  `protobuf:"varint,2,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Archived   bool  `protobuf:"varint,3,opt,name=archived,proto3" json:"archived,omitempty"`
+}
+
 type ChatSummary struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -271,11 +458,16 @@ type ChatSummary struct {
 	Chat   *Chat  `protobuf:"bytes,1,opt,name=chat,proto3" json:"chat,omitempty"`
 	MyRole string `protobuf:"bytes,2,opt,name=my_role,json=myRole,proto3" json:"my_role,omitempty"`
 	PeerId string `protobuf:"bytes,3,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
+	// What a chat list draws. Absent here meant the gateway had to fetch history
+	// per chat to render its own list, which is the N+1 this whole change removes —
+	// and in the split deployment it was an N+1 of RPCs.
+	LastMessage    *Message `protobuf:"bytes,4,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
+	UnreadCount    int64    `protobuf:"varint,5,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
+	LastActivityAt int64    `protobuf:"varint,6,opt,name=last_activity_at,json=lastActivityAt,proto3" json:"last_activity_at,omitempty"`
+	MutedUntil     int64    `protobuf:"varint,7,opt,name=muted_until,json=mutedUntil,proto3" json:"muted_until,omitempty"`
+	Pinned         bool     `protobuf:"varint,8,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Archived       bool     `protobuf:"varint,9,opt,name=archived,proto3" json:"archived,omitempty"`
 }
-
-// ChatSummariesReply is one page of summaries. The cursor is not repeated here:
-// it is the id of the last row, so the gateway derives it from the page itself
-// and the monolith and the split deployment cannot disagree about it.
 type ChatSummariesReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -289,7 +481,7 @@ type SubmitRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Op         Op          `protobuf:"varint,1,opt,name=op,proto3,enum=synapse.rpc.v1.Op" json:"op,omitempty"`
+	Op         Op          `protobuf:"varint,1,opt,name=op,proto3,enum=syncapp.rpc.v1.Op" json:"op,omitempty"`
 	ActorId    string      `protobuf:"bytes,2,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	ChatId     string      `protobuf:"bytes,3,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	MessageId  string      `protobuf:"bytes,4,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
@@ -442,4 +634,16 @@ type FetchAllReply struct {
 	unknownFields protoimpl.UnknownFields
 
 	Bundles []*KeyBundle `protobuf:"bytes,1,rep,name=bundles,proto3" json:"bundles,omitempty"`
+}
+type PublishReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Prekeys held AFTER this publish was applied and trimmed.
+	OneTimePrekeysLeft int32 `protobuf:"varint,1,opt,name=one_time_prekeys_left,json=oneTimePrekeysLeft,proto3" json:"one_time_prekeys_left,omitempty"`
+	// Unix millis when the CURRENT signed prekey first appeared; 0 when unknown.
+	SignedPrekeyFirstSeenMs int64 `protobuf:"varint,2,opt,name=signed_prekey_first_seen_ms,json=signedPrekeyFirstSeenMs,proto3" json:"signed_prekey_first_seen_ms,omitempty"`
+	// How many prekeys from this request survived the caps.
+	Accepted int32 `protobuf:"varint,3,opt,name=accepted,proto3" json:"accepted,omitempty"`
 }

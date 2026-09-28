@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/keydir"
 	"github.com/SyncApp-chat/SyncApp/internal/message"
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
@@ -44,6 +46,75 @@ func (a *AuthClient) Login(ctx context.Context, username, password, deviceID, pl
 	return modelSession(r.Session), modelUser(r.User), nil
 }
 
+// LoginWithCode is Login plus a second factor.
+func (a *AuthClient) LoginWithCode(ctx context.Context, username, password, code, deviceID, platform string) (*model.Session, *model.User, error) {
+	r, err := a.c.LoginWithCode(ctx, &pb.LoginWithCodeRequest{
+		Username: username, Password: password, Code: code,
+		DeviceId: deviceID, Platform: platform,
+	})
+	if err != nil {
+		return nil, nil, fromStatus(err)
+	}
+	return modelSession(r.Session), modelUser(r.User), nil
+}
+
+// ChangePassword replaces the password and revokes every other session.
+func (a *AuthClient) ChangePassword(ctx context.Context, userID, oldPassword, newPassword, keepSessionID string) (int, error) {
+	r, err := a.c.ChangePassword(ctx, &pb.ChangePasswordRequest{
+		UserId: userID, OldPassword: oldPassword, NewPassword: newPassword,
+		KeepSessionId: keepSessionID,
+	})
+	if err != nil {
+		return 0, fromStatus(err)
+	}
+	return int(r.SessionsRevoked), nil
+}
+
+func (a *AuthClient) BeginTOTP(ctx context.Context, userID, issuer string) (string, string, error) {
+	r, err := a.c.BeginTOTP(ctx, &pb.BeginTOTPRequest{UserId: userID, Issuer: issuer})
+	if err != nil {
+		return "", "", fromStatus(err)
+	}
+	return r.Secret, r.Uri, nil
+}
+
+func (a *AuthClient) ConfirmTOTP(ctx context.Context, userID, code string) ([]string, error) {
+	r, err := a.c.ConfirmTOTP(ctx, &pb.ConfirmTOTPRequest{UserId: userID, Code: code})
+	if err != nil {
+		return nil, fromStatus(err)
+	}
+	return r.RecoveryCodes, nil
+}
+
+func (a *AuthClient) DisableTOTP(ctx context.Context, userID, password, code string) error {
+	_, err := a.c.DisableTOTP(ctx, &pb.DisableTOTPRequest{UserId: userID, Password: password, Code: code})
+	if err != nil {
+		return fromStatus(err)
+	}
+	return nil
+}
+
+// TwoFactorEnabled and RecoveryCodesLeft share one RPC.
+//
+// They return plain values with no error because the interface they satisfy does:
+// the login path asks "is a code required" on every password login, and a
+// transport hiccup answering that must not become a login failure. Reporting
+// "not enabled" on an error is the wrong direction for security, so the tradeoff
+// is stated here rather than hidden: an unreachable auth service degrades to
+// single-factor, exactly as it did before the factor existed.
+func (a *AuthClient) TwoFactorEnabled(ctx context.Context, userID string) bool {
+	r, err := a.c.TwoFactorState(ctx, &pb.UserIDRequest{UserId: userID})
+	return err == nil && r.Enabled
+}
+
+func (a *AuthClient) RecoveryCodesLeft(ctx context.Context, userID string) int {
+	r, err := a.c.TwoFactorState(ctx, &pb.UserIDRequest{UserId: userID})
+	if err != nil {
+		return 0
+	}
+	return int(r.RecoveryLeft)
+}
+
 func (a *AuthClient) Authenticate(ctx context.Context, token string) (*auth.Identity, error) {
 	r, err := a.c.Authenticate(ctx, &pb.TokenRequest{Token: token})
 	if err != nil {
@@ -69,6 +140,16 @@ func NewChatClient(conn grpc.ClientConnInterface) *ChatClient {
 
 func (c *ChatClient) EnsureDirect(ctx context.Context, userA, userB string) (*model.Chat, error) {
 	r, err := c.c.EnsureDirect(ctx, &pb.DirectRequest{UserA: userA, UserB: userB})
+	if err != nil {
+		return nil, fromStatus(err)
+	}
+	return modelChat(r), nil
+}
+
+// EnsureSecret returns the canonical SECRET chat for a pair. It coexists with the
+// ordinary direct chat with that person.
+func (c *ChatClient) EnsureSecret(ctx context.Context, userA, userB string) (*model.Chat, error) {
+	r, err := c.c.EnsureSecret(ctx, &pb.DirectRequest{UserA: userA, UserB: userB})
 	if err != nil {
 		return nil, fromStatus(err)
 	}
@@ -125,6 +206,34 @@ func (c *ChatClient) UserChats(ctx context.Context, userID, after string, limit 
 	return out, nil
 }
 
+// UserChatPage is UserChats with the composite cursor and the archived filter.
+func (c *ChatClient) UserChatPage(ctx context.Context, userID string, p chat.ChatPage) ([]model.ChatSummary, error) {
+	r, err := c.c.UserChatPage(ctx, &pb.UserChatPageRequest{
+		UserId: userID, After: p.After, AfterActivity: p.AfterActivity,
+		Limit: int32(p.Limit), IncludeArchived: p.IncludeArchived,
+	})
+	if err != nil {
+		return nil, fromStatus(err)
+	}
+	out := make([]model.ChatSummary, len(r.Chats))
+	for i, s := range r.Chats {
+		out[i] = modelChatSummary(s)
+	}
+	return out, nil
+}
+
+// SetChatFlags writes the caller's own mute/pin/archive for a chat.
+func (c *ChatClient) SetChatFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) (model.MemberFlags, error) {
+	r, err := c.c.SetChatFlags(ctx, &pb.SetChatFlagsRequest{
+		ChatId: chatID, UserId: userID,
+		MutedUntil: f.MutedUntil, Pinned: f.Pinned, Archived: f.Archived,
+	})
+	if err != nil {
+		return model.MemberFlags{}, fromStatus(err)
+	}
+	return model.MemberFlags{MutedUntil: r.MutedUntil, Pinned: r.Pinned, Archived: r.Archived}, nil
+}
+
 func (c *ChatClient) MemberIDs(ctx context.Context, chatID string) ([]string, error) {
 	r, err := c.c.MemberIDs(ctx, &pb.ChatIDRequest{ChatId: chatID})
 	if err != nil {
@@ -155,6 +264,31 @@ func (c *ChatClient) IsMember(ctx context.Context, chatID, userID string) (bool,
 		return false, fromStatus(err)
 	}
 	return r.Ok, nil
+}
+
+// CanModerate authorizes acting on another member's message. The error is
+// returned rather than folded into a false, because the caller must be able to
+// tell "chatd says no" from "chatd could not be reached" — the first is a
+// refusal to show the user, the second a retry.
+func (c *ChatClient) CanModerate(ctx context.Context, chatID, userID string) (bool, error) {
+	r, err := c.c.CanModerate(ctx, &pb.ChatUserRequest{ChatId: chatID, UserId: userID})
+	if err != nil {
+		return false, fromStatus(err)
+	}
+	return r.Ok, nil
+}
+
+// UserChatIDs lists the chats a user belongs to, ids only.
+//
+// A dedicated RPC rather than paging UserChats: search needs the whole set at once
+// to bound a query, and UserChats both pages and builds full summaries the caller
+// discards. Bounded on the server side, which is where the bound belongs.
+func (c *ChatClient) UserChatIDs(ctx context.Context, userID string) ([]string, error) {
+	r, err := c.c.UserChatIDs(ctx, &pb.UserIDRequest{UserId: userID})
+	if err != nil {
+		return nil, fromStatus(err)
+	}
+	return r.UserIds, nil
 }
 
 // ---- Message ----
@@ -233,14 +367,28 @@ func callCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(ctx, 3*time.Second)
 }
 
-func (k *KeyDirClient) Publish(ctx context.Context, userID, deviceID string, b wire.KeyPublishBody) {
+func (k *KeyDirClient) Publish(ctx context.Context, userID, deviceID string, b wire.KeyPublishBody) keydir.State {
 	ctx, cancel := callCtx(ctx)
 	defer cancel()
-	if _, err := k.c.Publish(ctx, &pb.PublishRequest{
+	r, err := k.c.Publish(ctx, &pb.PublishRequest{
 		UserId: userID, DeviceId: deviceID, IdentityKey: b.IdentityKey, SigningKey: b.SigningKey,
 		SignedPrekey: b.SignedPreKey, SignedPrekeySig: b.SignedPreKeySig, Prekeys: b.PreKeys,
-	}); err != nil {
+	})
+	if err != nil {
 		k.log.Warn("keydir publish (remote)", "err", err)
+		// Empty state, not zeroed counts: the same distinction the Redis backend makes.
+		// The write may well have landed; reporting zero prekeys left would tell the
+		// device it holds none and provoke a republish of a batch already stored.
+		return keydir.State{}
+	}
+	var firstSeen time.Time
+	if r.SignedPrekeyFirstSeenMs > 0 {
+		firstSeen = time.UnixMilli(r.SignedPrekeyFirstSeenMs)
+	}
+	return keydir.State{
+		OneTimePreKeysLeft:    int(r.OneTimePrekeysLeft),
+		Accepted:              int(r.Accepted),
+		SignedPreKeyFirstSeen: firstSeen,
 	}
 }
 
@@ -293,4 +441,45 @@ func (m *MessageClient) Forward(ctx context.Context, userID, srcChatID, srcMsgID
 		return nil, false, fromStatus(err)
 	}
 	return modelMessage(r.Message), r.Duplicate, nil
+}
+
+// ---- Auth: session management ----
+//
+// These sit on the AuthService interface rather than behind a type assertion, so
+// the split deployment cannot quietly lose them. A SessionRow carries no token
+// on purpose: the list exists to let a person recognise a device, and shipping
+// credentials for every session to every session would be the opposite of what
+// the feature is for.
+
+func (a *AuthClient) ListSessions(ctx context.Context, userID string) ([]*model.Session, error) {
+	r, err := a.c.ListSessions(ctx, &pb.UserIDRequest{UserId: userID})
+	if err != nil {
+		return nil, fromStatus(err)
+	}
+	out := make([]*model.Session, 0, len(r.Sessions))
+	for _, s := range r.Sessions {
+		out = append(out, &model.Session{
+			ID: s.Id, UserID: s.UserId, DeviceID: s.DeviceId,
+			CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, RevokedAt: s.RevokedAt,
+		})
+	}
+	return out, nil
+}
+
+func (a *AuthClient) RevokeOwned(ctx context.Context, userID, sessionID string) error {
+	_, err := a.c.RevokeOwned(ctx, &pb.RevokeOwnedRequest{UserId: userID, SessionId: sessionID})
+	return fromStatus(err)
+}
+
+func (a *AuthClient) RevokeAll(ctx context.Context, userID, keepSessionID string) (int, error) {
+	r, err := a.c.RevokeAll(ctx, &pb.RevokeAllRequest{UserId: userID, KeepSessionId: keepSessionID})
+	if err != nil {
+		return 0, fromStatus(err)
+	}
+	return int(r.Revoked), nil
+}
+
+func (a *AuthClient) DeleteAccount(ctx context.Context, userID, password string) error {
+	_, err := a.c.DeleteAccount(ctx, &pb.DeleteAccountRequest{UserId: userID, Password: password})
+	return fromStatus(err)
 }
