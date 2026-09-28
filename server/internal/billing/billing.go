@@ -197,7 +197,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*Checkout,
 		// accepted the first one despite the error we saw), and a pending payment
 		// that never settles is collected by the expiry sweep.
 		s.log.Warn("charge failed", "provider", provider.Name(), "payment", stored.ID, "err", err)
-		return nil, fmt.Errorf("%w: %v", ErrChargeFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrChargeFailed, err)
 	}
 	if res.ProviderRef == "" {
 		// A provider with no stable reference cannot be made idempotent: there is
@@ -264,7 +264,7 @@ func (s *Service) HandleCallback(ctx context.Context, providerName string, raw [
 		// Logged as a warning and returned: an unverifiable callback is either a
 		// misconfiguration or someone probing, and both are worth seeing.
 		metrics.WebhookRejected.WithLabelValues(providerName).Inc()
-		return fmt.Errorf("%w: %v", ErrBadSignature, err)
+		return fmt.Errorf("%w: %w", ErrBadSignature, err)
 	}
 	payment, err := s.store.GetPaymentByRef(ctx, providerName, cb.ProviderRef)
 	if err != nil {

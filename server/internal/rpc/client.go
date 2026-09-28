@@ -266,8 +266,8 @@ func (c *ChatClient) IsMember(ctx context.Context, chatID, userID string) (bool,
 	return r.Ok, nil
 }
 
-// CountPinnedChats counts the caller's pinned chats, for the MaxPinnedChats
-// entitlement the gateway enforces.
+// CountPinnedChatsExcept counts the caller's pinned chats other than
+// exceptChatID, for the MaxPinnedChats entitlement the gateway enforces.
 func (c *ChatClient) CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID string) (int, error) {
 	r, err := c.c.CountPinnedChatsExcept(ctx, &pb.PinnedCountRequest{UserId: userID, ExceptChatId: exceptChatID})
 	if err != nil {

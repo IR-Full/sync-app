@@ -1111,7 +1111,7 @@ func derefStr(p *string) string {
 	return *p
 }
 
-// CountPinnedChats counts this user's pinned chats.
+// CountPinnedChatsExcept counts this user's pinned chats other than exceptChatID.
 //
 // Counted in the database rather than by reading rows back, because the answer is
 // a number and the caller only wants to know whether there is room for one more.

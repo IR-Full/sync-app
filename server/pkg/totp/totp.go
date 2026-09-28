@@ -18,7 +18,7 @@ package totp
 import (
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- RFC 6238 HMAC-SHA1; see the package comment
 	"crypto/subtle"
 	"encoding/base32"
 	"encoding/binary"

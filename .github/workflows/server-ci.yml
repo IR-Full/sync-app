@@ -71,10 +71,13 @@ jobs:
       # CVEs. This covers the gap between them: unchecked errors, dead code,
       # comparisons that cannot fail, doc comments naming a symbol that moved.
       # The enabled set is deliberately small — see server/.golangci.yml.
+      # golangci-lint v2 needs action v7+, and the linter binary must be built
+      # with a Go at least as new as go.mod's (1.26) or it refuses to load the
+      # module. Bump the two together.
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.1.6
+          version: v2.14.0
           working-directory: server
           args: --timeout=5m
 
@@ -122,8 +125,10 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
+      # Pinned: with @latest a new gosec release adds rules and turns main red
+      # overnight with no change in this repository. Bump deliberately.
       - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
 
       - name: Run gosec
         run: gosec -severity medium -exclude-generated -exclude=G115 ./...

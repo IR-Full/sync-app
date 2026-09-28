@@ -100,7 +100,7 @@ func mkUser(t *testing.T, s store.Stores) string {
 	id := nextID()
 	u := &model.User{
 		ID: id, Username: "u" + id, DisplayName: "User " + id,
-		PasswordHash: "argon2id$x$y", CreatedAt: 1000,
+		PasswordHash: "argon2id$x$y", CreatedAt: 1000, // #nosec G101 -- test fixture, not a credential
 	}
 	if err := s.Users.CreateUser(ctx(), u); err != nil {
 		t.Fatalf("CreateUser: %v", err)

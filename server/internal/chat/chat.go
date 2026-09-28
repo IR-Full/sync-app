@@ -500,7 +500,8 @@ func (s *Service) SetChatFlags(ctx context.Context, chatID, userID string, f mod
 	return fs.GetMemberFlags(ctx, chatID, userID)
 }
 
-// CountPinnedChats counts the chats a user has pinned to the top of their list.
+// CountPinnedChatsExcept counts the chats a user has pinned to the top of their
+// list, not counting exceptChatID (the chat being pinned right now).
 //
 // It exists for the MaxPinnedChats entitlement, and it answers with a NUMBER
 // because the question is "is there room for one more" — paging every chat to

@@ -790,11 +790,6 @@ type ChatInfoBody struct {
 	OwnerID string `json:"owner_id"`
 }
 
-// ChatListBody asks for the chats the caller belongs to. It pages by keyset
-// over the chat id — After is the last id of the previous page ("" starts from
-// the beginning) — because a client with more chats than fit in one frame has
-// to be able to resume, and the id is the only cursor that stays valid while
-// the list is being read.
 // BillingPlansBody asks what is purchasable.
 //
 // Country comes from the CLIENT rather than from a GeoIP lookup on the server: the
@@ -972,6 +967,11 @@ type ChatFlagsSetBody struct {
 	Archived   bool   `json:"archived,omitempty"`
 }
 
+// ChatListBody asks for the chats the caller belongs to. It pages by keyset
+// over the chat id — After is the last id of the previous page ("" starts from
+// the beginning) — because a client with more chats than fit in one frame has
+// to be able to resume, and the id is the only cursor that stays valid while
+// the list is being read.
 type ChatListBody struct {
 	After string `json:"after,omitempty"`
 	Limit int    `json:"limit,omitempty"`
