@@ -8,12 +8,10 @@ import XCTest
 /// one, which is the difference nobody notices until the first upgrade in the
 /// field.
 final class SchemaTests: XCTestCase {
-    private var url: URL!
-
-    override func setUp() {
-        url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("syncapp-schema-\(UUID().uuidString).sqlite")
-    }
+    // A fresh path per test, fixed at construction: XCTest builds a new instance
+    // for every test method, so this needs neither setUp nor an optional.
+    private let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("syncapp-schema-\(UUID().uuidString).sqlite")
 
     override func tearDown() {
         try? FileManager.default.removeItem(at: url)

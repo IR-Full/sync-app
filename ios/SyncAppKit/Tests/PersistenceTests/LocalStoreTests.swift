@@ -10,21 +10,31 @@ import XCTest
 /// Note the hoisted `let`s before every assertion — `XCTAssert*` takes
 /// autoclosures, which may throw but may not `await`.
 final class LocalStoreTests: XCTestCase {
-    private var databaseURL: URL!
-    private var store: LocalStore!
+    private var databaseURL: URL?
+    private var storage: LocalStore?
+
+    /// The store under test. Throws (failing the test with a message) rather than
+    /// crashing when `setUp` did not get as far as creating it.
+    private var store: LocalStore {
+        get throws { try XCTUnwrap(storage, "setUp did not create a store") }
+    }
 
     override func setUp() async throws {
-        databaseURL = FileManager.default.temporaryDirectory
+        let databaseURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("syncapp-test-\(UUID().uuidString).sqlite")
+        self.databaseURL = databaseURL
         let database = try Database(url: databaseURL)
         try await database.prepare()
-        store = LocalStore(database: database, broker: ChangeBroker())
+        let store = LocalStore(database: database, broker: ChangeBroker())
+        storage = store
         try await store.setMeta(LocalStore.MetaKey.userID, "me")
     }
 
     override func tearDown() async throws {
-        store = nil
-        try? FileManager.default.removeItem(at: databaseURL)
+        storage = nil
+        if let databaseURL {
+            try? FileManager.default.removeItem(at: databaseURL)
+        }
     }
 
     private func makeChat(id: String = "10", lastReadSeq: UInt64 = 0) async throws {

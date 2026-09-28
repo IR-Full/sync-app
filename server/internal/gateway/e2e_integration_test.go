@@ -225,20 +225,19 @@ func TestKeyDirectoryHonoursBlocking(t *testing.T) {
 	alice := connect(t, addr, "kdalice", "secret123")
 	bob := connect(t, addr, "kdbob", "secret123")
 
+	// KEY_STATE is sent after the directory write, so once it arrives the bundle
+	// is fetchable. Waiting for it replaces a fetch-until-visible loop: that loop
+	// re-sent KEY_FETCH_ALL without pausing, and on a slow CI runner it spent the
+	// whole flood budget before Bob's publish landed — the fetches below were then
+	// answered with ErrFlood and the subtests timed out waiting for bundles.
 	bob.send(t, wire.MsgKeyPublish, 4, validKeyPublish(t))
+	bob.readUntil(t, wire.MsgKeyState)
 
 	// Alice can see Bob's device before the block — otherwise the assertions
 	// below would pass on an empty directory rather than on the block.
 	var before wire.KeyBundlesBody
-	deadline := time.Now().Add(readTimeout)
-	for len(before.Bundles) == 0 && time.Now().Before(deadline) {
-		alice.send(t, wire.MsgKeyFetchAll, 5, wire.KeyFetchBody{UserID: bob.userID})
-		e, ok := alice.tryRead(t, 250*time.Millisecond)
-		if !ok || e.Type != wire.MsgKeyBundles {
-			continue
-		}
-		_ = wire.Unmarshal(e.Body, &before)
-	}
+	alice.send(t, wire.MsgKeyFetchAll, 5, wire.KeyFetchBody{UserID: bob.userID})
+	_ = wire.Unmarshal(alice.readUntil(t, wire.MsgKeyBundles).Body, &before)
 	if len(before.Bundles) == 0 {
 		t.Fatal("Bob's bundle never became fetchable, so the block proves nothing")
 	}
@@ -271,7 +270,10 @@ func TestKeyDirectoryHonoursBlocking(t *testing.T) {
 	t.Run("the block cuts both ways", func(t *testing.T) {
 		// Bob blocked Alice, so Bob must not be able to enumerate Alice's devices
 		// either — a one-directional block would just relocate the problem.
+		// Published and acknowledged first, so an empty answer below is the block
+		// and not a race with the publish.
 		alice.send(t, wire.MsgKeyPublish, 9, validKeyPublish(t))
+		alice.readUntil(t, wire.MsgKeyState)
 		bob.send(t, wire.MsgKeyFetchAll, 10, wire.KeyFetchBody{UserID: alice.userID})
 		e := bob.readUntil(t, wire.MsgKeyBundles)
 		var got wire.KeyBundlesBody
@@ -288,17 +290,11 @@ func TestKeyDirectoryAlwaysReturnsOwnDevices(t *testing.T) {
 	addr := startGateway(t)
 	me := connect(t, addr, "kdself", "secret123")
 	me.send(t, wire.MsgKeyPublish, 4, validKeyPublish(t))
+	me.readUntil(t, wire.MsgKeyState) // the write has landed (see above)
 
 	var got wire.KeyBundlesBody
-	deadline := time.Now().Add(readTimeout)
-	for len(got.Bundles) == 0 && time.Now().Before(deadline) {
-		me.send(t, wire.MsgKeyFetchAll, 5, wire.KeyFetchBody{UserID: me.userID})
-		e, ok := me.tryRead(t, 250*time.Millisecond)
-		if !ok || e.Type != wire.MsgKeyBundles {
-			continue
-		}
-		_ = wire.Unmarshal(e.Body, &got)
-	}
+	me.send(t, wire.MsgKeyFetchAll, 5, wire.KeyFetchBody{UserID: me.userID})
+	_ = wire.Unmarshal(me.readUntil(t, wire.MsgKeyBundles).Body, &got)
 	if len(got.Bundles) == 0 {
 		t.Fatal("a client must always be able to fetch its own devices")
 	}

@@ -502,6 +502,8 @@ data class Profile(
     @ProtoNumber(2) val username: String = "",
     @ProtoNumber(3) @SerialName("display_name") val displayName: String = "",
     @ProtoNumber(4) @SerialName("avatar_ref") val avatarRef: String = "",
+    /** A paying account, for a badge beside the name. False where nothing is sold. */
+    @ProtoNumber(5) val premium: Boolean = false,
 )
 
 // --- Secret chats ---
