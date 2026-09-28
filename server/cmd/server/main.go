@@ -151,7 +151,11 @@ func run(log *slog.Logger) error {
 		// Wrap in a circuit breaker + local fallback: a Redis outage degrades to
 		// same-node delivery instead of a total routing failure.
 		rtr = router.NewResilient(router.NewRedis(rdb, 60*time.Second), log)
-		replayBuf = replay.NewRedis(rdb, 10*time.Minute)
+		// Async: the gateway appends every outbound frame from the connection's
+		// single writer, which must never wait on Redis (see replay.Async).
+		asyncReplay := replay.NewAsync(replay.NewRedis(rdb, 10*time.Minute), 0, log)
+		defer asyncReplay.Close() // runs before the rdb.Close deferred above
+		replayBuf = asyncReplay
 		log.Info("presence+router+resume: redis", "addr", addr)
 	} else {
 		pbackend = presence.NewMemoryBackend()

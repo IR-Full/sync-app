@@ -445,8 +445,9 @@ func (c *conn) writeOne(d delivery.Delivery) bool {
 		d.OnWritten()
 	}
 	if c.gw.svc.Replay != nil && c.sessionID != "" {
-		// Bounded, because this runs inside writeLoop — the SINGLE writer for the
-		// connection. An unbounded call against a hung replay store would block
+		// In production the store is a replay.Async, so this only enqueues. The
+		// timeout stays as the guard for a synchronous store: this runs inside
+		// writeLoop — the SINGLE writer for the connection. An unbounded call against a hung replay store would block
 		// that goroutine, back the outbound lanes up, and Send would then drop the
 		// connection: an optimisation's dependency taking a user offline.
 		//

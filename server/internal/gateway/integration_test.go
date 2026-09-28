@@ -72,10 +72,15 @@ func startGatewayWithPresence(t *testing.T, opts ...func(*gateway.Config)) (stri
 	for _, o := range opts {
 		o(&cfg)
 	}
+	// The resume buffer goes through the same async writer production uses, so
+	// every resume test below exercises it (queued frames must be flushed before
+	// a resume reads them).
+	replayBuf := replay.NewAsync(replay.NewMemory(), 0, log)
+	t.Cleanup(replayBuf.Close)
 	gw := gateway.New(gateway.Services{
 		Auth: authSvc, Chat: chatSvc, Msg: msgSvc, Broker: message.NewBroker(msgSvc, log), Presence: presSvc,
 		Users: st.Users, Hub: hub, Search: searchSvc, KeyDir: keydir.NewMemory(),
-		Bus: bus, Router: rtr, Replay: replay.NewMemory(),
+		Bus: bus, Router: rtr, Replay: replayBuf,
 		// The offline queue for secret chats. Wired here rather than only in the
 		// tests that assert on it: without it SECRET_SEND silently reverts to the
 		// relay-only behaviour this queue was added to fix, and every other secret
