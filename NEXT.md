@@ -80,6 +80,106 @@ Ordered by value per unit of risk, not by number.
 
 ---
 
+## Premium: what is sold vs what is delivered
+
+**Read this before adding a premium feature.** The tier currently advertises nine
+entitlements and enforces two.
+
+Checked on 2026-09-28 by grepping every entitlement field for a use outside the
+model, the gateway's wire mapping, and generated protobuf getters:
+
+| Entitlement | Enforced? | Where |
+|---|---|---|
+| `SecretChats` | ✅ | `handlers_secretchat.go:64` refuses without it |
+| `CustomThemes` | ✅ | client-side, the accent picker in appearance settings |
+| `MaxUploadBytes` | ❌ | **contradicted** — see below |
+| `MaxPinnedChats` | ❌ | nothing reads it |
+| `Folders` | ❌ | nothing reads it; there are no folders |
+| `AdvancedSearch` | ❌ | nothing reads it; search has no filters to gate |
+| `PriorityDelivery` | ❌ | nothing reads it, though the QoS lanes it needs exist |
+| `VoiceTranscription` | ❌ | nothing reads it; there is no transcription |
+| `Badge` | ❌ | nothing reads it; no client renders a badge |
+
+`MaxUploadBytes` is the one that is actively wrong rather than merely absent.
+`media.New` caps every upload at a hard-coded `100 << 20` (`media.go:63`), which
+is exactly what the FREE tier promises — so a Premium account is told it gets
+4 GiB and is refused at 100 MiB. That is a paid promise the code declines to
+keep, and it is a refund conversation rather than a missing feature.
+
+So the order below is deliberate: **finish what is already being charged for
+before adding anything new.** A tier that under-delivers does not get fixed by
+having more items on the list.
+
+### Stage 1 — make the existing tier true
+
+1. **`MaxUploadBytes`.** Pass the caller's entitlement into `media.InitUpload`
+   instead of the constructor constant, and keep the constant as the ceiling no
+   tier may exceed. The HTTP PUT handler must re-check the size it actually
+   receives — the ticket's declared size is client-asserted, and a signed ticket
+   for 100 MiB must not accept 4 GiB of body.
+2. **`MaxPinnedChats`.** `handlePin` counts existing pins and refuses past the
+   ceiling with `ErrPremiumRequired`, which the clients already render as an
+   upgrade prompt rather than a dead end.
+3. **`Badge`.** The cheapest honest one: a flag on the profile body, a marker
+   next to the name in the three clients. It is cosmetic, and cosmetic status is
+   most of why people buy a tier.
+4. **`PriorityDelivery`.** The lanes already exist (`conn.lane`), so this is
+   choosing `outHi` over `outMid` for an entitled sender. Worth measuring before
+   claiming: under normal load the lanes are empty and the effect is nil, so
+   either advertise it as "under load" or drop it from the list.
+5. **Decide about `Folders`, `AdvancedSearch`, `VoiceTranscription`.** Each is a
+   real feature that does not exist yet. Either build it or take it out of
+   `PremiumEntitlements` — listing an entitlement nobody can exercise is the same
+   defect as the four above, just less obvious.
+
+### Stage 2 — features worth adding, cheapest first
+
+Ordered by value per unit of work, and each is grounded in something the codebase
+already has rather than invented from scratch.
+
+6. **Chat wallpapers.** A `media_ref` per chat, reusing the upload pipeline, the
+   signed URLs and the GC that already exist. Natural companion to the accent
+   palettes and the same shape of work: one new per-member setting, no protocol
+   surface beyond a field on `CHAT_FLAGS`.
+7. **Reserved usernames.** `@handle` is already unique and case-insensitive
+   (`000010_usernames_invites`). Short handles are the scarce good every
+   messenger ends up selling; the uniqueness index that makes them sellable is
+   already there.
+8. **Hide last-seen while still seeing others.** Privacy settings exist
+   (`model.Privacy`), and the asymmetry — you see them, they do not see you — is
+   exactly what people pay for elsewhere. One flag, one check in the presence
+   audience filter (`presence_audience.go`).
+9. **Longer edit and delete windows.** There is no window today, so this is a
+   *new* limit on the free tier rather than a gift to the paid one. Worth stating
+   plainly: introducing a restriction to sell its removal is a different
+   product decision from adding a feature, and it annoys existing users.
+10. **Larger groups / more invite links.** `CountMembersWithRole` and the invite
+    tables make the ceilings cheap to enforce. Costs the server almost nothing,
+    which is a reason to price it low rather than a reason to include it.
+11. **Multi-account.** The session layer is already per-device with a device id
+    the server assigns, so a second account is mostly a client-side store split.
+    Big UI job, small protocol job.
+12. **Message translation.** An external paid service, like transcription — so it
+    is a genuine cost to recover, and it belongs in the same bucket as
+    `VoiceTranscription`: build them together or neither.
+
+### What not to sell
+
+- **Anything that weakens a security property.** No "premium gets longer sessions"
+  or "premium skips the second factor". The tier must never be a reason to make
+  an account less safe.
+- **Delivery of messages.** `PriorityDelivery` is already at the edge of this: a
+  free tier whose messages are noticeably late is not a funnel, it is a broken
+  messenger. Keep the paid advantage to latency under load, never to reliability.
+- **Secret chats, on reflection.** Worth reopening as a product question rather
+  than a technical one. E2E is the feature this project leads with, and gating it
+  means most accounts never use the thing that makes the app worth building.
+  Signal gives it away; Telegram gives its secret chats away too and sells
+  cosmetics and ceilings. The code supports either choice — it is one flag in
+  `FreeEntitlements` — so this is a decision, not work.
+
+---
+
 ## How things are checked here
 
 ```bash
