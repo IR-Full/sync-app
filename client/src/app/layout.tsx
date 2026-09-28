@@ -63,7 +63,24 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/*
+          suppressHydrationWarning is for the NONCE, not for the script body.
+
+          The browser blanks a nonce content attribute as soon as the element is
+          parsed, keeping the value only on the `.nonce` IDL property — that is
+          the spec's defence against `script[nonce^="a"]` style selectors
+          exfiltrating it through CSS. React hydrates by comparing content
+          attributes, so it reads "" where it rendered the real nonce and reports
+          a mismatch it can do nothing about.
+
+          The one on <html> does not cover this: it applies to that element's own
+          attributes, and this script is two levels below it.
+        */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: themeScript }}
+        />
       </head>
       <body className="antialiased">
         <Providers>{children}</Providers>
