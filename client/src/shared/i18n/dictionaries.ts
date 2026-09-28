@@ -106,6 +106,7 @@ const en = {
   'settings.readReceipts': 'Send read receipts',
 
   'profile.title': 'Profile',
+  'profile.premiumBadge': 'Premium',
   'profile.username': 'Username',
   'profile.userId': 'User ID',
   'profile.deviceId': 'Device ID',
@@ -498,6 +499,7 @@ const ru: Record<TranslationKey, string> = {
   'settings.readReceipts': 'Отправлять отчёты о прочтении',
 
   'profile.title': 'Профиль',
+  'profile.premiumBadge': 'Premium',
   'profile.username': 'Имя пользователя',
   'profile.userId': 'ID пользователя',
   'profile.deviceId': 'ID устройства',

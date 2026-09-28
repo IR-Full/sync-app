@@ -720,6 +720,7 @@ export interface Profile {
   username: string
   displayName: string
   avatarRef: string
+  premium: boolean
 }
 
 export interface AccountDelete {

@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 
 import { useSessionStore } from '@/entities/session'
 import { useMediaUpload, useMediaUrl } from '@/features/media'
-import { useUpdateProfile } from '@/features/profile'
+import { useProfile, useUpdateProfile } from '@/features/profile'
 import { useTranslate } from '@/shared/i18n'
 import { Avatar, Button, TextField } from '@/shared/ui'
 
@@ -49,10 +49,29 @@ function ReadOnlyRow({ label, value }: { label: string; value: string }) {
  * URL. That is why the upload finishes before the profile is written: a ref
  * that failed to upload must never be saved.
  */
+/**
+ * The paid-tier marker.
+ *
+ * A small pill rather than an emoji or an icon font: it has to read at a glance
+ * beside a handle, survive both themes, and carry a text label for anyone using
+ * a screen reader — an unlabelled star says nothing to them.
+ */
+function PremiumBadge({ label }: { label: string }) {
+  return (
+    <span
+      title={label}
+      className="bg-accent text-accent-ink rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+    >
+      {label}
+    </span>
+  )
+}
+
 export function ProfilePanel() {
   const t = useTranslate()
   const router = useRouter()
   const session = useSessionStore((state) => state.session)
+  const profile = useProfile('')
   const updateProfile = useUpdateProfile()
   const { upload, progress } = useMediaUpload()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -108,7 +127,10 @@ export function ProfilePanel() {
           size="large"
           preload
         />
-        <p className="text-ink text-lg font-semibold">@{session.username}</p>
+        <p className="text-ink flex items-center gap-2 text-lg font-semibold">
+          @{session.username}
+          {profile.data?.premium && <PremiumBadge label={t('profile.premiumBadge')} />}
+        </p>
 
         <input
           ref={fileInput}

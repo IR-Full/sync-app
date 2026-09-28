@@ -6239,6 +6239,13 @@ func (x *Profile) GetAvatarRef() string {
 	return ""
 }
 
+func (x *Profile) GetPremium() bool {
+	if x != nil {
+		return x.Premium
+	}
+	return false
+}
+
 // AccountDelete erases the CALLER's account — the store-mandated counterpart to
 // registration (Apple 5.1.1(v), Google Play's account-deletion policy): an app
 // that lets a user create an account in-app must let them destroy it in-app.

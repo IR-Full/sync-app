@@ -2229,6 +2229,10 @@ export const descriptor = {
                   "type": "string",
                   "id": 4,
                   "protoName": "avatar_ref"
+                },
+                "premium": {
+                  "type": "bool",
+                  "id": 5
                 }
               }
             },

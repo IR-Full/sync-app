@@ -840,6 +840,9 @@ message Profile {
   string username = 2;
   string display_name = 3;
   string avatar_ref = 4;
+  // premium marks a paying account, for the badge clients draw beside the name.
+  // False where the deployment sells nothing — see the Go comment.
+  bool premium = 5;
 }
 
 // AccountDelete erases the CALLER's account — the store-mandated counterpart to

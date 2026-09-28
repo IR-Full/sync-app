@@ -320,3 +320,29 @@ func TestProfileRejectsUnrenderableNames(t *testing.T) {
 		t.Fatalf("unknown handle got code %d, want not-found", eb.Code)
 	}
 }
+
+// TestNoBadgeWhereNothingIsForSale covers the condition that is easy to get
+// backwards.
+//
+// The harness runs billing with no acquirer, so every account is ungated — which
+// includes the badge entitlement. Marking on the entitlement alone would put a
+// "premium" badge beside every name on every self-hosted install, where nobody
+// has paid for anything, and a badge everybody has is not a badge.
+func TestNoBadgeWhereNothingIsForSale(t *testing.T) {
+	addr := startGateway(t)
+	alice := connect(t, addr, "badgealice", "secret123")
+	bob := connect(t, addr, "badgebob", "secret123")
+
+	bob.send(t, wire.MsgProfileGet, 1, wire.ProfileGetBody{Target: "@badgealice"})
+	e := bob.readUntil(t, wire.MsgProfile)
+	var p wire.ProfileBody
+	if err := wire.Unmarshal(e.Body, &p); err != nil {
+		t.Fatalf("decode PROFILE: %v", err)
+	}
+	if p.UserID != alice.userID {
+		t.Fatalf("read the wrong profile: %s", p.UserID)
+	}
+	if p.Premium {
+		t.Error("an account is marked as paying on a deployment that sells nothing")
+	}
+}

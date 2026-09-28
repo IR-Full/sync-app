@@ -157,7 +157,7 @@ func toProto(v any) proto.Message {
 	case ProfileSetBody:
 		return &pb.ProfileSet{DisplayName: b.DisplayName, AvatarRef: b.AvatarRef, ClearAvatar: b.ClearAvatar}
 	case ProfileBody:
-		return &pb.Profile{UserId: b.UserID, Username: b.Username, DisplayName: b.DisplayName, AvatarRef: b.AvatarRef}
+		return &pb.Profile{UserId: b.UserID, Username: b.Username, DisplayName: b.DisplayName, AvatarRef: b.AvatarRef, Premium: b.Premium}
 	case AccountDeleteBody:
 		return &pb.AccountDelete{Password: b.Password, Reason: b.Reason}
 	case AccountDeletedBody:
@@ -501,7 +501,7 @@ func protoTarget(v any) (proto.Message, func()) {
 	case *ProfileBody:
 		m := &pb.Profile{}
 		return m, func() {
-			*t = ProfileBody{UserID: m.UserId, Username: m.Username, DisplayName: m.DisplayName, AvatarRef: m.AvatarRef}
+			*t = ProfileBody{UserID: m.UserId, Username: m.Username, DisplayName: m.DisplayName, AvatarRef: m.AvatarRef, Premium: m.Premium}
 		}
 	case *AccountDeleteBody:
 		m := &pb.AccountDelete{}

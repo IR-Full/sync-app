@@ -110,6 +110,7 @@ func (c *conn) handleProfileGet(ctx context.Context, e wire.Envelope) error {
 	}
 
 	out := profileOf(u)
+	out.Premium = c.hasBadge(ctx, u.ID)
 	// The avatar is gated; the display name and handle are not. Those two are how
 	// an account is addressed and recognised, so hiding them would produce a
 	// conversation with a blank row rather than a private one — and the handle is
@@ -159,6 +160,7 @@ func (c *conn) handleProfileSet(ctx context.Context, e wire.Envelope) error {
 	// Mirror to the user's OTHER devices: a name changed on the phone must not
 	// stay stale on the desktop until it happens to reconnect.
 	out := profileOf(u)
+	out.Premium = c.hasBadge(ctx, u.ID)
 	c.gw.routeToUser(ctx, c.userID, "", wire.MsgProfile, wire.Marshal(out))
 	return c.reply(wire.MsgProfile, e.RequestID, out)
 }
@@ -167,6 +169,26 @@ func profileOf(u *model.User) wire.ProfileBody {
 	return wire.ProfileBody{
 		UserID: u.ID, Username: u.Username, DisplayName: u.DisplayName, AvatarRef: u.AvatarRef,
 	}
+}
+
+// hasBadge reports whether an account should be marked as paying.
+//
+// Two conditions, and the second is the one that is easy to miss: the DEPLOYMENT
+// must sell tiers at all. Without an acquirer every account is ungated, which
+// includes the badge entitlement — so marking on the entitlement alone would put
+// a "premium" badge beside every name on every self-hosted install, where nobody
+// has paid for anything. A badge that everyone has is not a badge.
+//
+// One entitlement read per PROFILE_GET, which is a metered, deliberate call. It
+// is deliberately NOT done for chat-list rows: that would be a billing lookup per
+// row on a hot path. Putting the badge in lists wants the flag denormalised onto
+// the user row and refreshed when a subscription changes, which is a different
+// piece of work rather than a bigger loop.
+func (c *conn) hasBadge(ctx context.Context, userID string) bool {
+	if !c.sellsTiers() || c.gw.svc.Billing == nil {
+		return false
+	}
+	return c.gw.svc.Billing.Entitlements(ctx, userID).Badge
 }
 
 // validDisplayName accepts a printable, single-line label. Control characters

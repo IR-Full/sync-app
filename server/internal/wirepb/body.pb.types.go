@@ -1186,6 +1186,9 @@ type Profile struct {
 	Username    string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	DisplayName string `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	AvatarRef   string `protobuf:"bytes,4,opt,name=avatar_ref,json=avatarRef,proto3" json:"avatar_ref,omitempty"`
+	// premium marks a paying account, for the badge clients draw beside the name.
+	// False where the deployment sells nothing — see the Go comment.
+	Premium bool `protobuf:"varint,5,opt,name=premium,proto3" json:"premium,omitempty"`
 }
 type AccountDelete struct {
 	state         protoimpl.MessageState

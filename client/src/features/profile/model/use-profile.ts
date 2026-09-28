@@ -10,6 +10,16 @@ export interface Profile {
   username: string
   displayName: string
   avatarRef: string
+  /**
+   * A paying account, for the badge beside the name.
+   *
+   * Taken from the SERVER rather than from our own entitlements, because the two
+   * differ in the case that matters: on a deployment with no acquirer everybody
+   * is entitled to everything, and a badge everybody has is not a badge. The
+   * server already draws that distinction; reading `entitlements.badge` here
+   * would lose it.
+   */
+  premium: boolean
 }
 
 function toProfile(body: Wire.Profile): Profile {
@@ -18,6 +28,7 @@ function toProfile(body: Wire.Profile): Profile {
     username: body.username,
     displayName: body.displayName,
     avatarRef: body.avatarRef,
+    premium: body.premium ?? false,
   }
 }
 

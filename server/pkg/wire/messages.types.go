@@ -1050,6 +1050,12 @@ type ProfileBody struct {
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name,omitempty"`
 	AvatarRef   string `json:"avatar_ref,omitempty"`
+	// Premium marks a paying account, for the badge clients draw beside the name.
+	//
+	// False on a deployment that sells nothing, even though everyone there is
+	// entitled to everything: a badge says "this person pays", and where nobody
+	// pays, marking everybody says nothing and only looks broken.
+	Premium bool `json:"premium,omitempty"`
 }
 
 // AccountDeleteBody erases the CALLER's account. The password is re-checked
