@@ -98,6 +98,10 @@ type ChatService interface {
 	// (chat, user), so there is no shape of the call that touches another member's
 	// row — these are one person's settings about a shared conversation.
 	SetChatFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) (model.MemberFlags, error)
+	// CountPinnedChats backs the MaxPinnedChats entitlement. The ceiling is applied
+	// at the gateway rather than in the chat service, because only the gateway
+	// knows the caller's tier — the chat service has no business importing billing.
+	CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID string) (int, error)
 	CreateGroup(ctx context.Context, ownerID, title string, typ model.ChatType, members []string) (*model.Chat, error)
 }
 

@@ -282,6 +282,15 @@ message ChatUserRequest {
   string user_id = 2;
 }
 message BoolReply { bool ok = 1; }
+// CountReply carries a plain tally. Its own message rather than reusing an
+// existing reply, because a count is not a boolean and squeezing it into one
+// would lose the number the caller actually needs.
+message CountReply { int32 count = 1; }
+message PinnedCountRequest {
+  string user_id = 1;
+  // Ignored by the count, so the caller can ask "how many OTHERS are pinned".
+  string except_chat_id = 2;
+}
 
 // UserChatsRequest pages a user's chat list by keyset over the chat id. The
 // whole summary is built inside the chat service: assembling it at the gateway
@@ -364,6 +373,11 @@ service ChatService {
   // exactly the case that matters: in a group every member may post and only
   // admins may moderate.
   rpc CanModerate(ChatUserRequest) returns (BoolReply);
+  // CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
+  // gateway enforces because only the gateway knows the caller's tier. The
+  // exclusion lets it answer "is there room for THIS chat" without tripping over
+  // a client re-sending flags for one that is already pinned.
+  rpc CountPinnedChatsExcept(PinnedCountRequest) returns (CountReply);
 }
 
 // ---- Message service (broker write path + read path) ----

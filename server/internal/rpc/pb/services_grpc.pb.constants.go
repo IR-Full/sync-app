@@ -90,21 +90,22 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ChatService_EnsureDirect_FullMethodName  = "/syncapp.rpc.v1.ChatService/EnsureDirect"
-	ChatService_EnsureSecret_FullMethodName  = "/syncapp.rpc.v1.ChatService/EnsureSecret"
-	ChatService_FindDirect_FullMethodName    = "/syncapp.rpc.v1.ChatService/FindDirect"
-	ChatService_Get_FullMethodName           = "/syncapp.rpc.v1.ChatService/Get"
-	ChatService_CreateGroup_FullMethodName   = "/syncapp.rpc.v1.ChatService/CreateGroup"
-	ChatService_Members_FullMethodName       = "/syncapp.rpc.v1.ChatService/Members"
-	ChatService_UserChats_FullMethodName     = "/syncapp.rpc.v1.ChatService/UserChats"
-	ChatService_UserChatPage_FullMethodName  = "/syncapp.rpc.v1.ChatService/UserChatPage"
-	ChatService_SetChatFlags_FullMethodName  = "/syncapp.rpc.v1.ChatService/SetChatFlags"
-	ChatService_UserChatIDs_FullMethodName   = "/syncapp.rpc.v1.ChatService/UserChatIDs"
-	ChatService_MemberIDs_FullMethodName     = "/syncapp.rpc.v1.ChatService/MemberIDs"
-	ChatService_MemberIDsPage_FullMethodName = "/syncapp.rpc.v1.ChatService/MemberIDsPage"
-	ChatService_CanPost_FullMethodName       = "/syncapp.rpc.v1.ChatService/CanPost"
-	ChatService_IsMember_FullMethodName      = "/syncapp.rpc.v1.ChatService/IsMember"
-	ChatService_CanModerate_FullMethodName   = "/syncapp.rpc.v1.ChatService/CanModerate"
+	ChatService_EnsureDirect_FullMethodName           = "/syncapp.rpc.v1.ChatService/EnsureDirect"
+	ChatService_EnsureSecret_FullMethodName           = "/syncapp.rpc.v1.ChatService/EnsureSecret"
+	ChatService_FindDirect_FullMethodName             = "/syncapp.rpc.v1.ChatService/FindDirect"
+	ChatService_Get_FullMethodName                    = "/syncapp.rpc.v1.ChatService/Get"
+	ChatService_CreateGroup_FullMethodName            = "/syncapp.rpc.v1.ChatService/CreateGroup"
+	ChatService_Members_FullMethodName                = "/syncapp.rpc.v1.ChatService/Members"
+	ChatService_UserChats_FullMethodName              = "/syncapp.rpc.v1.ChatService/UserChats"
+	ChatService_UserChatPage_FullMethodName           = "/syncapp.rpc.v1.ChatService/UserChatPage"
+	ChatService_SetChatFlags_FullMethodName           = "/syncapp.rpc.v1.ChatService/SetChatFlags"
+	ChatService_UserChatIDs_FullMethodName            = "/syncapp.rpc.v1.ChatService/UserChatIDs"
+	ChatService_MemberIDs_FullMethodName              = "/syncapp.rpc.v1.ChatService/MemberIDs"
+	ChatService_MemberIDsPage_FullMethodName          = "/syncapp.rpc.v1.ChatService/MemberIDsPage"
+	ChatService_CanPost_FullMethodName                = "/syncapp.rpc.v1.ChatService/CanPost"
+	ChatService_IsMember_FullMethodName               = "/syncapp.rpc.v1.ChatService/IsMember"
+	ChatService_CanModerate_FullMethodName            = "/syncapp.rpc.v1.ChatService/CanModerate"
+	ChatService_CountPinnedChatsExcept_FullMethodName = "/syncapp.rpc.v1.ChatService/CountPinnedChatsExcept"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -173,6 +174,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CanModerate",
 			Handler:    _ChatService_CanModerate_Handler,
+		},
+		{
+			MethodName: "CountPinnedChatsExcept",
+			Handler:    _ChatService_CountPinnedChatsExcept_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

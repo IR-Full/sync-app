@@ -1692,6 +1692,22 @@ func (s *Store) SetMemberFlags(_ context.Context, chatID, userID string, f model
 	return nil
 }
 
+// CountPinnedChatsExcept counts this user's pinned chats, ignoring one.
+func (s *Store) CountPinnedChatsExcept(_ context.Context, userID, exceptChatID string) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	n := 0
+	for chatID, members := range s.members {
+		if chatID == exceptChatID {
+			continue
+		}
+		if m, ok := members[userID]; ok && m.Flags.Pinned {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (s *Store) GetMemberFlags(_ context.Context, chatID, userID string) (model.MemberFlags, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

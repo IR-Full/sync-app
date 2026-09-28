@@ -500,6 +500,19 @@ func (s *Service) SetChatFlags(ctx context.Context, chatID, userID string, f mod
 	return fs.GetMemberFlags(ctx, chatID, userID)
 }
 
+// CountPinnedChats counts the chats a user has pinned to the top of their list.
+//
+// It exists for the MaxPinnedChats entitlement, and it answers with a NUMBER
+// because the question is "is there room for one more" — paging every chat to
+// find out would make pinning cost more the more chats somebody has.
+func (s *Service) CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID string) (int, error) {
+	fs, ok := s.chats.(store.MemberFlagStore)
+	if !ok {
+		return 0, store.ErrUnsupported
+	}
+	return fs.CountPinnedChatsExcept(ctx, userID, exceptChatID)
+}
+
 // ChatFlags reads one member's settings. Used by the notification path to decide
 // whether a push is wanted at all.
 func (s *Service) ChatFlags(ctx context.Context, chatID, userID string) (model.MemberFlags, error) {

@@ -1598,4 +1598,36 @@ func testChatList(t *testing.T, s store.Stores) {
 	if err := flags.SetMemberFlags(ctx(), seeds[1].chatID, nextID(), want); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("a non-member's flag write returned %v, want ErrNotFound", err)
 	}
+
+	// CountPinnedChatsExcept backs the MaxPinnedChats ceiling, which was declared
+	// in every tier and enforced nowhere. The EXCLUSION is the part worth pinning
+	// down: clients replace the whole flag set on every write, so an already-pinned
+	// chat is re-sent routinely, and a count that included it would refuse a no-op
+	// as soon as somebody reached their limit — and make unpinning impossible.
+	if err := flags.SetMemberFlags(ctx(), seeds[0].chatID, me, model.MemberFlags{Pinned: true}); err != nil {
+		t.Fatalf("SetMemberFlags: %v", err)
+	}
+	// seeds[0] and seeds[1] are both pinned now.
+	all, err := flags.CountPinnedChatsExcept(ctx(), me, "")
+	if err != nil {
+		t.Fatalf("CountPinnedChatsExcept: %v", err)
+	}
+	if all != 2 {
+		t.Fatalf("counted %d pinned chats, want 2", all)
+	}
+	others, err := flags.CountPinnedChatsExcept(ctx(), me, seeds[1].chatID)
+	if err != nil {
+		t.Fatalf("CountPinnedChatsExcept: %v", err)
+	}
+	if others != 1 {
+		t.Fatalf("counted %d pinned chats other than seeds[1], want 1", others)
+	}
+	// Somebody else's pins are not mine.
+	mine, err := flags.CountPinnedChatsExcept(ctx(), nextID(), "")
+	if err != nil {
+		t.Fatalf("CountPinnedChatsExcept: %v", err)
+	}
+	if mine != 0 {
+		t.Fatalf("a user with no memberships has %d pinned chats", mine)
+	}
 }

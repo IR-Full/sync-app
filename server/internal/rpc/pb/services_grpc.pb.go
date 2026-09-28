@@ -643,6 +643,16 @@ func (c *chatServiceClient) CanModerate(ctx context.Context, in *ChatUserRequest
 	return out, nil
 }
 
+func (c *chatServiceClient) CountPinnedChatsExcept(ctx context.Context, in *PinnedCountRequest, opts ...grpc.CallOption) (*CountReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountReply)
+	err := c.cc.Invoke(ctx, ChatService_CountPinnedChatsExcept_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -691,6 +701,9 @@ func (UnimplementedChatServiceServer) IsMember(context.Context, *ChatUserRequest
 }
 func (UnimplementedChatServiceServer) CanModerate(context.Context, *ChatUserRequest) (*BoolReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanModerate not implemented")
+}
+func (UnimplementedChatServiceServer) CountPinnedChatsExcept(context.Context, *PinnedCountRequest) (*CountReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountPinnedChatsExcept not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -976,6 +989,24 @@ func _ChatService_CanModerate_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).CanModerate(ctx, req.(*ChatUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_CountPinnedChatsExcept_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinnedCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CountPinnedChatsExcept(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CountPinnedChatsExcept_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CountPinnedChatsExcept(ctx, req.(*PinnedCountRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

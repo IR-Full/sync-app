@@ -6,6 +6,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 	"unicode"
@@ -237,6 +238,19 @@ func (c *conn) handleChatFlags(ctx context.Context, e wire.Envelope) error {
 	if body.MutedUntil > maxMuteUntil {
 		body.MutedUntil = maxMuteUntil
 	}
+	// The MaxPinnedChats ceiling, which was declared in every tier and enforced
+	// nowhere — so a free account could pin without limit and the number it was
+	// sold meant nothing.
+	//
+	// Checked only when pinning is being turned ON, and only when the chat is not
+	// already pinned: re-sending the same flags (which clients do, since the server
+	// REPLACES rather than patches) must not fail once somebody is at their limit,
+	// and neither must unpinning.
+	if body.Pinned {
+		if err := c.checkPinCeiling(ctx, body.ChatID); err != nil {
+			return c.replyError(e.RequestID, wire.ErrPremiumRequired, err.Error())
+		}
+	}
 	flags, err := c.gw.svc.Chat.SetChatFlags(ctx, body.ChatID, c.userID, model.MemberFlags{
 		MutedUntil: body.MutedUntil, Pinned: body.Pinned, Archived: body.Archived,
 	})
@@ -251,4 +265,35 @@ func (c *conn) handleChatFlags(ctx context.Context, e wire.Envelope) error {
 		Pinned:     flags.Pinned,
 		Archived:   flags.Archived,
 	})
+}
+
+// checkPinCeiling reports whether the caller may pin one more chat.
+//
+// The ceiling is the caller's MaxPinnedChats entitlement, which was declared in
+// every tier and read by nothing — so the number a plan advertised had no effect
+// and a free account could pin without limit.
+//
+// A zero or negative ceiling is treated as NO limit rather than as "none
+// allowed". That direction matters: the value is absent exactly when a deployment
+// has no tiers, and reading absence as zero would stop everyone from pinning
+// anything on every self-hosted install.
+//
+// A counting error also lets the pin through. Refusing on a failed read would
+// turn a hiccup in the chat service into "you have too many pinned chats", which
+// is a confusing lie about the user's own account; the cost of being wrong the
+// other way is one pin over the line.
+func (c *conn) checkPinCeiling(ctx context.Context, chatID string) error {
+	limit := c.entitlements(ctx).MaxPinnedChats
+	if limit <= 0 {
+		return nil
+	}
+	others, err := c.gw.svc.Chat.CountPinnedChatsExcept(ctx, c.userID, chatID)
+	if err != nil {
+		c.log.Warn("pin ceiling not checked", "user", logUser(c.userID), "err", err)
+		return nil
+	}
+	if int32(others) >= limit {
+		return fmt.Errorf("your plan allows %d pinned chats", limit)
+	}
+	return nil
 }

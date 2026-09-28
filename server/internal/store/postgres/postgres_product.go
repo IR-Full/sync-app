@@ -1111,6 +1111,21 @@ func derefStr(p *string) string {
 	return *p
 }
 
+// CountPinnedChats counts this user's pinned chats.
+//
+// Counted in the database rather than by reading rows back, because the answer is
+// a number and the caller only wants to know whether there is room for one more.
+func (s *Store) CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID string) (int, error) {
+	var n int
+	err := s.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM chat_members WHERE user_id=$1 AND pinned AND chat_id <> $2`,
+		atoi(userID), atoi(exceptChatID)).Scan(&n)
+	if err != nil {
+		return 0, wrap(err)
+	}
+	return n, nil
+}
+
 // SetMemberFlags writes one member's private per-chat settings.
 //
 // The (chat_id, user_id) predicate is the authorization: flags are the member's

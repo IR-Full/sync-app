@@ -455,6 +455,17 @@ type MemberFlagStore interface {
 	SetMemberFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) error
 	// GetMemberFlags reads them back. ErrNotFound when the user is not a member.
 	GetMemberFlags(ctx context.Context, chatID, userID string) (model.MemberFlags, error)
+	// CountPinnedChatsExcept counts the chats this user has pinned, ignoring one.
+	//
+	// A count rather than a page of summaries: the caller is answering "is there
+	// room for one more", and paging every chat to find out would make pinning cost
+	// more the more chats somebody has.
+	//
+	// The exclusion is what makes it usable as a ceiling check. Clients REPLACE the
+	// whole flag set on every write, so the same already-pinned chat is re-sent
+	// routinely; counting it would refuse a no-op the moment somebody reached their
+	// limit, and unpinning would become impossible.
+	CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID string) (int, error)
 }
 
 // TwoFactorStore owns second-factor enrolment.

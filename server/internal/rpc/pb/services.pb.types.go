@@ -406,6 +406,23 @@ type BoolReply struct {
 
 	Ok bool `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
 }
+type CountReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Count int32 `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+}
+
+type PinnedCountRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Ignored by the count, so the caller can ask "how many OTHERS are pinned".
+	ExceptChatId string `protobuf:"bytes,2,opt,name=except_chat_id,json=exceptChatId,proto3" json:"except_chat_id,omitempty"`
+}
 type UserChatsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

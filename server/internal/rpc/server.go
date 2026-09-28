@@ -243,6 +243,14 @@ func (c *ChatServer) CanModerate(ctx context.Context, r *pb.ChatUserRequest) (*p
 	return &pb.BoolReply{Ok: ok}, nil
 }
 
+func (c *ChatServer) CountPinnedChatsExcept(ctx context.Context, r *pb.PinnedCountRequest) (*pb.CountReply, error) {
+	n, err := c.svc.CountPinnedChatsExcept(ctx, r.UserId, r.ExceptChatId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &pb.CountReply{Count: int32(n)}, nil
+}
+
 // ---- Message (broker write path + read path) ----
 
 // RegisterMessage registers the message service on a gRPC server.

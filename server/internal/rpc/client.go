@@ -266,6 +266,16 @@ func (c *ChatClient) IsMember(ctx context.Context, chatID, userID string) (bool,
 	return r.Ok, nil
 }
 
+// CountPinnedChats counts the caller's pinned chats, for the MaxPinnedChats
+// entitlement the gateway enforces.
+func (c *ChatClient) CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID string) (int, error) {
+	r, err := c.c.CountPinnedChatsExcept(ctx, &pb.PinnedCountRequest{UserId: userID, ExceptChatId: exceptChatID})
+	if err != nil {
+		return 0, fromStatus(err)
+	}
+	return int(r.Count), nil
+}
+
 // CanModerate authorizes acting on another member's message. The error is
 // returned rather than folded into a false, because the caller must be able to
 // tell "chatd says no" from "chatd could not be reached" — the first is a

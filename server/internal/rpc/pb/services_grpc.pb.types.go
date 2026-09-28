@@ -87,6 +87,11 @@ type ChatServiceClient interface {
 	// exactly the case that matters: in a group every member may post and only
 	// admins may moderate.
 	CanModerate(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
+	// CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
+	// gateway enforces because only the gateway knows the caller's tier. The
+	// exclusion lets it answer "is there room for THIS chat" without tripping over
+	// a client re-sending flags for one that is already pinned.
+	CountPinnedChatsExcept(ctx context.Context, in *PinnedCountRequest, opts ...grpc.CallOption) (*CountReply, error)
 }
 
 type chatServiceClient struct {
@@ -123,6 +128,11 @@ type ChatServiceServer interface {
 	// exactly the case that matters: in a group every member may post and only
 	// admins may moderate.
 	CanModerate(context.Context, *ChatUserRequest) (*BoolReply, error)
+	// CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
+	// gateway enforces because only the gateway knows the caller's tier. The
+	// exclusion lets it answer "is there room for THIS chat" without tripping over
+	// a client re-sending flags for one that is already pinned.
+	CountPinnedChatsExcept(context.Context, *PinnedCountRequest) (*CountReply, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
