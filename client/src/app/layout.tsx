@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { headers } from 'next/headers'
 
 import './globals.css'
 import { Providers } from './providers'
@@ -7,9 +8,16 @@ import { Providers } from './providers'
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin', 'cyrillic'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
+/**
+ * Locale-independent on purpose. This is a root-layout server export, evaluated
+ * once per build with no request and no access to the store the locale lives in,
+ * so it cannot follow the user's language — and a description hardcoded in one
+ * language would simply be wrong for the other. English is the reference locale
+ * (see `shared/i18n/dictionaries`), so it is the honest default here.
+ */
 export const metadata: Metadata = {
   title: 'SyncApp',
-  description: 'Мессенджер на кастомном бинарном протоколе SyncApp',
+  description: 'Messenger on a custom binary protocol',
 }
 
 export const viewport: Viewport = {
@@ -22,6 +30,12 @@ export const viewport: Viewport = {
 /**
  * Applied before first paint so a dark-mode user never sees a white flash.
  * Inline because any deferred script runs after the browser has already painted.
+ *
+ * This is the one script in the app written by hand rather than emitted by
+ * Next.js, so it is the one that has to carry the CSP nonce itself — everything
+ * else Next.js stamps automatically once it sees the nonce in the request's
+ * policy. Without the attribute it is simply blocked, and the flash it exists to
+ * prevent comes back.
  */
 const themeScript = `
 (function () {
@@ -35,7 +49,13 @@ const themeScript = `
 })();
 `
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  // Set by src/proxy.ts. Absent only if the proxy did not run for this path, in
+  // which case there is no nonce-based policy to satisfy either.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
+
   return (
     <html
       lang="ru"
@@ -43,7 +63,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="antialiased">
         <Providers>{children}</Providers>

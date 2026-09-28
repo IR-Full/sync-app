@@ -45,6 +45,11 @@ type conn struct {
 	done       chan struct{}
 	closeOnce  sync.Once
 	sendLimit  *ratelimit.Bucket // flood control on state-changing messages
+	// readLimit meters the amplifying READS (history, chat list, the *_SYNC and
+	// *_LIST families). A separate bucket rather than a share of sendLimit: writes
+	// are rare and expensive to get wrong, reads are frequent and normal, and one
+	// budget for both would either throttle scrolling or stop metering sends.
+	readLimit *ratelimit.Bucket
 	// Typing is throttled in two stages. The per-connection bucket is checked
 	// FIRST, before the chat is resolved: it bounds the resolve work and, just as
 	// importantly, bounds how many keys the per-chat limiter below can ever hold

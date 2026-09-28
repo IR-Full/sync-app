@@ -12,15 +12,33 @@ import Foundation
 public struct ChatListBody: ProtoMessage, Sendable, Equatable {
     public var after = ""
     public var limit: Int32 = 0
+    /// The other half of the cursor: the previous page's last `lastActivityAt`.
+    ///
+    /// Both halves are needed because the list is ordered by ACTIVITY, which reorders
+    /// as messages arrive — so a cursor naming only a chat id skips and repeats rows
+    /// exactly when the account is busy, which is when somebody is most likely to be
+    /// scrolling it.
+    public var afterActivity: Int64 = 0
+    /// Lists the archived pile instead of hiding it.
+    public var includeArchived = false
 
-    public init(after: String = "", limit: Int32 = 0) {
+    public init(
+        after: String = "",
+        limit: Int32 = 0,
+        afterActivity: Int64 = 0,
+        includeArchived: Bool = false
+    ) {
         self.after = after
         self.limit = limit
+        self.afterActivity = afterActivity
+        self.includeArchived = includeArchived
     }
 
     public func encode(to w: inout ProtoWriter) {
         w.string(1, after)
         w.int32(2, limit)
+        w.int64(3, afterActivity)
+        w.bool(4, includeArchived)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -29,6 +47,8 @@ public struct ChatListBody: ProtoMessage, Sendable, Equatable {
             switch f.number {
             case 1: after = try r.string()
             case 2: limit = try r.int32()
+            case 3: afterActivity = try r.int64()
+            case 4: includeArchived = try r.bool()
             default: try r.skip(f)
             }
         }
@@ -47,9 +67,25 @@ public struct ChatSummaryBody: ProtoMessage, Sendable, Equatable {
     public var lastSeq: UInt64 = 0
     /// This account's role here: member | admin | owner.
     public var myRole = ""
-    /// Filled for DIRECT chats only. A 1:1 chat has no title, so without the
-    /// peer there is nothing to name the row after.
+    /// Filled for two-party chats — direct AND secret. Neither has a title, so
+    /// without the peer there is nothing to name the row after.
     public var peerID = ""
+
+    /// The newest live message. Absent for an empty chat.
+    ///
+    /// None of what follows used to be sent, and a client that wanted a preview, an
+    /// unread badge or a sort order had to call `HISTORY` per chat to work it out — so
+    /// the server's N+1 moved onto the network and became one round trip per row.
+    public var lastMessage: NewMessageBody?
+    public var unreadCount: Int64 = 0
+    /// The sort key AND the paging cursor. Falls back to the chat's creation time, so a
+    /// brand-new empty chat appears at the top rather than the bottom.
+    public var lastActivityAt: Int64 = 0
+    /// This account's own settings. A DEADLINE for the mute rather than a flag: "for
+    /// eight hours" is what muting usually means and a boolean cannot say it.
+    public var mutedUntil: Int64 = 0
+    public var pinned = false
+    public var archived = false
 
     public init() {}
 
@@ -62,6 +98,12 @@ public struct ChatSummaryBody: ProtoMessage, Sendable, Equatable {
         w.uint64(6, lastSeq)
         w.string(7, myRole)
         w.string(8, peerID)
+        w.message(9, lastMessage)
+        w.int64(10, unreadCount)
+        w.int64(11, lastActivityAt)
+        w.int64(12, mutedUntil)
+        w.bool(13, pinned)
+        w.bool(14, archived)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -76,6 +118,12 @@ public struct ChatSummaryBody: ProtoMessage, Sendable, Equatable {
             case 6: lastSeq = try r.uint64()
             case 7: myRole = try r.string()
             case 8: peerID = try r.string()
+            case 9: lastMessage = try r.message(NewMessageBody.self)
+            case 10: unreadCount = try r.int64()
+            case 11: lastActivityAt = try r.int64()
+            case 12: mutedUntil = try r.int64()
+            case 13: pinned = try r.bool()
+            case 14: archived = try r.bool()
             default: try r.skip(f)
             }
         }
@@ -87,6 +135,8 @@ public struct ChatsBody: ProtoMessage, Sendable, Equatable {
     public var chats: [ChatSummaryBody] = []
     public var nextAfter = ""
     public var done = false
+    /// Completes the cursor; echoed back in the next `ChatListBody`.
+    public var nextAfterActivity: Int64 = 0
 
     public init() {}
 
@@ -94,6 +144,7 @@ public struct ChatsBody: ProtoMessage, Sendable, Equatable {
         w.repeatedMessage(1, chats)
         w.string(2, nextAfter)
         w.bool(3, done)
+        w.int64(4, nextAfterActivity)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -103,6 +154,7 @@ public struct ChatsBody: ProtoMessage, Sendable, Equatable {
             case 1: chats.append(try r.message(ChatSummaryBody.self))
             case 2: nextAfter = try r.string()
             case 3: done = try r.bool()
+            case 4: nextAfterActivity = try r.int64()
             default: try r.skip(f)
             }
         }

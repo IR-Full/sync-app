@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"strings"
@@ -71,7 +72,7 @@ func TestBrokerValidation(t *testing.T) {
 		{"unknown op", Command{Op: "frobnicate", ActorID: user, ChatID: chatID}, ErrBadCommand},
 	}
 	for _, tc := range cases {
-		if _, err := b.Submit(ctx, tc.cmd); err != tc.want {
+		if _, err := b.Submit(ctx, tc.cmd); !errors.Is(err, tc.want) {
 			t.Fatalf("%s: got %v want %v", tc.name, err, tc.want)
 		}
 	}

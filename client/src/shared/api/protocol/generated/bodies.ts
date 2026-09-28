@@ -1,5 +1,5 @@
 // GENERATED FILE — do not edit by hand.
-// Source: server/proto/SyncApp/v1/body.proto (regenerate: npm run proto:gen)
+// Source: server/proto/syncapp/v1/body.proto (package syncapp.v1) (regenerate: npm run proto:gen)
 //
 // Every field is required here because the codec decodes with `defaults: true`,
 // so proto3 scalars are always materialised. Use `Encodable<T>` when building a
@@ -36,6 +36,7 @@ export interface Auth {
   password: string
   register: boolean
   displayName: string
+  totpCode: string
 }
 
 export interface AuthOK {
@@ -184,6 +185,7 @@ export interface Resume {
 export interface ResumeOK {
   sessionId: string
   fromSeq: number
+  resumeToken: string
 }
 
 export interface Error {
@@ -217,6 +219,8 @@ export interface MediaURL {
 export interface Search {
   query: string
   limit: number
+  chatId: string
+  senderId: string
 }
 
 export interface SearchHit {
@@ -225,6 +229,7 @@ export interface SearchHit {
   senderId: string
   seq: number
   text: string
+  createdAt: number
 }
 
 export interface SearchResults {
@@ -255,6 +260,12 @@ export interface KeyBundle {
   oneTimePrekey: string
 }
 
+export interface KeyState {
+  oneTimePrekeysLeft: number
+  signedPrekeyAgeMs: number
+  accepted: number
+}
+
 export interface KeyBundles {
   userId: string
   bundles: KeyBundle[]
@@ -267,6 +278,119 @@ export interface SecretMsg {
   fromDeviceId: string
   ratchetHeader: string
   ciphertext: string
+  queueId: string
+  ratchetHeaderBin: string
+  ciphertextBin: string
+}
+
+export interface BillingPlans {
+  country: string
+}
+
+export interface BillingOffers {
+  offers: PlanOffer[]
+}
+
+export interface PlanOffer {
+  plan: string
+  amountMinor: number
+  currency: string
+  periodDays: number
+  methods: string[]
+}
+
+export interface BillingCheckout {
+  plan: string
+  method: string
+  idempotencyKey: string
+  country: string
+  returnUrl: string
+}
+
+export interface BillingPayment {
+  paymentId: string
+  status: string
+  amountMinor: number
+  currency: string
+  payUrl: string
+  qrPayload: string
+  deduplicated: boolean
+}
+
+export interface BillingStatus {
+}
+
+export interface BillingCancel {
+}
+
+export interface Subscription {
+  plan: string
+  status: string
+  periodEnd: number
+  cancelAtPeriodEnd: boolean
+  secretChats: boolean
+  maxUploadBytes: number
+  maxPinnedChats: number
+  folders: boolean
+  advancedSearch: boolean
+  priorityDelivery: boolean
+  voiceTranscription: boolean
+  badge: boolean
+}
+
+export interface PasswordChange {
+  oldPassword: string
+  newPassword: string
+}
+
+export interface PasswordChanged {
+  sessionsRevoked: number
+}
+
+export interface TOTPSetup {
+}
+
+export interface TOTPSetupInfo {
+  secret: string
+  uri: string
+}
+
+export interface TOTPConfirm {
+  code: string
+}
+
+export interface TOTPDisable {
+  password: string
+  code: string
+}
+
+export interface TOTPState {
+  enabled: boolean
+  recoveryLeft: number
+  recoveryCodes: string[]
+  confirmedAtMs: number
+}
+
+export interface SecretAck {
+  toUserId: string
+  toDeviceId: string
+  devices: number
+  queued: boolean
+}
+
+export interface SecretSync {
+  after: string
+  limit: number
+}
+
+export interface SecretSynced {
+  count: number
+  nextAfter: string
+  done: boolean
+}
+
+export interface SecretAcked {
+  ids: string[]
 }
 
 export interface ChatExport {
@@ -538,6 +662,8 @@ export interface PushToken {
 export interface ChatList {
   after: string
   limit: number
+  afterActivity: number
+  includeArchived: boolean
 }
 
 export interface ChatSummary {
@@ -549,12 +675,33 @@ export interface ChatSummary {
   lastSeq: number
   myRole: string
   peerId: string
+  lastMessage: NewMessage | null
+  unreadCount: number
+  lastActivityAt: number
+  mutedUntil: number
+  pinned: boolean
+  archived: boolean
 }
 
 export interface Chats {
   chats: ChatSummary[]
   nextAfter: string
   done: boolean
+  nextAfterActivity: number
+}
+
+export interface ChatFlags {
+  chatId: string
+  mutedUntil: number
+  pinned: boolean
+  archived: boolean
+}
+
+export interface ChatFlagsSet {
+  chatId: string
+  mutedUntil: number
+  pinned: boolean
+  archived: boolean
 }
 
 export interface ProfileGet {
@@ -572,4 +719,64 @@ export interface Profile {
   username: string
   displayName: string
   avatarRef: string
+}
+
+export interface AccountDelete {
+  password: string
+  reason: string
+}
+
+export interface AccountDeleted {
+  userId: string
+  deletedAt: number
+}
+
+export interface SessionList {
+}
+
+export interface SessionInfo {
+  sessionId: string
+  deviceId: string
+  platform: string
+  createdAt: number
+  expiresAt: number
+  current: boolean
+}
+
+export interface Sessions {
+  sessions: SessionInfo[]
+}
+
+export interface SessionRevoke {
+  sessionId: string
+  allIncludingCurrent: boolean
+}
+
+export interface SessionRevoked {
+  revoked: number
+  self: boolean
+}
+
+export interface HistoryPage {
+  messages: NewMessage[]
+  chatId: string
+  nextBefore: number
+  done: boolean
+}
+
+export interface PrivacyGet {
+}
+
+export interface PrivacySet {
+  lastSeen: string
+  avatar: string
+  groups: string
+  pushPreview: boolean
+}
+
+export interface Privacy {
+  lastSeen: string
+  avatar: string
+  groups: string
+  pushPreview: boolean
 }

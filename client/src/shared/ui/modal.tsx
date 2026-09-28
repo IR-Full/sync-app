@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react'
 
+import { useTranslate } from '../i18n'
 import { cn } from '../lib/cn'
 
 /**
@@ -22,6 +23,7 @@ export function Modal({
   className?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const t = useTranslate()
 
   useEffect(() => {
     const dialog = ref.current
@@ -50,7 +52,7 @@ export function Modal({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('common.close')}
           className="text-ink-faint hover:bg-surface-hover hover:text-ink rounded-lg p-1 transition-colors"
         >
           <svg

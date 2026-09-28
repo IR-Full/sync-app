@@ -10,6 +10,7 @@ package poll
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"unicode/utf8"
 
@@ -77,6 +78,11 @@ func (s *Service) Vote(ctx context.Context, pollID, userID string, option int32,
 	if _, err := s.store.Vote(ctx, &model.PollVote{
 		PollID: pollID, UserID: userID, OptionIndex: option, CreatedAt: now,
 	}, p.MultiChoice); err != nil {
+		// The store re-checks `closed` inside the write transaction, so it — not the
+		// read above — is what actually decides. Report it as the same refusal.
+		if errors.Is(err, store.ErrPollClosed) {
+			return nil, ErrClosed
+		}
 		return nil, err
 	}
 	s.broadcast(ctx, p, nil)

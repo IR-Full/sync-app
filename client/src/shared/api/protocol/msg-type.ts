@@ -133,6 +133,105 @@ export const MsgType = {
    * (chat_id, user_id, up_to_chat_seq) is exactly a delivery cursor.
    */
   DELIVERED: 128,
+
+  /**
+   * Account deletion. The store-mandated counterpart to registration: an app
+   * that lets someone create an account in-app must let them destroy it in-app.
+   * The password is re-confirmed because a session token lives on the device.
+   */
+  ACCOUNT_DELETE: 129,
+  ACCOUNT_DELETED: 130,
+
+  /**
+   * Session management — "where am I signed in" and "sign me out of there".
+   * Until these existed, logging out only discarded the token locally while the
+   * session stayed valid on the server for the rest of its lifetime, so a lost
+   * phone kept access.
+   */
+  SESSION_LIST: 131,
+  SESSIONS: 132,
+  SESSION_REVOKE: 133,
+  SESSION_REVOKED: 134,
+
+  /**
+   * One backfill page in a single frame, instead of N NEW frames plus a
+   * HISTORY_OK terminator. Sent only to peers that negotiated CAP_BATCHING.
+   */
+  HISTORY_PAGE: 135,
+
+  /**
+   * Per-user privacy: who may see last-seen and the avatar, and who may add
+   * this account to a group. Readable and writable only for one's own account.
+   */
+  PRIVACY_GET: 136,
+  PRIVACY_SET: 137,
+  PRIVACY: 138,
+
+  /**
+   * Durable secret chats.
+   *
+   * SECRET_SEND was a pure relay: the server published to whichever nodes held
+   * the recipient and discarded the count, so a recipient who happened to be
+   * offline meant the ciphertext was dropped — no store, no push, and no reply to
+   * the sender, which drew "sent" regardless. These four make it survivable:
+   * SECRET_ACK says what the relay actually did, SECRET_SYNC collects what a
+   * device missed, and SECRET_ACKED confirms so the server can drop it.
+   */
+  SECRET_ACK: 139,
+  SECRET_SYNC: 140,
+  SECRET_SYNCED: 141,
+  SECRET_ACKED: 142,
+
+  /**
+   * Per-member chat settings. `muted` existed in the server schema from the first
+   * migration with nothing reading it and no message to set it, so muting a chat
+   * was impossible while looking supported. Pin and archive are the other two a
+   * chat list needs and never had.
+   */
+  CHAT_FLAGS: 143,
+  CHAT_FLAGS_SET: 144,
+
+  /**
+   * Account security. The password could not be CHANGED by any path — so a leaked
+   * one meant a permanently lost account, since revoking sessions does not stop
+   * whoever knows the password from signing in again — and there was no second
+   * factor at all.
+   */
+  PASSWORD_CHANGE: 145,
+  PASSWORD_CHANGED: 146,
+  TOTP_SETUP: 147,
+  TOTP_SETUP_INFO: 148,
+  TOTP_CONFIRM: 149,
+  TOTP_DISABLE: 150,
+  TOTP_STATE: 151,
+
+  /**
+   * Billing. SUBSCRIPTION is both a reply and a server PUSH: a subscription
+   * changes without the client asking (a payment settles, a period lapses), and
+   * until the client hears about it it goes on offering features the server has
+   * started refusing.
+   */
+  BILLING_PLANS: 152,
+  BILLING_OFFERS: 153,
+  BILLING_CHECKOUT: 154,
+  BILLING_PAYMENT: 155,
+  BILLING_STATUS: 156,
+  SUBSCRIPTION: 157,
+  BILLING_CANCEL: 158,
+
+  /**
+   * KEY_STATE answers KEY_PUBLISH with what the directory now holds for this
+   * device: prekeys left, how old the stored signed prekey is, and how many of
+   * the keys just sent were kept.
+   *
+   * It is the only channel for that information. One-time prekeys are consumed by
+   * PEERS fetching bundles, so this device cannot observe its own balance
+   * dropping; the local count only falls when a message actually decrypts with a
+   * key, which misses every fetch that never turned into a message. Left to the
+   * local count, a popular device runs dry and X3DH silently degrades from four
+   * Diffie-Hellmans to three.
+   */
+  KEY_STATE: 159,
 } as const
 
 export type MsgType = (typeof MsgType)[keyof typeof MsgType]

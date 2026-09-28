@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.syncapp.messenger.core.AppError
 import com.syncapp.messenger.core.Outcome
+import com.syncapp.messenger.data.ActiveChatTracker
 import com.syncapp.messenger.data.media.MediaUrlCache
 import com.syncapp.messenger.domain.model.Chat
 import com.syncapp.messenger.domain.model.ChatKind
@@ -55,6 +56,7 @@ class ChatViewModel @Inject constructor(
     private val sendMessage: SendMessageUseCase,
     private val loadOlder: LoadOlderMessagesUseCase,
     private val markRead: MarkChatReadUseCase,
+    private val activeChat: ActiveChatTracker,
     authRepository: AuthRepository,
 ) : ViewModel() {
 
@@ -145,6 +147,13 @@ class ChatViewModel @Inject constructor(
     val input: StateFlow<String> = draft.asStateFlow()
 
     init {
+        // Tell the notification path which chat is on screen, so a push for it is
+        // suppressed rather than posted over the message arriving in front of the
+        // user. Tracks chatKey rather than the route argument, because a chat opened
+        // by handle only acquires its real id once the first message is acked.
+        viewModelScope.launch {
+            chatKey.collect { key -> if (key.isNotEmpty()) activeChat.setActive(key) }
+        }
         viewModelScope.launch {
             chat.collect { current ->
                 _state.update { it.copy(hasMoreHistory = current?.hasMoreHistory ?: false) }
@@ -248,5 +257,13 @@ class ChatViewModel @Inject constructor(
         key.isEmpty() -> null
         key.startsWith("@") -> ChatTarget.DirectPeer(key.removePrefix("@"))
         else -> ChatTarget.Existing(key)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Only if this screen is still the active one: view models are cleared
+        // after the next screen's is created, so an unconditional clear would
+        // cancel the suppression for the chat the user just navigated to.
+        activeChat.clear(chatKey.value)
     }
 }

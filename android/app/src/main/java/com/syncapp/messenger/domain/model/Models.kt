@@ -6,7 +6,58 @@ package com.syncapp.messenger.domain.model
  * by the mappers in `data/mapper`.
  */
 
-enum class ChatKind { DIRECT, GROUP, CHANNEL, UNKNOWN }
+enum class ChatKind {
+    DIRECT,
+    GROUP,
+    CHANNEL,
+
+    /**
+     * End-to-end encrypted, two parties, Premium-gated.
+     *
+     * A chat TYPE rather than a mode, which is the whole design: it is created, listed,
+     * opened and read like any other chat, and the only difference the user sees is a lock
+     * badge. Making it a separate surface — the bottom sheet it used to be — meant secret
+     * conversations had no history, no unread count and no place in the list, so nobody
+     * used them twice.
+     */
+    SECRET,
+    UNKNOWN,
+    ;
+
+    /**
+     * Exactly two participants, so the row is named after the peer rather than a title.
+     *
+     * Both [DIRECT] and [SECRET] qualify, and forgetting the second is why a secret chat
+     * rendered with a blank name and no presence dot.
+     */
+    val isTwoParty: Boolean get() = this == DIRECT || this == SECRET
+
+    /** The messages never leave the devices in plaintext. */
+    val isEndToEnd: Boolean get() = this == SECRET
+}
+
+/**
+ * This account's own settings for one chat.
+ *
+ * All three travel together because the wire carries no field presence: proto3 cannot
+ * express "leave pinned alone", so every write states all three and a caller that
+ * defaulted the ones it did not care about would silently clear them.
+ */
+data class ChatFlags(
+    /** When notifications resume, unix millis. 0 = not muted. */
+    val mutedUntil: Long = 0,
+    val pinned: Boolean = false,
+    val archived: Boolean = false,
+) {
+    /**
+     * Whether notifications are suppressed right NOW.
+     *
+     * Derived from the deadline rather than stored, so a mute expires on its own without
+     * anything having to run at the moment it does.
+     */
+    fun isMuted(nowMs: Long = System.currentTimeMillis()): Boolean =
+        mutedUntil > nowMs
+}
 
 /**
  * Delivery state of an outgoing message. Every step is sourced from a distinct
@@ -105,6 +156,14 @@ data class Chat(
     val myReadSeq: Long = 0,
     val oldestLoadedSeq: Long = 0,
     val hasMoreHistory: Boolean = true,
+    val flags: ChatFlags = ChatFlags(),
+    /**
+     * The sort key: the newest message, falling back to the chat's creation time.
+     *
+     * Separate from [lastMessage] because of that fallback — an empty chat still has a
+     * position, and it is at the top rather than the bottom.
+     */
+    val lastActivityAt: Long = 0,
 )
 
 /**
@@ -177,3 +236,70 @@ sealed interface ChatTarget {
         override val ref: String get() = "@${username.removePrefix("@").lowercase()}"
     }
 }
+
+/**
+ * One live session of this account, as the server sees it.
+ *
+ * Carries no token. The point of showing these is to let a person recognise a
+ * device and decide to end it, not to hand this device another one's
+ * credentials — a list that included them would turn "review my sessions" into
+ * the most dangerous screen in the app.
+ */
+data class DeviceSession(
+    val sessionId: String,
+    val deviceId: String,
+    val platform: String,
+    val createdAtMs: Long,
+    val expiresAtMs: Long,
+    /** The session this connection is authenticated with. */
+    val current: Boolean,
+)
+
+/**
+ * Who may see something.
+ *
+ * Three values rather than a boolean, matching the server: "contacts" is the
+ * setting most people actually want and neither of the other two expresses it.
+ * [UNKNOWN] exists because the wire format is a string and a future server may
+ * send a value this build has never heard of — rendering that as "stricter than
+ * I know about" is honest, and decoding it as EVERYONE would be a privacy
+ * failure introduced by an upgrade.
+ */
+enum class Visibility {
+    EVERYONE,
+    CONTACTS,
+    NOBODY,
+    UNKNOWN;
+
+    /** The wire spelling. [UNKNOWN] never leaves the device, so it sends as-is. */
+    val wire: String
+        get() = when (this) {
+            EVERYONE -> "everyone"
+            CONTACTS -> "contacts"
+            NOBODY -> "nobody"
+            UNKNOWN -> "nobody"
+        }
+
+    companion object {
+        fun fromWire(value: String): Visibility = when (value.lowercase()) {
+            "everyone" -> EVERYONE
+            "contacts" -> CONTACTS
+            "nobody" -> NOBODY
+            else -> UNKNOWN
+        }
+    }
+}
+
+/**
+ * The account's privacy settings.
+ *
+ * Three settings rather than one level, because they are read on different paths
+ * and answer different questions: presence fanout asks about last seen, a
+ * profile read asks about the avatar, and a group add asks whether the actor may
+ * add this user at all.
+ */
+data class PrivacySettings(
+    val lastSeen: Visibility = Visibility.EVERYONE,
+    val avatar: Visibility = Visibility.EVERYONE,
+    val groups: Visibility = Visibility.EVERYONE,
+)

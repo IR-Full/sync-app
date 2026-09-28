@@ -66,6 +66,11 @@ android {
             buildConfigField("String", "MEDIA_BASE_URL", "\"http://10.0.2.2:8080\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"development\"")
             buildConfigField("boolean", "ALLOW_ENDPOINT_OVERRIDE", "true")
+            // No pins in development: the gateway there is plain ws:// on an emulator
+            // loopback, so there is no certificate to pin and nothing a pin would
+            // protect. An empty list means "use ordinary CA validation".
+            buildConfigField("String", "TLS_PINS", "\"\"")
+            buildConfigField("long", "TLS_PINS_EXPIRE_AT", "0L")
             resValue("string", "app_name", "syncapp Dev")
         }
         create("staging") {
@@ -76,6 +81,10 @@ android {
             buildConfigField("String", "MEDIA_BASE_URL", "\"https://staging.syncapp.example\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"staging\"")
             buildConfigField("boolean", "ALLOW_ENDPOINT_OVERRIDE", "true")
+            // Staging deliberately unpinned: its whole purpose is to be repointed, and
+            // a pin there would make every certificate change an app release.
+            buildConfigField("String", "TLS_PINS", "\"\"")
+            buildConfigField("long", "TLS_PINS_EXPIRE_AT", "0L")
             resValue("string", "app_name", "syncapp Staging")
         }
         create("production") {
@@ -84,6 +93,40 @@ android {
             buildConfigField("String", "MEDIA_BASE_URL", "\"https://syncapp.example\"")
             buildConfigField("String", "ENVIRONMENT_NAME", "\"production\"")
             buildConfigField("boolean", "ALLOW_ENDPOINT_OVERRIDE", "false")
+            /*
+             * TLS pins for the production gateway: comma-separated base64 SHA-256 of the
+             * subject public key info.
+             *
+             * SPKI rather than certificate hashes, because a certificate pin breaks on
+             * every renewal — ninety days with an automated issuer — and therefore gets
+             * removed after the first outage it causes.
+             *
+             * TWO are required and the code refuses a single one. The second is an
+             * offline BACKUP key that is never served; it exists so a key rotation is a
+             * config change rather than a forced update of every installed copy. A lone
+             * pin is worse than none: it looks like protection and its failure mode is
+             * an app that cannot connect at all.
+             *
+             * Empty here because this repository does not hold the real deployment's
+             * keys — filled by the release pipeline from
+             *   openssl s_client -connect host:443 | openssl x509 -pubkey -noout \
+             *     | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary \
+             *     | openssl enc -base64
+             * With it empty the app falls back to ordinary CA validation, which is what
+             * a self-hosted deployment needs anyway: an operator running their own
+             * gateway cannot know our pins.
+             */
+            buildConfigField("String", "TLS_PINS", "\"\"")
+            /*
+             * When the pins stop being enforced (unix millis; 0 = never).
+             *
+             * Past it the app falls back to CA validation rather than failing closed. A
+             * pin with no end date is one nobody revisits, and the deliberately weaker
+             * choice here is the right one: a stale pin that blocks every connection
+             * turns a forgotten config entry into a dead app, and for a build nobody is
+             * maintaining, CA validation is far better than nothing.
+             */
+            buildConfigField("long", "TLS_PINS_EXPIRE_AT", "0L")
             resValue("string", "app_name", "syncapp")
         }
     }
@@ -116,6 +159,64 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+    }
+
+    /*
+     * The app has an in-app language switcher, so the bundle must carry every
+     * locale rather than only the device's.
+     *
+     * Play splits an App Bundle by language by default and delivers just the
+     * matching resources; a runtime switch to a language that was never
+     * installed then falls back silently, which reads as the setting not
+     * working. The alternative is the Play Core language-download API — more
+     * moving parts than a messenger with two locales needs.
+     */
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
+    /*
+     * Android Lint, run as a CI gate.
+     *
+     * Chosen over detekt/ktlint because it ships with AGP — no plugin to add, no
+     * version to keep in step with Kotlin — and because it catches the things
+     * that are specific to this platform and invisible to a generic Kotlin
+     * linter: a missing permission, a leaked Context, an API used above minSdk,
+     * a Composable that breaks the conventions the compiler relies on.
+     *
+     * warningsAsErrors, because a warning nobody has to act on is a warning
+     * everybody scrolls past. The two disabled checks below are the ones that
+     * would make that setting untenable, and each is disabled for a reason
+     * rather than to get to zero.
+     */
+    lint {
+        warningsAsErrors = true
+        abortOnError = true
+
+        disable += setOf(
+            // Dependabot now opens the upgrade PRs (.github/dependabot.yml), so
+            // this only duplicates them — and it fails the build for a version
+            // released after the commit was written, which makes a green build
+            // go red without anyone touching the code.
+            "GradleDependency",
+            "NewerVersionAvailable",
+            // local.properties is developer-local and gitignored, so this never
+            // fires in CI and always fires on Windows. Failing a local lint run
+            // over a path separator in a file the build itself generated is
+            // noise, not a finding.
+            "PropertyEscape",
+            // Same reasoning as GradleDependency: Dependabot owns the upgrade,
+            // and a build that goes red because a new AGP shipped overnight
+            // teaches people to ignore the linter.
+            "AndroidGradlePluginVersion",
+        )
+
+        // A machine-readable report for the CI summary; the HTML one is
+        // unreadable in a log.
+        textReport = true
+        xmlReport = true
     }
 }
 
@@ -160,11 +261,16 @@ dependencies {
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.sqlcipher.android)
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
+
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.protobuf)
@@ -173,6 +279,10 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
+
+    // Secret chats. See the note in gradle/libs.versions.toml for why this is
+    // needed at all and why the lightweight API is used.
+    implementation(libs.bouncycastle)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)

@@ -42,12 +42,31 @@ func (b *captureBus) bySubject(subj string) []eventbus.Event {
 	return out
 }
 
-// countRouter counts NodesFor calls (one per member delivered) and reports every
-// user offline, so we measure the fanout reach without real connections.
-type countRouter struct{ calls atomic.Int64 }
+// countRouter counts ROUND TRIPS to the routing registry and reports every user
+// offline, so we can measure both the fanout reach and its cost without real
+// connections.
+//
+// calls counts lookups, not recipients, and the distinction is the point: a
+// batch of 200 users is ONE call. That is what makes this fake able to fail if
+// fanout ever goes back to asking per recipient.
+type countRouter struct {
+	calls atomic.Int64 // lookups issued
+	users atomic.Int64 // recipients resolved across all lookups
+}
 
 func (r *countRouter) NodesFor(context.Context, string) ([]string, error) {
 	r.calls.Add(1)
+	r.users.Add(1)
+	return nil, nil
+}
+func (r *countRouter) NodesForMany(_ context.Context, userIDs []string) (map[string][]string, error) {
+	r.calls.Add(1)
+	r.users.Add(int64(len(userIDs)))
+	return map[string][]string{}, nil // everyone offline
+}
+func (r *countRouter) NodesForDevice(context.Context, string, string) ([]string, error) {
+	r.calls.Add(1)
+	r.users.Add(1)
 	return nil, nil
 }
 func (r *countRouter) Bind(context.Context, string, string, string) error   { return nil }
@@ -154,8 +173,17 @@ func TestFanoutShardsHotChat(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if got := rtr.calls.Load(); got != int64(n) {
+	if got := rtr.users.Load(); got != int64(n) {
 		t.Fatalf("delivered %d members across shards, want %d", got, n)
+	}
+	// And the reach above was bought in BATCHES. Delivery used to cost one router
+	// round trip per recipient, so a 2300-member channel spent 2300 sequential
+	// lookups on a single message. The ceiling is one lookup per routeBatchSize
+	// members per shard job.
+	maxLookups := int64(len(jobs)) * ((fanoutShardSize + routeBatchSize - 1) / routeBatchSize)
+	if got := rtr.calls.Load(); got > maxLookups {
+		t.Fatalf("delivery issued %d router lookups for %d members; batching allows at most %d",
+			got, n, maxLookups)
 	}
 }
 
@@ -170,8 +198,12 @@ func TestFanoutSmallChatInline(t *testing.T) {
 	if len(bus.bySubject(subjFanoutShard)) != 0 {
 		t.Fatal("small chat should not publish shard jobs")
 	}
-	if got := rtr.calls.Load(); got != 10 {
+	if got := rtr.users.Load(); got != 10 {
 		t.Fatalf("small chat delivered %d inline, want 10", got)
+	}
+	// Ten members, comfortably inside one batch: exactly one lookup.
+	if got := rtr.calls.Load(); got != 1 {
+		t.Fatalf("a 10-member chat took %d router lookups, want 1", got)
 	}
 }
 
@@ -338,8 +370,16 @@ func TestHotChatSecondaryEventsStream(t *testing.T) {
 	if chats.fullCalls > 0 {
 		t.Fatalf("a secondary event materialized the membership %d time(s)", chats.fullCalls)
 	}
-	if got := rtr.calls.Load(); got != int64(n) {
+	if got := rtr.users.Load(); got != int64(n) {
 		t.Fatalf("pin reached %d of %d members", got, n)
+	}
+	// Secondary events stream the membership AND batch the routing. Before
+	// batching, one pin in a 2500-member channel cost 2500 sequential lookups —
+	// and a typing indicator, which arrives per keystroke, cost the same.
+	maxLookups := int64((n + routeBatchSize - 1) / routeBatchSize)
+	if got := rtr.calls.Load(); got > maxLookups+int64(n/fanoutShardSize)+1 {
+		t.Fatalf("pin issued %d router lookups for %d members; batching allows ~%d",
+			got, n, maxLookups)
 	}
 }
 
@@ -407,6 +447,15 @@ func (r *recordRouter) NodesFor(_ context.Context, userID string) ([]string, err
 	defer r.mu.Unlock()
 	r.users = append(r.users, userID)
 	return nil, nil
+}
+func (r *recordRouter) NodesForMany(_ context.Context, userIDs []string) (map[string][]string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.users = append(r.users, userIDs...)
+	return map[string][]string{}, nil
+}
+func (r *recordRouter) NodesForDevice(ctx context.Context, userID, _ string) ([]string, error) {
+	return r.NodesFor(ctx, userID)
 }
 func (r *recordRouter) Bind(context.Context, string, string, string) error   { return nil }
 func (r *recordRouter) Unbind(context.Context, string, string, string) error { return nil }

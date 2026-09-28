@@ -1,6 +1,9 @@
 package chat
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // authCacheTTL is how long a chat's authorization view (type + member roles) is
 // cached. This removes the 1–2 store queries per message on the hot path
@@ -48,3 +51,9 @@ const (
 	defaultChatPage = 100
 	maxChatPage     = 200
 )
+
+// ErrSecretSelfChat is returned when a secret chat is requested with oneself.
+//
+// There is no second party to run a ratchet against, so there is no session and
+// nothing to encrypt to. "Saved messages" is an ordinary self-chat and stays one.
+var ErrSecretSelfChat = errors.New("chat: a secret chat needs another party")

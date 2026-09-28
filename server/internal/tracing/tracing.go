@@ -8,8 +8,8 @@ package tracing
 
 import (
 	"context"
-	"os"
 
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -18,11 +18,12 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 )
 
 // Init installs the global tracer provider and returns a shutdown function.
 // Exporter selection by env:
-//   - SyncApp_OTLP_ENDPOINT=host:4318 → OTLP/HTTP to a collector (Tempo/Jaeger);
+//   - SYNCAPP_OTLP_ENDPOINT=host:4318 → OTLP/HTTP to a collector (Tempo/Jaeger);
 //   - else SYNCAPP_TRACE=stdout       → print spans (dev);
 //   - else                            → no-op (zero overhead).
 func Init(ctx context.Context) (func(context.Context) error, error) {
@@ -34,7 +35,7 @@ func Init(ctx context.Context) (func(context.Context) error, error) {
 		return nil, err
 	}
 	if exp == nil {
-		otel.SetTracerProvider(trace.NewNoopTracerProvider())
+		otel.SetTracerProvider(tracenoop.NewTracerProvider())
 		return func(context.Context) error { return nil }, nil
 	}
 	res, _ := resource.New(ctx, resource.WithAttributes(semconv.ServiceName(serviceName)))
@@ -47,13 +48,13 @@ func Init(ctx context.Context) (func(context.Context) error, error) {
 }
 
 func chooseExporter(ctx context.Context) (sdktrace.SpanExporter, error) {
-	if ep := os.Getenv("SYNCAPP_OTLP_ENDPOINT"); ep != "" {
+	if ep := envcfg.Get("SYNCAPP_OTLP_ENDPOINT"); ep != "" {
 		return otlptracehttp.New(ctx,
 			otlptracehttp.WithEndpoint(ep),
 			otlptracehttp.WithInsecure(), // TLS terminated by the collector/mesh in prod
 		)
 	}
-	if os.Getenv("SYNCAPP_TRACE") == "stdout" {
+	if envcfg.Get("SYNCAPP_TRACE") == "stdout" {
 		return stdouttrace.New(stdouttrace.WithoutTimestamps())
 	}
 	return nil, nil

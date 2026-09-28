@@ -15,9 +15,16 @@ public actor WebSocketTransport: Transport {
     private let openDelegate: OpenDelegate
     private var task: URLSessionWebSocketTask?
 
-    public init(url: URL, configuration: URLSessionConfiguration = .ephemeral) {
+    public init(
+        url: URL,
+        configuration: URLSessionConfiguration = .ephemeral,
+        pinning: PinningPolicy? = nil,
+        allowsInsecureTLS: Bool = false
+    ) {
         self.url = url
-        self.openDelegate = OpenDelegate()
+        self.openDelegate = OpenDelegate(
+            pinning: PinningDelegate(policy: pinning, allowsInsecureTLS: allowsInsecureTLS)
+        )
         // Waiting for connectivity turns "no network right now" into a delayed
         // connect instead of an immediate failure — which is the behaviour the
         // reconnect loop wants on a phone coming out of a tunnel.
@@ -80,6 +87,23 @@ private final class OpenDelegate: NSObject, URLSessionWebSocketDelegate, @unchec
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Void, Error>?
     private var pendingTaskID: Int?
+
+    /// `URLSession` accepts exactly one delegate, so the TLS decision is composed in
+    /// rather than living in a second object the session could never see.
+    private let pinning: PinningDelegate
+
+    init(pinning: PinningDelegate) {
+        self.pinning = pinning
+        super.init()
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        pinning.urlSession(session, didReceive: challenge, completionHandler: completionHandler)
+    }
 
     func expectOpen(
         for task: URLSessionWebSocketTask,

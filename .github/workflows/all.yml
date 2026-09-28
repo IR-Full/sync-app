@@ -21,6 +21,14 @@ jobs:
     name: Server CI
     uses: ./.github/workflows/server-ci.yml
 
+  web:
+    name: Web CI
+    uses: ./.github/workflows/web-ci.yml
+
+  android:
+    name: Android CI
+    uses: ./.github/workflows/android-ci.yml
+
   ios:
     name: iOS CI
     uses: ./.github/workflows/ios-ci.yml

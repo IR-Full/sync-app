@@ -30,8 +30,8 @@ func main() {
 	defer b.Close()
 
 	svc := presence.New(b.Presence, b.Bus, 60*time.Second)
-	addr := platform.Env("SyncApp_PRESENCED_ADDR", ":9004")
-	if err := platform.ServeGRPC(ctx, addr, platform.Env("SyncApp_PRESENCED_METRICS", ":9104"), b.Log,
+	addr := platform.Env("SYNCAPP_PRESENCED_ADDR", ":9004")
+	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_PRESENCED_METRICS", ":9104"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterPresence(s, svc) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)

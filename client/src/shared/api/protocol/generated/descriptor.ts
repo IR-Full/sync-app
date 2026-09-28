@@ -1,9 +1,9 @@
 // GENERATED FILE — do not edit by hand.
-// Source: server/proto/SyncApp/v1/body.proto (regenerate: npm run proto:gen)
+// Source: server/proto/syncapp/v1/body.proto (package syncapp.v1) (regenerate: npm run proto:gen)
 
 export const descriptor = {
   "nested": {
-    "SyncApp": {
+    "syncapp": {
       "nested": {
         "v1": {
           "options": {
@@ -92,6 +92,11 @@ export const descriptor = {
                   "type": "string",
                   "id": 5,
                   "protoName": "display_name"
+                },
+                "totpCode": {
+                  "type": "string",
+                  "id": 6,
+                  "protoName": "totp_code"
                 }
               }
             },
@@ -595,6 +600,11 @@ export const descriptor = {
                   "type": "uint64",
                   "id": 2,
                   "protoName": "from_seq"
+                },
+                "resumeToken": {
+                  "type": "string",
+                  "id": 3,
+                  "protoName": "resume_token"
                 }
               }
             },
@@ -688,6 +698,16 @@ export const descriptor = {
                 "limit": {
                   "type": "int32",
                   "id": 2
+                },
+                "chatId": {
+                  "type": "string",
+                  "id": 3,
+                  "protoName": "chat_id"
+                },
+                "senderId": {
+                  "type": "string",
+                  "id": 4,
+                  "protoName": "sender_id"
                 }
               }
             },
@@ -715,6 +735,11 @@ export const descriptor = {
                 "text": {
                   "type": "string",
                   "id": 5
+                },
+                "createdAt": {
+                  "type": "int64",
+                  "id": 6,
+                  "protoName": "created_at"
                 }
               }
             },
@@ -813,6 +838,24 @@ export const descriptor = {
                 }
               }
             },
+            "KeyState": {
+              "fields": {
+                "oneTimePrekeysLeft": {
+                  "type": "int32",
+                  "id": 1,
+                  "protoName": "one_time_prekeys_left"
+                },
+                "signedPrekeyAgeMs": {
+                  "type": "int64",
+                  "id": 2,
+                  "protoName": "signed_prekey_age_ms"
+                },
+                "accepted": {
+                  "type": "int32",
+                  "id": 3
+                }
+              }
+            },
             "KeyBundles": {
               "fields": {
                 "userId": {
@@ -857,6 +900,335 @@ export const descriptor = {
                 "ciphertext": {
                   "type": "string",
                   "id": 6
+                },
+                "queueId": {
+                  "type": "string",
+                  "id": 7,
+                  "protoName": "queue_id"
+                },
+                "ratchetHeaderBin": {
+                  "type": "bytes",
+                  "id": 8,
+                  "protoName": "ratchet_header_bin"
+                },
+                "ciphertextBin": {
+                  "type": "bytes",
+                  "id": 9,
+                  "protoName": "ciphertext_bin"
+                }
+              }
+            },
+            "BillingPlans": {
+              "fields": {
+                "country": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "BillingOffers": {
+              "fields": {
+                "offers": {
+                  "rule": "repeated",
+                  "type": "PlanOffer",
+                  "id": 1
+                }
+              }
+            },
+            "PlanOffer": {
+              "fields": {
+                "plan": {
+                  "type": "string",
+                  "id": 1
+                },
+                "amountMinor": {
+                  "type": "int64",
+                  "id": 2,
+                  "protoName": "amount_minor"
+                },
+                "currency": {
+                  "type": "string",
+                  "id": 3
+                },
+                "periodDays": {
+                  "type": "int32",
+                  "id": 4,
+                  "protoName": "period_days"
+                },
+                "methods": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 5
+                }
+              }
+            },
+            "BillingCheckout": {
+              "fields": {
+                "plan": {
+                  "type": "string",
+                  "id": 1
+                },
+                "method": {
+                  "type": "string",
+                  "id": 2
+                },
+                "idempotencyKey": {
+                  "type": "string",
+                  "id": 3,
+                  "protoName": "idempotency_key"
+                },
+                "country": {
+                  "type": "string",
+                  "id": 4
+                },
+                "returnUrl": {
+                  "type": "string",
+                  "id": 5,
+                  "protoName": "return_url"
+                }
+              }
+            },
+            "BillingPayment": {
+              "fields": {
+                "paymentId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "payment_id"
+                },
+                "status": {
+                  "type": "string",
+                  "id": 2
+                },
+                "amountMinor": {
+                  "type": "int64",
+                  "id": 3,
+                  "protoName": "amount_minor"
+                },
+                "currency": {
+                  "type": "string",
+                  "id": 4
+                },
+                "payUrl": {
+                  "type": "string",
+                  "id": 5,
+                  "protoName": "pay_url"
+                },
+                "qrPayload": {
+                  "type": "string",
+                  "id": 6,
+                  "protoName": "qr_payload"
+                },
+                "deduplicated": {
+                  "type": "bool",
+                  "id": 7
+                }
+              }
+            },
+            "BillingStatus": {
+              "fields": {}
+            },
+            "BillingCancel": {
+              "fields": {}
+            },
+            "Subscription": {
+              "fields": {
+                "plan": {
+                  "type": "string",
+                  "id": 1
+                },
+                "status": {
+                  "type": "string",
+                  "id": 2
+                },
+                "periodEnd": {
+                  "type": "int64",
+                  "id": 3,
+                  "protoName": "period_end"
+                },
+                "cancelAtPeriodEnd": {
+                  "type": "bool",
+                  "id": 4,
+                  "protoName": "cancel_at_period_end"
+                },
+                "secretChats": {
+                  "type": "bool",
+                  "id": 5,
+                  "protoName": "secret_chats"
+                },
+                "maxUploadBytes": {
+                  "type": "int64",
+                  "id": 6,
+                  "protoName": "max_upload_bytes"
+                },
+                "maxPinnedChats": {
+                  "type": "int32",
+                  "id": 7,
+                  "protoName": "max_pinned_chats"
+                },
+                "folders": {
+                  "type": "bool",
+                  "id": 8
+                },
+                "advancedSearch": {
+                  "type": "bool",
+                  "id": 9,
+                  "protoName": "advanced_search"
+                },
+                "priorityDelivery": {
+                  "type": "bool",
+                  "id": 10,
+                  "protoName": "priority_delivery"
+                },
+                "voiceTranscription": {
+                  "type": "bool",
+                  "id": 11,
+                  "protoName": "voice_transcription"
+                },
+                "badge": {
+                  "type": "bool",
+                  "id": 12
+                }
+              }
+            },
+            "PasswordChange": {
+              "fields": {
+                "oldPassword": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "old_password"
+                },
+                "newPassword": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "new_password"
+                }
+              }
+            },
+            "PasswordChanged": {
+              "fields": {
+                "sessionsRevoked": {
+                  "type": "int32",
+                  "id": 1,
+                  "protoName": "sessions_revoked"
+                }
+              }
+            },
+            "TOTPSetup": {
+              "fields": {}
+            },
+            "TOTPSetupInfo": {
+              "fields": {
+                "secret": {
+                  "type": "string",
+                  "id": 1
+                },
+                "uri": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "TOTPConfirm": {
+              "fields": {
+                "code": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "TOTPDisable": {
+              "fields": {
+                "password": {
+                  "type": "string",
+                  "id": 1
+                },
+                "code": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "TOTPState": {
+              "fields": {
+                "enabled": {
+                  "type": "bool",
+                  "id": 1
+                },
+                "recoveryLeft": {
+                  "type": "int32",
+                  "id": 2,
+                  "protoName": "recovery_left"
+                },
+                "recoveryCodes": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 3,
+                  "protoName": "recovery_codes"
+                },
+                "confirmedAtMs": {
+                  "type": "int64",
+                  "id": 4,
+                  "protoName": "confirmed_at_ms"
+                }
+              }
+            },
+            "SecretAck": {
+              "fields": {
+                "toUserId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "to_user_id"
+                },
+                "toDeviceId": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "to_device_id"
+                },
+                "devices": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "queued": {
+                  "type": "bool",
+                  "id": 4
+                }
+              }
+            },
+            "SecretSync": {
+              "fields": {
+                "after": {
+                  "type": "string",
+                  "id": 1
+                },
+                "limit": {
+                  "type": "int32",
+                  "id": 2
+                }
+              }
+            },
+            "SecretSynced": {
+              "fields": {
+                "count": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "nextAfter": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "next_after"
+                },
+                "done": {
+                  "type": "bool",
+                  "id": 3
+                }
+              }
+            },
+            "SecretAcked": {
+              "fields": {
+                "ids": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 1
                 }
               }
             },
@@ -1656,6 +2028,16 @@ export const descriptor = {
                 "limit": {
                   "type": "int32",
                   "id": 2
+                },
+                "afterActivity": {
+                  "type": "int64",
+                  "id": 3,
+                  "protoName": "after_activity"
+                },
+                "includeArchived": {
+                  "type": "bool",
+                  "id": 4,
+                  "protoName": "include_archived"
                 }
               }
             },
@@ -1697,6 +2079,34 @@ export const descriptor = {
                   "type": "string",
                   "id": 8,
                   "protoName": "peer_id"
+                },
+                "lastMessage": {
+                  "type": "NewMessage",
+                  "id": 9,
+                  "protoName": "last_message"
+                },
+                "unreadCount": {
+                  "type": "int64",
+                  "id": 10,
+                  "protoName": "unread_count"
+                },
+                "lastActivityAt": {
+                  "type": "int64",
+                  "id": 11,
+                  "protoName": "last_activity_at"
+                },
+                "mutedUntil": {
+                  "type": "int64",
+                  "id": 12,
+                  "protoName": "muted_until"
+                },
+                "pinned": {
+                  "type": "bool",
+                  "id": 13
+                },
+                "archived": {
+                  "type": "bool",
+                  "id": 14
                 }
               }
             },
@@ -1715,6 +2125,55 @@ export const descriptor = {
                 "done": {
                   "type": "bool",
                   "id": 3
+                },
+                "nextAfterActivity": {
+                  "type": "int64",
+                  "id": 4,
+                  "protoName": "next_after_activity"
+                }
+              }
+            },
+            "ChatFlags": {
+              "fields": {
+                "chatId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "chat_id"
+                },
+                "mutedUntil": {
+                  "type": "int64",
+                  "id": 2,
+                  "protoName": "muted_until"
+                },
+                "pinned": {
+                  "type": "bool",
+                  "id": 3
+                },
+                "archived": {
+                  "type": "bool",
+                  "id": 4
+                }
+              }
+            },
+            "ChatFlagsSet": {
+              "fields": {
+                "chatId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "chat_id"
+                },
+                "mutedUntil": {
+                  "type": "int64",
+                  "id": 2,
+                  "protoName": "muted_until"
+                },
+                "pinned": {
+                  "type": "bool",
+                  "id": 3
+                },
+                "archived": {
+                  "type": "bool",
+                  "id": 4
                 }
               }
             },
@@ -1765,6 +2224,172 @@ export const descriptor = {
                   "type": "string",
                   "id": 4,
                   "protoName": "avatar_ref"
+                }
+              }
+            },
+            "AccountDelete": {
+              "fields": {
+                "password": {
+                  "type": "string",
+                  "id": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "AccountDeleted": {
+              "fields": {
+                "userId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "user_id"
+                },
+                "deletedAt": {
+                  "type": "int64",
+                  "id": 2,
+                  "protoName": "deleted_at"
+                }
+              }
+            },
+            "SessionList": {
+              "fields": {}
+            },
+            "SessionInfo": {
+              "fields": {
+                "sessionId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "session_id"
+                },
+                "deviceId": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "device_id"
+                },
+                "platform": {
+                  "type": "string",
+                  "id": 3
+                },
+                "createdAt": {
+                  "type": "int64",
+                  "id": 4,
+                  "protoName": "created_at"
+                },
+                "expiresAt": {
+                  "type": "int64",
+                  "id": 5,
+                  "protoName": "expires_at"
+                },
+                "current": {
+                  "type": "bool",
+                  "id": 6
+                }
+              }
+            },
+            "Sessions": {
+              "fields": {
+                "sessions": {
+                  "rule": "repeated",
+                  "type": "SessionInfo",
+                  "id": 1
+                }
+              }
+            },
+            "SessionRevoke": {
+              "fields": {
+                "sessionId": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "session_id"
+                },
+                "allIncludingCurrent": {
+                  "type": "bool",
+                  "id": 2,
+                  "protoName": "all_including_current"
+                }
+              }
+            },
+            "SessionRevoked": {
+              "fields": {
+                "revoked": {
+                  "type": "int32",
+                  "id": 1
+                },
+                "self": {
+                  "type": "bool",
+                  "id": 2
+                }
+              }
+            },
+            "HistoryPage": {
+              "fields": {
+                "messages": {
+                  "rule": "repeated",
+                  "type": "NewMessage",
+                  "id": 1
+                },
+                "chatId": {
+                  "type": "string",
+                  "id": 2,
+                  "protoName": "chat_id"
+                },
+                "nextBefore": {
+                  "type": "uint64",
+                  "id": 3,
+                  "protoName": "next_before"
+                },
+                "done": {
+                  "type": "bool",
+                  "id": 4
+                }
+              }
+            },
+            "PrivacyGet": {
+              "fields": {}
+            },
+            "PrivacySet": {
+              "fields": {
+                "lastSeen": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "last_seen"
+                },
+                "avatar": {
+                  "type": "string",
+                  "id": 2
+                },
+                "groups": {
+                  "type": "string",
+                  "id": 3
+                },
+                "pushPreview": {
+                  "type": "bool",
+                  "id": 4,
+                  "protoName": "push_preview"
+                }
+              }
+            },
+            "Privacy": {
+              "fields": {
+                "lastSeen": {
+                  "type": "string",
+                  "id": 1,
+                  "protoName": "last_seen"
+                },
+                "avatar": {
+                  "type": "string",
+                  "id": 2
+                },
+                "groups": {
+                  "type": "string",
+                  "id": 3
+                },
+                "pushPreview": {
+                  "type": "bool",
+                  "id": 4,
+                  "protoName": "push_preview"
                 }
               }
             }

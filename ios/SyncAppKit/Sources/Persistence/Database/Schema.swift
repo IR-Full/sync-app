@@ -8,6 +8,7 @@ public enum Schema {
     public static let migrations: [String] = [
         v1,
         v2,
+        v3,
     ]
 
     /// v1 — chats, messages, the outbox, contacts, users, and a key/value slot
@@ -121,6 +122,58 @@ public enum Schema {
             text       TEXT    NOT NULL DEFAULT '',
             reply_to   TEXT,
             updated_at INTEGER NOT NULL DEFAULT 0
+        );
+        """
+
+    /// v3 — per-member chat flags, activity ordering, and ratchet sessions.
+    ///
+    /// `is_muted` stays where it is rather than being dropped: SQLite's `ALTER TABLE
+    /// DROP COLUMN` needs 3.35, and a rewrite of the table to lose one unused boolean
+    /// is a migration that can fail on a user's phone for no benefit. It is simply no
+    /// longer read.
+    private static let v3 = """
+        -- A mute DEADLINE in epoch millis, matching the server. The boolean it
+        -- replaces could only say "forever", which is why nothing ever set it.
+        ALTER TABLE chats ADD COLUMN muted_until INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE chats ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE chats ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
+        -- The sort key the server pages on. Distinct from `last_message_at`: it falls
+        -- back to the chat's creation time, so a new empty chat sorts to the top
+        -- instead of below every chat that has ever been written to.
+        ALTER TABLE chats ADD COLUMN last_activity_at INTEGER;
+
+        -- Ordering is pinned-first, then activity. The old index covered
+        -- (hidden, last_message_at) and cannot serve this, and leaving it would mean
+        -- every list read falls back to a scan plus a sort.
+        CREATE INDEX chats_ordered
+            ON chats (archived, pinned DESC, last_activity_at DESC);
+
+        -- One Double Ratchet session per PEER DEVICE, not per peer.
+        --
+        -- Per device because that is what the relay addresses: a peer with two phones
+        -- is two sessions, and using one for both makes the second phone unable to
+        -- decrypt anything. The state is the serialised session — chain keys and
+        -- skipped message keys — so this table is as sensitive as the plaintext it
+        -- opens; it lives in the app container under the same protection as the
+        -- message cache, and the identity private keys stay in the Keychain.
+        CREATE TABLE secret_sessions (
+            peer_user_id   TEXT    NOT NULL,
+            peer_device_id TEXT    NOT NULL,
+            state          TEXT    NOT NULL,
+            updated_at     INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (peer_user_id, peer_device_id)
+        );
+
+        -- Queue rows whose plaintext is stored but whose ack has not been confirmed
+        -- by the server yet.
+        --
+        -- Acking is not fire-and-forget: the send can fail, and a row acked in our
+        -- head but not on the server replays forever, while a row the server dropped
+        -- before we stored the plaintext is gone. Keeping the intent here makes the
+        -- ack retryable, which is the only way the two stay consistent.
+        CREATE TABLE secret_acks (
+            queue_id TEXT PRIMARY KEY,
+            noted_at INTEGER NOT NULL DEFAULT 0
         );
         """
 }

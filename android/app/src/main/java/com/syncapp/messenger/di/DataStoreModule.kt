@@ -28,12 +28,23 @@ annotation class SessionPreferences
 @Retention(AnnotationRetention.BINARY)
 annotation class SettingsPreferences
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class SecretPreferences
+
 /**
- * Two preference files, not one.
+ * Three preference files, not one.
  *
  * Session state is wiped on logout and settings are not — separate files make that
  * a file-scoped operation instead of a careful list of keys to keep, which is the
  * kind of list that eventually forgets one.
+ *
+ * Secret-chat material gets its own file for the same reason plus one more: it is
+ * the only store here whose contents cannot be re-obtained by logging in again.
+ * A session token is a cache of something the server will reissue; a ratchet
+ * identity is not, and losing it silently would strand every secret conversation
+ * this device has. Keeping it apart makes "wipe the session" and "wipe the keys"
+ * two different decisions rather than one careless one.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -57,6 +68,16 @@ object DataStoreModule {
         @AppScope scope: CoroutineScope,
     ): DataStore<Preferences> = PreferenceDataStoreFactory.create(scope = scope) {
         context.preferencesDataStoreFile("settings")
+    }
+
+    @Provides
+    @Singleton
+    @SecretPreferences
+    fun provideSecretPreferences(
+        @ApplicationContext context: Context,
+        @AppScope scope: CoroutineScope,
+    ): DataStore<Preferences> = PreferenceDataStoreFactory.create(scope = scope) {
+        context.preferencesDataStoreFile("secret-chat")
     }
 }
 

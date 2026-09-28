@@ -17,6 +17,12 @@ func (failingRouter) Refresh(context.Context, string, string) error        { ret
 func (failingRouter) NodesFor(context.Context, string) ([]string, error) {
 	return nil, errors.New("down")
 }
+func (failingRouter) NodesForDevice(context.Context, string, string) ([]string, error) {
+	return nil, errors.New("down")
+}
+func (failingRouter) NodesForMany(context.Context, []string) (map[string][]string, error) {
+	return nil, errors.New("down")
+}
 
 // TestResilientFallsBackToLocal proves that when the shared router fails, a node
 // still resolves its own locally-bound users (degraded same-node delivery).

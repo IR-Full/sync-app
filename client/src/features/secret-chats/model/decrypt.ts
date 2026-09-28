@@ -47,8 +47,18 @@ export function openSecretMessage(
   }
   if (!init?.rh) return null
 
-  const header = unmarshalHeader(fromBase64(init.rh))
-  const ciphertext = fromBase64(message.ciphertext)
+  // Both fields are relay-supplied strings, so neither is guaranteed to be
+  // base64 (atob throws) or a well-formed header (the varint reader throws).
+  // Every other rejection here returns null; a throw would escape into the
+  // frame handler and take down the connection over one bad message.
+  let header: ReturnType<typeof unmarshalHeader>
+  let ciphertext: Uint8Array
+  try {
+    header = unmarshalHeader(fromBase64(init.rh))
+    ciphertext = fromBase64(message.ciphertext)
+  } catch {
+    return null
+  }
 
   // An established session simply advances.
   if (existingSession) {
@@ -66,24 +76,41 @@ export function openSecretMessage(
   const initiatorIdentity = fromBase64(init.ik)
   const initiatorEphemeral = fromBase64(init.ek)
 
-  const candidates: { oneTime?: SecretIdentity['oneTimePreKeys'][number] }[] = [
-    ...identity.oneTimePreKeys.map((oneTime) => ({ oneTime })),
-    {},
-  ]
+  // Both signed prekeys are tried, current first.
+  //
+  // Rotation is not atomic across the network: a peer may have fetched the
+  // previous bundle seconds before this device rotated and be sending its first
+  // message against it right now. The relay is fire-and-forget, so a message
+  // that cannot be opened is simply lost and the sender is never told — which is
+  // why the outgoing key is kept for one generation rather than discarded.
+  const signedPreKeys = [identity.signedPreKey, identity.previousSignedPreKey].filter(
+    (pair): pair is SecretIdentity['signedPreKey'] => pair !== undefined,
+  )
+
+  const candidates: {
+    oneTime?: SecretIdentity['oneTimePreKeys'][number]
+    signedPreKey: SecretIdentity['signedPreKey']
+  }[] = signedPreKeys.flatMap((signedPreKey) => [
+    ...identity.oneTimePreKeys.map((oneTime) => ({ oneTime, signedPreKey })),
+    { signedPreKey },
+  ])
 
   for (const candidate of candidates) {
     try {
       const sharedSecret = x3dhResponder(
         {
           identity: identity.identity,
-          signedPreKey: identity.signedPreKey,
+          signedPreKey: candidate.signedPreKey,
           oneTimePreKey: candidate.oneTime,
         },
         initiatorIdentity,
         initiatorEphemeral,
         !!candidate.oneTime,
       )
-      const session = RatchetSession.responder(sharedSecret, identity.signedPreKey)
+      // The ratchet's first DHr must be the prekey the INITIATOR used, not
+      // whichever one is current — they differ exactly in the rotation window
+      // this loop exists for.
+      const session = RatchetSession.responder(sharedSecret, candidate.signedPreKey)
       const plaintext = fromUtf8(session.decrypt(header, ciphertext))
       return {
         plaintext,

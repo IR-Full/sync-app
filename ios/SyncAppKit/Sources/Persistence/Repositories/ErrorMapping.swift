@@ -25,6 +25,17 @@ enum ErrorMapping {
             switch error.code {
             case .unauthenticated, .badToken, .sessionRevoked, .deviceUnknown:
                 return .unauthorized
+            case .resumeReplayed:
+                // A spent resume token was presented again, so the chain is gone and
+                // somebody else had the token. Indistinguishable from an expiry to the
+                // user, and identical in what it demands: sign in again.
+                return .unauthorized
+            case .twoFactorRequired:
+                return .twoFactorRequired
+            case .twoFactorInvalid:
+                return .twoFactorInvalid
+            case .premiumRequired:
+                return .premiumRequired
             case .forbidden:
                 // The gateway answers a blocked chat with FORBIDDEN and the word
                 // "blocked" — there is no distinct code for it, so the message is
@@ -75,6 +86,11 @@ extension ErrorMapping {
         // conflicting — `Register` refuses when the account exists, and the
         // gateway reports that as the same `unauthenticated` a wrong password
         // gets. Intent is what disambiguates it.
+        // A demand for a second factor is NOT an auth failure to reinterpret: the
+        // password was accepted. Passing it through unchanged is what lets the login
+        // screen ask for the code instead of claiming the credentials were wrong.
+        if case .twoFactorRequired = mapped { return mapped }
+        if case .twoFactorInvalid = mapped { return mapped }
         if case .unauthorized = mapped, registering { return .usernameTaken }
         if case .unauthorized = mapped, !registering { return .badCredentials }
         return mapped

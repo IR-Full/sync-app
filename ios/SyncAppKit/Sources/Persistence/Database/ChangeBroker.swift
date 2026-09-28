@@ -13,6 +13,10 @@ public actor ChangeBroker {
         case messages(chatID: String)
         case contacts
         case typing(chatID: String)
+        /// Typing changed in *some* chat. The chat list needs this because it shows
+        /// an indicator per row and cannot subscribe to a topic per chat it might
+        /// ever display.
+        case anyTyping
         case draft(chatID: String)
         case connection
     }

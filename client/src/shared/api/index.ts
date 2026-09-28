@@ -5,6 +5,5 @@ export {
   useConnectionState,
   useIsConnected,
   useSyncApp,
-  useSyncAppClient
+  useSyncAppClient,
 } from './syncapp/context'
-

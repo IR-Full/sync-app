@@ -25,10 +25,15 @@ import kotlinx.coroutines.flow.map
  *
  * The device id lives here too but is deliberately NOT cleared on logout: the
  * gateway keys the device row — and therefore this phone's push token — on it.
+ *
+ * Both tokens are encrypted with a non-extractable AndroidKeyStore key (see
+ * [TokenCipher]) before they reach the file. Everything else here — ids, a
+ * username, a display name — is not a credential and is stored as-is.
  */
 @Singleton
 class SessionStore @Inject constructor(
     @param:SessionPreferences private val store: DataStore<Preferences>,
+    private val cipher: TokenCipher,
 ) : DeviceIdProvider {
 
     data class StoredSession(
@@ -44,7 +49,10 @@ class SessionStore @Inject constructor(
 
     val session: Flow<StoredSession?> = store.data.map { prefs ->
         val userId = prefs[KEY_USER_ID]
-        val token = prefs[KEY_TOKEN]
+        // Both tokens are encrypted at rest; a value that no longer decrypts (the
+        // keystore key was invalidated) comes back empty and reads as logged out,
+        // which is the recoverable outcome.
+        val token = prefs[KEY_TOKEN]?.let(cipher::decrypt)
         if (userId.isNullOrEmpty() || token.isNullOrEmpty()) return@map null
         StoredSession(
             userId = userId,
@@ -52,7 +60,7 @@ class SessionStore @Inject constructor(
             deviceId = prefs[KEY_DEVICE_ID].orEmpty(),
             sessionId = prefs[KEY_SESSION_ID].orEmpty(),
             token = token,
-            resumeToken = prefs[KEY_RESUME_TOKEN].orEmpty(),
+            resumeToken = prefs[KEY_RESUME_TOKEN]?.let(cipher::decrypt).orEmpty(),
             displayName = prefs[KEY_DISPLAY_NAME].orEmpty(),
             avatarRef = prefs[KEY_AVATAR_REF].orEmpty(),
         )
@@ -64,8 +72,8 @@ class SessionStore @Inject constructor(
         store.edit { prefs ->
             prefs[KEY_USER_ID] = gateway.userId
             prefs[KEY_SESSION_ID] = gateway.sessionId
-            prefs[KEY_TOKEN] = gateway.token
-            prefs[KEY_RESUME_TOKEN] = gateway.resumeToken
+            prefs[KEY_TOKEN] = cipher.encrypt(gateway.token)
+            prefs[KEY_RESUME_TOKEN] = cipher.encrypt(gateway.resumeToken)
             if (gateway.deviceId.isNotEmpty()) prefs[KEY_DEVICE_ID] = gateway.deviceId
             if (!username.isNullOrEmpty()) prefs[KEY_USERNAME] = username.lowercase()
             prefs[KEY_DISPLAY_NAME] = gateway.displayName

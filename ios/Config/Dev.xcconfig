@@ -13,6 +13,12 @@ SYNCAPP_TRANSPORT = webSocket
 SYNCAPP_MEDIA_BASE_URL = http:$()//localhost:8080
 SYNCAPP_ALLOWS_INSECURE_TLS = YES
 
+// No pinning against a local dev server: the certificate is ephemeral and
+// self-signed, so there is no stable key to pin. `PinningPolicy.resolve` needs two
+// pins before it enforces anything, so an empty value is the explicit "off".
+SYNCAPP_TLS_PINS =
+SYNCAPP_TLS_PINS_EXPIRE_AT =
+
 PRODUCT_BUNDLE_IDENTIFIER = chat.syncapp.ios.dev
 PRODUCT_NAME = SyncApp Dev
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG

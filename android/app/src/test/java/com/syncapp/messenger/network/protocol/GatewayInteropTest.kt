@@ -374,7 +374,7 @@ class GatewayInteropTest {
     }
 
     /**
-     * A minimal protocol client, deliberately independent of [com.syncapp.messenger.network.syncappGateway]:
+     * A minimal protocol client, deliberately independent of [com.syncapp.messenger.network.SyncAppGateway]:
      * it shares only the codec, so this test measures the codec rather than the
      * connection state machine wrapped around it.
      */

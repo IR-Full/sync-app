@@ -132,10 +132,13 @@ func TestChatListRebuildsAFreshInstall(t *testing.T) {
 	}
 }
 
-// TestChatListPagesByCursor walks the list in pages. The cursor is the last id
-// of a page, so a client that stopped can resume without re-reading (or
-// skipping) rows — which is what an offset would get wrong the moment a chat is
-// created between two pages.
+// TestChatListPagesByCursor walks the list in pages.
+//
+// The cursor is BOTH halves of the last row's sort key — its activity timestamp and
+// its chat id — not the id alone. The list is ordered by activity, which reorders
+// as messages arrive, so an id-only cursor would skip and repeat rows exactly when
+// the chat is busy. (An offset would get it wrong for the simpler reason that a new
+// chat between two pages shifts everything.)
 func TestChatListPagesByCursor(t *testing.T) {
 	addr := startGateway(t)
 	alice := connect(t, addr, "pagealice", "secret123")
@@ -156,8 +159,14 @@ func TestChatListPagesByCursor(t *testing.T) {
 	if first.NextAfter != first.Chats[1].ChatID {
 		t.Fatalf("cursor %q is not the last row %q", first.NextAfter, first.Chats[1].ChatID)
 	}
+	if first.NextAfterActivity != first.Chats[1].LastActivityAt {
+		t.Fatalf("cursor activity %d is not the last row's %d",
+			first.NextAfterActivity, first.Chats[1].LastActivityAt)
+	}
 
-	second := chatList(t, alice, 3, wire.ChatListBody{After: first.NextAfter, Limit: 2})
+	second := chatList(t, alice, 3, wire.ChatListBody{
+		After: first.NextAfter, AfterActivity: first.NextAfterActivity, Limit: 2,
+	})
 	if len(second.Chats) != 1 || !second.Done {
 		t.Fatalf("second page: got %d chats, done=%v", len(second.Chats), second.Done)
 	}

@@ -52,8 +52,8 @@ fun LoadingState(modifier: Modifier = Modifier) {
 @Composable
 fun EmptyState(
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(32.dp),
@@ -76,8 +76,8 @@ fun EmptyState(
 @Composable
 fun ErrorState(
     message: String,
-    onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier.fillMaxSize().padding(32.dp),

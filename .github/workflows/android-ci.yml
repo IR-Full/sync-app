@@ -1,0 +1,103 @@
+name: Android CI
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: unit tests · assemble
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          # The module compiles against Java 17 (sourceCompatibility /
+          # jvmTarget in app/build.gradle.kts); a newer JDK would run Gradle
+          # but compile to a different target than a developer machine does.
+          java-version: "17"
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Accept Android SDK licences
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      # The app has three product flavours; `development` is the one the unit
+      # tests are written against, and running all three would triple the job
+      # for no extra coverage — the flavours differ only in endpoint config.
+      - name: Unit tests
+        run: ./gradlew :app:testDevelopmentDebugUnitTest --no-daemon --stacktrace
+
+      # Android Lint, configured in app/build.gradle.kts with
+      # warningsAsErrors. It runs BEFORE assemble because it is the faster of
+      # the two and catches a different class of problem: a missing permission,
+      # an API used above minSdk, a Composable breaking the conventions the
+      # compiler relies on. Version checks are disabled there — Dependabot owns
+      # those, and a build that reddens because a dependency shipped overnight
+      # teaches people to ignore the linter.
+      - name: Lint
+        run: ./gradlew :app:lintDevelopmentDebug --no-daemon --stacktrace
+
+      - name: Lint report
+        if: failure()
+        run: cat app/build/reports/lint-results-developmentDebug.txt || true
+
+      # Assembling is a separate gate from testing: the tests do not compile the
+      # Compose UI or run the Hilt processor over the full graph, so a broken
+      # dependency edge shows up only here. That is also how the GatewayRequests
+      # seam is kept honest — a missing @Binds fails this step, not the tests.
+      - name: Assemble
+        run: ./gradlew :app:assembleDevelopmentDebug --no-daemon --stacktrace
+
+      # Gradle's own HTML report is unreadable in CI logs; this pulls the counts
+      # out of the JUnit XML so a failure is legible from the summary alone.
+      - name: Test report
+        if: always()
+        run: |
+          results="app/build/test-results/testDevelopmentDebugUnitTest"
+          [ -d "$results" ] || exit 0
+
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob
+          import re
+
+          total = failures = errors = 0
+          for path in glob.glob(
+              "app/build/test-results/testDevelopmentDebugUnitTest/*.xml"
+          ):
+              with open(path, encoding="utf-8") as handle:
+                  head = handle.read(2000)
+              match = re.search(
+                  r'tests="(\d+)".*?failures="(\d+)".*?errors="(\d+)"', head
+              )
+              if match:
+                  total += int(match.group(1))
+                  failures += int(match.group(2))
+                  errors += int(match.group(3))
+
+          print(f"| tests | failures | errors |")
+          print(f"|---|---|---|")
+          print(f"| {total} | {failures} | {errors} |")
+          PY
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-results
+          path: android/app/build/reports/tests/
+          if-no-files-found: ignore

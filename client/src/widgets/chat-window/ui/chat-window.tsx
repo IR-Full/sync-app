@@ -100,7 +100,12 @@ export function ChatWindow({ target }: { target: string }) {
   )
 
   const title = chat?.title ?? (isNew ? target : (chat?.id ?? target))
-  const isGroup = chat ? chat.kind !== 'direct' : false
+  const isSecretChat = chat?.kind === 'secret'
+  // Two-party, not merely `!== 'direct'`. A secret chat has exactly one peer, so it is
+  // not a group by any behaviour that follows from this flag — the presence line, the
+  // sender prefix on previews, the member list. The narrower check treated every secret
+  // chat as a group and dropped the peer's online state on the floor.
+  const isGroup = chat ? chat.kind !== 'direct' && chat.kind !== 'secret' : false
   const peer = chat?.peerUserId ? directory[chat.peerUserId] : undefined
 
   const subtitle = typingUsers.length
@@ -141,7 +146,27 @@ export function ChatWindow({ target }: { target: string }) {
 
         <Avatar seed={chat?.id ?? target} name={title} online={peer?.online} />
         <div className="min-w-0 flex-1">
-          <h1 className="text-ink truncate text-sm font-semibold">{title}</h1>
+          <h1 className="text-ink flex items-center gap-1.5 truncate text-sm font-semibold">
+            {/*
+              The header lock, and the second of exactly two visual differences a secret
+              chat gets — the other being the badge in the list. Everything else on this
+              screen is the same code: the transcript, the composer, replies, edits,
+              search. That is the argument for making it a chat TYPE rather than a panel
+              beside the app.
+            */}
+            {isSecretChat && (
+              <svg
+                viewBox="0 0 16 16"
+                className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                fill="currentColor"
+                role="img"
+                aria-label={t('secret.badge')}
+              >
+                <path d="M8 1a3.2 3.2 0 00-3.2 3.2V6H4a1 1 0 00-1 1v6a1 1 0 001 1h8a1 1 0 001-1V7a1 1 0 00-1-1h-.8V4.2A3.2 3.2 0 008 1zm0 1.4a1.8 1.8 0 011.8 1.8V6H6.2V4.2A1.8 1.8 0 018 2.4z" />
+              </svg>
+            )}
+            <span className="truncate">{title}</span>
+          </h1>
           {subtitle && (
             <p className="text-accent truncate text-xs" aria-live="polite">
               {subtitle}

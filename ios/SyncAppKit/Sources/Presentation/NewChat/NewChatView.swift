@@ -4,6 +4,7 @@ import SyncAppDomain
 @MainActor
 final class NewChatViewModel: ObservableObject {
     @Published var handle = ""
+    @Published var secretHandle = ""
     @Published var groupTitle = ""
     @Published var groupMembers: [String] = []
     @Published var memberDraft = ""
@@ -57,6 +58,25 @@ final class NewChatViewModel: ObservableObject {
             // readily as a handle — but only through a chat-scoped command, so
             // the repository still does the resolve.
             try await self.chatRepository.openDirectChat(username: contact.userID).id
+        }
+    }
+
+    /// Starts a secret chat.
+    ///
+    /// A chat TYPE chosen at creation, alongside direct / group / channel — which is
+    /// the whole point of the change: the previous design had secret chats as a modal
+    /// beside the product, and a thing that is not in the chat list is a thing nobody
+    /// opens twice.
+    func createSecretChat() async -> String? {
+        let target = secretHandle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return nil }
+        return await perform {
+            // The gateway resolves an id or an @handle, so the field accepts either and
+            // the `@` is normalised rather than required.
+            let peer = target.hasPrefix("@")
+                ? "@" + OpenDirectChatUseCase.normalize(target)
+                : target
+            return try await self.chatRepository.createSecretChat(peer: peer).id
         }
     }
 
@@ -121,6 +141,12 @@ final class NewChatViewModel: ObservableObject {
         case .rateLimited: return l("new.error.throttled")
         case .offline: return l("connection.offline")
         case .forbidden: return l("chat.error.forbidden")
+        // Its own message because it is the one error here with an ANSWER. Falling
+        // through to "something went wrong" would make a purchasable feature look
+        // broken.
+        case .premiumRequired: return l("chat.secret.premium")
+        case .unsupported: return l("chat.secret.noDevices")
+        case .invalidInput(let detail): return detail
         default: return l("common.error")
         }
     }
@@ -142,6 +168,7 @@ struct NewChatView: View {
         NavigationStack {
             Form {
                 directSection
+                secretSection
                 contactsSection
                 groupSection
                 joinSection
@@ -189,6 +216,27 @@ struct NewChatView: View {
             Text(l("new.direct.title"))
         } footer: {
             Text(l("new.direct.footer"))
+        }
+    }
+
+    private var secretSection: some View {
+        Section {
+            HStack {
+                Image(systemName: "lock.fill").foregroundStyle(Color.green)
+                TextField(l("new.handle.placeholder"), text: $model.secretHandle)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.go)
+                    .onSubmit { open { await model.createSecretChat() } }
+            }
+            Button(l("chat.secret.new")) {
+                open { await model.createSecretChat() }
+            }
+            .disabled(model.secretHandle.trimmingCharacters(in: .whitespaces).isEmpty)
+        } header: {
+            Text(l("chat.secret.title"))
+        } footer: {
+            Text(l("chat.secret.hint"))
         }
     }
 

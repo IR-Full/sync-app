@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	migratepg "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -21,6 +22,19 @@ func directKey(a, b string) string {
 		a, b = b, a
 	}
 	return a + "|" + b
+}
+
+// pairKey namespaces the canonical-pair index by chat type.
+//
+// The direct form is left UNPREFIXED so every row written before secret chats
+// existed still resolves — a prefix on the default would orphan every 1:1 chat in
+// the database, which is a migration nobody asked for to express a distinction
+// nothing needed until now.
+func pairKey(typ model.ChatType, a, b string) string {
+	if typ == model.ChatDirect || typ == "" {
+		return directKey(a, b)
+	}
+	return string(typ) + ":" + directKey(a, b)
 }
 
 func isUniqueViolation(err error) bool {
@@ -51,7 +65,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	driver, err := migratepg.WithInstance(db, &migratepg.Config{})
 	if err != nil {
 		return err

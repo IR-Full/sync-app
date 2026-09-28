@@ -59,11 +59,30 @@ func (s *memoryBackend) removeTokensLocked(d *Doc) {
 	}
 }
 
-func (s *memoryBackend) Search(_ context.Context, query string, limit int) ([]Doc, error) {
-	tokens := tokenize(query)
+func (s *memoryBackend) Search(_ context.Context, q Query) ([]Doc, error) {
+	tokens := tokenize(q.Text)
 	if len(tokens) == 0 {
 		return nil, nil
 	}
+	// The scope. This backend cannot join a membership table, so it filters against
+	// the ids the service resolved — but it filters BEFORE the limit, which is the
+	// property that matters and the one the previous design got wrong.
+	//
+	// An empty scope matches nothing rather than everything: a scope that came out
+	// empty by accident should produce an empty result, not the whole index.
+	if len(q.ChatIDs) == 0 {
+		return nil, nil
+	}
+	allowed := make(map[string]struct{}, len(q.ChatIDs))
+	for _, id := range q.ChatIDs {
+		allowed[id] = struct{}{}
+	}
+
+	limit := q.Limit
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+
 	s.mu.RLock()
 	var candidates map[string]struct{}
 	for i, tok := range tokens {
@@ -73,7 +92,7 @@ func (s *memoryBackend) Search(_ context.Context, query string, limit int) ([]Do
 			return nil, nil
 		}
 		if i == 0 {
-			candidates = map[string]struct{}{}
+			candidates = make(map[string]struct{}, len(set))
 			for id := range set {
 				candidates[id] = struct{}{}
 			}
@@ -87,12 +106,33 @@ func (s *memoryBackend) Search(_ context.Context, query string, limit int) ([]Do
 	}
 	out := make([]Doc, 0, len(candidates))
 	for id := range candidates {
-		out = append(out, *s.docs[id])
+		d := s.docs[id]
+		if d == nil {
+			continue
+		}
+		if _, ok := allowed[d.ChatID]; !ok {
+			continue
+		}
+		if q.ChatID != "" && d.ChatID != q.ChatID {
+			continue
+		}
+		if q.SenderID != "" && d.SenderID != q.SenderID {
+			continue
+		}
+		out = append(out, *d)
 	}
 	s.mu.RUnlock()
 
-	sort.Slice(out, func(i, j int) bool { return out[i].Seq > out[j].Seq })
-	if limit > 0 && len(out) > limit {
+	// Recency by wall clock, then by id. Sorting by Seq ranked a chat with a
+	// million messages above every other chat, because Seq counts within a chat
+	// and says nothing across them.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt != out[j].CreatedAt {
+			return out[i].CreatedAt > out[j].CreatedAt
+		}
+		return out[i].MessageID > out[j].MessageID
+	})
+	if len(out) > limit {
 		out = out[:limit]
 	}
 	return out, nil

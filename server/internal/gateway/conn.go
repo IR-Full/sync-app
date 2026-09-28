@@ -7,11 +7,20 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/SyncApp-chat/SyncApp/internal/auth"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/safego"
 	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+// replayAppendTimeout bounds the resume-buffer write in writeLoop.
+//
+// Short on purpose. It sits on the single writer for a connection, so the value
+// is not "how long may this reasonably take" but "how long may one connection's
+// outbound path stall before the store's slowness becomes the user's problem".
+const replayAppendTimeout = 250 * time.Millisecond
 
 func newConn(g *Gateway, t wire.Transport, remote string) *conn {
 	// Lane depths. MaxInflight is the backpressure window. The hi lane must also
@@ -24,15 +33,19 @@ func newConn(g *Gateway, t wire.Transport, remote string) *conn {
 	n := g.cfg.MaxInflight
 	const ephemeralLane = 16
 	return &conn{
-		gw:              g,
-		wc:              wire.NewConn(t, false), // compression enabled after Hello
-		log:             g.log.With("remote", remote),
+		gw: g,
+		wc: wire.NewConn(t, false), // compression enabled after Hello
+		// Truncated rather than verbatim: a log line outlives the connection, and a
+		// file of addresses plus timestamps is a movement history whether or not
+		// anyone set out to build one. See logaddr.go.
+		log:             g.log.With("remote", logAddr(remote)),
 		remote:          remote,
 		outHi:           make(chan delivery.Delivery, n),
 		outMid:          make(chan delivery.Delivery, n),
 		outLo:           make(chan delivery.Delivery, ephemeralLane),
 		done:            make(chan struct{}),
 		sendLimit:       ratelimit.NewBucket(g.cfg.SendRate, g.cfg.SendBurst),
+		readLimit:       ratelimit.NewBucket(g.cfg.ReadRate, g.cfg.ReadBurst),
 		typingLimit:     ratelimit.NewBucket(g.cfg.TypingRate, g.cfg.TypingBurst),
 		typingChatLimit: ratelimit.NewLimiter(g.cfg.TypingChatRate, g.cfg.TypingChatBurst),
 		signalLimit:     ratelimit.NewBucket(g.cfg.SignalRate, g.cfg.SignalBurst),
@@ -54,7 +67,7 @@ func (c *conn) Send(d delivery.Delivery) bool {
 			return true // ephemeral (typing/presence) — safe to drop under load
 		}
 		metrics.SlowConnDropped.Inc()
-		c.log.Warn("outbound lane full; dropping slow connection", "user", c.userID)
+		c.log.Warn("outbound lane full; dropping slow connection", "user", logUser(c.userID))
 		c.close()
 		return false
 	}
@@ -88,7 +101,7 @@ func (c *conn) run(ctx context.Context) {
 		return
 	}
 
-	c.log.Info("connection established", "user", c.userID, "device", c.deviceID)
+	c.log.Info("connection established", "user", logUser(c.userID), "device", logUser(c.deviceID))
 
 	// Writer + liveness monitor run alongside the read loop.
 	// Only two goroutines per connection: the read loop (below) and the write
@@ -96,7 +109,10 @@ func (c *conn) run(ctx context.Context) {
 	// instead of a timer goroutine per connection — at 1M connections that saves
 	// 1M goroutines (~several GB of stack). Presence/router TTL refresh moved to
 	// throttled on-activity in observe().
-	go c.writeLoop()
+	// The writer is its own goroutine, so g.serve's guard does not cover it: a
+	// panic while encoding an outbound frame would take the node down without one
+	// of its own.
+	safego.Go(c.log, "conn.writeLoop", c.writeLoop)
 
 	c.readLoop(ctx)
 }
@@ -119,7 +135,8 @@ func (c *conn) handshake(ctx context.Context) error {
 	}
 
 	// Server-supported capabilities; the agreed set is the intersection.
-	const serverCaps = wire.CapCompression | wire.CapZstd | wire.CapResume | wire.CapTypingSignals | wire.CapBatching
+	const serverCaps = wire.CapCompression | wire.CapZstd | wire.CapResume | wire.CapTypingSignals |
+		wire.CapBatching | wire.CapSecretQueue
 	agreed := hello.Caps & serverCaps
 	c.peerCaps = agreed
 	// Prefer zstd+dictionary when both sides support it; else gzip.
@@ -197,7 +214,7 @@ func (c *conn) doAuth(ctx context.Context, reqID uint64, body wire.AuthBody) err
 	case body.Token != "":
 		ident, err = c.authByToken(ctx, body.Token)
 	case body.Username != "":
-		ident, err = c.authByPassword(ctx, body.Username, body.Password, body.DisplayName, body.Register)
+		ident, err = c.authByPasswordWithCode(ctx, body.Username, body.Password, body.TOTPCode, body.DisplayName, body.Register)
 	default:
 		err = errors.New("no credentials")
 	}
@@ -210,6 +227,21 @@ func (c *conn) doAuth(ctx context.Context, reqID uint64, body wire.AuthBody) err
 			// reporting it as an auth failure would send the app to a login screen
 			// it cannot get past by logging in again.
 			_ = c.sendError(reqID, wire.ErrBadArg, "invalid display name")
+		case errors.Is(err, auth.ErrBadUsername):
+			// Same reasoning: "that handle has a character we cannot address" is
+			// fixed by typing a different name, not by authenticating again. The
+			// message carries the reason so the client can say which rule was
+			// broken rather than a generic rejection.
+			_ = c.sendError(reqID, wire.ErrBadArg, err.Error())
+		case errors.Is(err, auth.ErrTwoFactorRequired):
+			// The password was RIGHT and a code is needed. Its own code, because the
+			// client behaviour is completely different from a rejected credential:
+			// one asks for six digits on the screen the user is already on, the
+			// other sends them back to a login form. Reporting this as
+			// ErrUnauthenticated makes a working account look broken.
+			_ = c.sendError(reqID, wire.ErrTwoFactorRequired, "two-factor code required")
+		case errors.Is(err, auth.ErrBadTOTPCode):
+			_ = c.sendError(reqID, wire.ErrTwoFactorInvalid, "that code did not match")
 		default:
 			_ = c.sendError(reqID, wire.ErrUnauthenticated, "authentication failed")
 		}
@@ -255,7 +287,14 @@ func (c *conn) doResume(ctx context.Context, reqID uint64, body wire.ResumeBody)
 	// Replay the frames the client missed (Seq > LastAckSeq) from the session
 	// buffer, then continue numbering from the session high-water mark so the
 	// stream stays contiguous. Without a buffer, fall back to history backfill.
-	maxSeq := body.LastAckSeq
+	//
+	// LastAckSeq is unverified client input, so it is a floor to resume FROM, not
+	// a value to adopt. Storing it directly let a client set this connection's
+	// outbound counter to anything it liked; the replayed frames are the
+	// authoritative high-water mark, and a claim beyond them has nothing behind
+	// it. Clamping costs the client nothing it is entitled to: acking further
+	// than the server ever sent is not a state it can legitimately be in.
+	maxSeq := uint64(0)
 	if c.gw.svc.Replay != nil {
 		frames, _ := c.gw.svc.Replay.Since(ctx, c.sessionID, body.LastAckSeq)
 		for _, f := range frames {
@@ -264,6 +303,22 @@ func (c *conn) doResume(ctx context.Context, reqID uint64, body wire.ResumeBody)
 			}
 			_ = c.wc.WriteRaw(f.Payload) // original seq preserved in the payload
 		}
+		// A client that acknowledged everything gets no frames back, and that is
+		// not evidence that nothing was ever sent. Reading it that way reset this
+		// connection's outbound counter to zero, so the next frame went out
+		// numbered 1 to a client that had already acknowledged 100 — a sequence
+		// that goes backwards, which is the one thing the resume contract promises
+		// cannot happen. HighWater is the server's own record of how far it got,
+		// so the floor is restored without taking the client's word for it.
+		if hw, err := c.gw.svc.Replay.HighWater(ctx, c.sessionID); err == nil && hw > maxSeq {
+			maxSeq = hw
+		}
+	}
+	// With no replay store there is nothing to contradict the client, and history
+	// backfill covers the gap either way — so its claim is honoured, bounded by
+	// what it says it already has.
+	if c.gw.svc.Replay == nil {
+		maxSeq = body.LastAckSeq
 	}
 	c.outSeq.Store(maxSeq)
 	// ResumeOK gets the next seq (maxSeq+1), so replayed frames + ResumeOK + live
@@ -271,6 +326,10 @@ func (c *conn) doResume(ctx context.Context, reqID uint64, body wire.ResumeBody)
 	return c.wc.Send(wire.MsgResumeOK, c.nextSeq(), c.ackSeq(), reqID, wire.ResumeOKBody{
 		SessionID: ident.Session.ID,
 		FromSeq:   body.LastAckSeq,
+		// The token the client must use NEXT time. Resuming consumed the one it
+		// just sent, so a client that keeps the old one will not merely fail its
+		// next resume — it will look like a replay and end the session.
+		ResumeToken: ident.Session.ResumeToken,
 	})
 }
 
@@ -350,7 +409,13 @@ func (c *conn) writeLoop() {
 // Returns false if the write failed (connection closed). Single writer → Seq
 // stays monotonic on the wire.
 func (c *conn) writeOne(d delivery.Delivery) bool {
-	env := wire.Envelope{Type: d.Type, Seq: c.nextSeq(), Ack: c.ackSeq(), RequestID: d.RequestID, Body: wire.EncodeBody(d.Body)}
+	// A body that depends on the peer is resolved here, on the writer, because this
+	// is the first and only place that knows which connection the frame is going to.
+	body := d.Body
+	if d.BodyFor != nil {
+		body = d.BodyFor(c.peerCaps)
+	}
+	env := wire.Envelope{Type: d.Type, Seq: c.nextSeq(), Ack: c.ackSeq(), RequestID: d.RequestID, Body: wire.EncodeBody(body)}
 	payload := env.Encode()
 	_ = c.wc.SetWriteDeadline(time.Now().Add(c.gw.cfg.WriteTimeout))
 	if err := c.wc.WriteRaw(payload); err != nil {
@@ -365,7 +430,17 @@ func (c *conn) writeOne(d delivery.Delivery) bool {
 		d.OnWritten()
 	}
 	if c.gw.svc.Replay != nil && c.sessionID != "" {
-		_ = c.gw.svc.Replay.Append(context.Background(), c.sessionID, env.Seq, payload)
+		// Bounded, because this runs inside writeLoop — the SINGLE writer for the
+		// connection. An unbounded call against a hung replay store would block
+		// that goroutine, back the outbound lanes up, and Send would then drop the
+		// connection: an optimisation's dependency taking a user offline.
+		//
+		// Losing the buffer entry costs nothing that is not already recoverable.
+		// A resume that finds no frames falls through to history backfill, which
+		// is the documented fallback (see doResume).
+		ctx, cancel := context.WithTimeout(context.Background(), replayAppendTimeout)
+		_ = c.gw.svc.Replay.Append(ctx, c.sessionID, env.Seq, payload)
+		cancel()
 	}
 	return true
 }
@@ -376,7 +451,7 @@ func (c *conn) writeOne(d delivery.Delivery) bool {
 // was closed (so the reaper can drop it). Cheap and local — no Redis here.
 func (c *conn) tick() bool {
 	if time.Since(c.lastSeen()) > c.gw.cfg.IdleTimeout {
-		c.log.Info("idle timeout; closing", "user", c.userID)
+		c.log.Info("idle timeout; closing", "user", logUser(c.userID))
 		c.close()
 		return false
 	}
@@ -418,13 +493,13 @@ func (c *conn) maybeRefreshLiveness() {
 	if !c.lastRefresh.CompareAndSwap(last, now) {
 		return
 	}
-	go func() {
+	safego.Go(c.log, "conn.refreshLiveness", func() {
 		ctx := context.Background()
 		_ = c.gw.svc.Presence.Heartbeat(ctx, c.userID)
 		if c.gw.svc.Router != nil {
-			_ = c.gw.svc.Router.Refresh(ctx, c.userID, c.gw.cfg.NodeID)
+			_ = c.gw.svc.Router.Refresh(ctx, c.userID, c.deviceID)
 		}
-	}()
+	})
 }
 
 func (c *conn) touch()              { c.lastActivity.Store(time.Now().UnixNano()) }
@@ -435,6 +510,22 @@ func (c *conn) lastSeen() time.Time { return time.Unix(0, c.lastActivity.Load())
 // monotonic on the wire.
 func (c *conn) reply(t wire.MsgType, reqID uint64, body any) error {
 	c.Send(delivery.Delivery{Type: t, RequestID: reqID, Body: body})
+	return nil
+}
+
+// replyThenClose enqueues a final frame and tears the connection down once it is
+// actually on the wire.
+//
+// The close has to hang off the write, not follow the call: reply() only queues
+// into the outbound lane, so closing straight afterwards would race the writer
+// and drop the very frame that explains why the connection is ending. Delivery
+// already carries OnWritten for delivery receipts, which fires at exactly the
+// right moment — the frame has left the server.
+//
+// Used by the two handlers that destroy the thing the connection is standing on:
+// revoking your own session, and deleting your account.
+func (c *conn) replyThenClose(t wire.MsgType, reqID uint64, body any) error {
+	c.Send(delivery.Delivery{Type: t, RequestID: reqID, Body: body, OnWritten: c.close})
 	return nil
 }
 

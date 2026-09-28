@@ -24,12 +24,56 @@ type Chats interface {
 	UserChats(ctx context.Context, userID, after string, limit int) ([]model.ChatSummary, error)
 }
 
+// MuteChecker reports whether a member has silenced a chat.
+//
+// An optional dependency, and optional for a reason worth stating: a deployment
+// that does not wire one keeps the previous behaviour, which is that every offline
+// recipient gets a notification. That is the behaviour the `muted` column was
+// supposed to change from the first migration onwards and never did — nothing read
+// it, so muting a chat was impossible while the schema implied otherwise.
+//
+// Failing OPEN is deliberate. If the lookup errors we send the notification: a
+// missed message is worse than an unwanted buzz, and an outage in a settings read
+// should not silence a conversation.
+type MuteChecker interface {
+	ChatFlags(ctx context.Context, chatID, userID string) (model.MemberFlags, error)
+}
+
+// PreviewPolicy decides whether a recipient allows message text in their push
+// payload.
+//
+// A one-method interface for the same reason PresenceAudience is one: fanout
+// routes, and it has no other business knowing that accounts have settings.
+//
+// The method returns a plain bool with no error, which is unusual here and is the
+// point: the safe answer to "we could not check" is NO preview, and folding that
+// into the return value removes any way for a caller to accidentally treat a
+// failed lookup as consent.
+type PreviewPolicy interface {
+	WantsPushPreview(ctx context.Context, userID string) bool
+}
+
+// PresenceAudience decides who may learn a user's online state.
+//
+// An interface rather than a direct dependency on the user store: fanout's job
+// is routing, and it has no other reason to know that accounts have settings. A
+// deployment that does not wire one keeps the previous behaviour — presence
+// reaches every direct peer — which is also what makes this safe to add without
+// touching the microservice wiring.
+type PresenceAudience interface {
+	// MaySeePresence reports whether viewerID may see ownerID's online state.
+	MaySeePresence(ctx context.Context, ownerID, viewerID string) (bool, error)
+}
+
 // Service consumes domain events and routes deliveries to the owning nodes.
 type Service struct {
-	bus    eventbus.Bus
-	chats  Chats
-	router router.Router
-	log    *slog.Logger
+	bus      eventbus.Bus
+	chats    Chats
+	router   router.Router
+	log      *slog.Logger
+	audience PresenceAudience
+	mutes    MuteChecker
+	previews PreviewPolicy
 
 	mu        sync.RWMutex
 	cache     map[string]memberEntry

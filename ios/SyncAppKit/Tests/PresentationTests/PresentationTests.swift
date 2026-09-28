@@ -142,7 +142,7 @@ final class CompositionTests: XCTestCase {
     func testProductionRefusesInsecureTLS() {
         let production = ServerEnvironment(
             name: .prod,
-            gatewayURL: URL(string: "wss://example.invalid/ws")!,
+            gatewayURL: url("wss://example.invalid/ws"),
             tcpHost: "example.invalid",
             tcpPort: 7000,
             transport: .webSocket,
@@ -151,4 +151,17 @@ final class CompositionTests: XCTestCase {
         )
         XCTAssertFalse(production.allowsInsecureTLS)
     }
+}
+
+/// A URL from a literal, without a force unwrap.
+///
+/// `force_unwrapping` is an error in this project's SwiftLint config, tests
+/// included — there is no per-rule exclusion for built-in rules, and turning the
+/// whole test suite off the linter to allow one operator is the worse trade. This
+/// fails with the offending string named, which is more than `!` would give.
+func url(_ string: String) -> URL {
+    guard let url = URL(string: string) else {
+        preconditionFailure("malformed URL literal in a test: \(string)")
+    }
+    return url
 }

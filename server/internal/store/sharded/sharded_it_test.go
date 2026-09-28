@@ -27,27 +27,27 @@ import (
 // here would surface as messages that never expire for SOME chats.
 //
 // The DSNs must name DATABASES OF THEIR OWN — including versus
-// SyncApp_TEST_PG_DSN. The outbox is a global table that both this package and
+// SYNCAPP_TEST_PG_DSN. The outbox is a global table that both this package and
 // the postgres package drain, so pointing two suites at one database makes them
 // delete each other's staged events and fail in whichever order they happened to
 // interleave. That is a property of shared mutable state, not a bug in either
 // test, and the only fix is not to share.
 //
-// Runs only when SyncApp_TEST_SHARD_DSNS is set to two or more comma-separated
+// Runs only when SYNCAPP_TEST_SHARD_DSNS is set to two or more comma-separated
 // DSNs, e.g.:
 //
-//	SyncApp_TEST_SHARD_DSNS="postgres://…:55432/SyncApp?sslmode=disable,postgres://…:55433/SyncApp?sslmode=disable" \
+//	SYNCAPP_TEST_SHARD_DSNS="postgres://…:55432/SyncApp?sslmode=disable,postgres://…:55433/SyncApp?sslmode=disable" \
 //	  go test ./internal/store/sharded -run TestSharded
 
 func openShards(t *testing.T) ([]*postgres.Store, []store.MessageStore) {
 	t.Helper()
-	dsns := os.Getenv("SyncApp_TEST_SHARD_DSNS")
+	dsns := os.Getenv("SYNCAPP_TEST_SHARD_DSNS")
 	if dsns == "" {
-		t.Skip("set SyncApp_TEST_SHARD_DSNS (2+ comma-separated DSNs) to run the sharded integration test")
+		t.Skip("set SYNCAPP_TEST_SHARD_DSNS (2+ comma-separated DSNs) to run the sharded integration test")
 	}
 	parts := strings.Split(dsns, ",")
 	if len(parts) < 2 {
-		t.Skip("sharding is only meaningful with 2+ shards; set SyncApp_TEST_SHARD_DSNS to several DSNs")
+		t.Skip("sharding is only meaningful with 2+ shards; set SYNCAPP_TEST_SHARD_DSNS to several DSNs")
 	}
 	ctx := context.Background()
 	var stores []*postgres.Store

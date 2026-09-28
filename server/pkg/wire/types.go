@@ -96,7 +96,151 @@ func (t MsgType) String() string {
 		return "RESUME_OK"
 	case MsgError:
 		return "ERROR"
+	case MsgReact:
+		return "REACT"
+	case MsgReactUpd:
+		return "REACT_UPD"
+	case MsgThread:
+		return "THREAD"
+	case MsgThreadOK:
+		return "THREAD_OK"
+	case MsgPollCreate:
+		return "POLL_CREATE"
+	case MsgPollVote:
+		return "POLL_VOTE"
+	case MsgPollClose:
+		return "POLL_CLOSE"
+	case MsgPollState:
+		return "POLL_STATE"
+	case MsgContactAdd:
+		return "CONTACT_ADD"
+	case MsgContactRemove:
+		return "CONTACT_REMOVE"
+	case MsgContactSync:
+		return "CONTACT_SYNC"
+	case MsgContactList:
+		return "CONTACT_LIST"
+	case MsgBlock:
+		return "BLOCK"
+	case MsgForward:
+		return "FORWARD"
+	case MsgSchedule:
+		return "SCHEDULE"
+	case MsgScheduleList:
+		return "SCHEDULE_LIST"
+	case MsgScheduleCancel:
+		return "SCHEDULE_CANCEL"
+	case MsgScheduled:
+		return "SCHEDULED"
+	case MsgPin:
+		return "PIN"
+	case MsgUnpin:
+		return "UNPIN"
+	case MsgPinList:
+		return "PIN_LIST"
+	case MsgPinned:
+		return "PINNED"
+	case MsgDraftSet:
+		return "DRAFT_SET"
+	case MsgDraftSync:
+		return "DRAFT_SYNC"
+	case MsgDrafts:
+		return "DRAFTS"
+	case MsgSetUsername:
+		return "SET_USERNAME"
+	case MsgInviteCreate:
+		return "INVITE_CREATE"
+	case MsgInviteRevoke:
+		return "INVITE_REVOKE"
+	case MsgInviteList:
+		return "INVITE_LIST"
+	case MsgJoin:
+		return "JOIN"
+	case MsgSetRole:
+		return "SET_ROLE"
+	case MsgInvites:
+		return "INVITES"
+	case MsgChatCreate:
+		return "CHAT_CREATE"
+	case MsgChatInfo:
+		return "CHAT_INFO"
+	case MsgPushToken:
+		return "PUSH_TOKEN"
+	case MsgSessionList:
+		return "SESSION_LIST"
+	case MsgSessions:
+		return "SESSIONS"
+	case MsgSessionRevoke:
+		return "SESSION_REVOKE"
+	case MsgSessionRevoked:
+		return "SESSION_REVOKED"
+	case MsgHistoryPage:
+		return "HISTORY_PAGE"
+	case MsgPrivacyGet:
+		return "PRIVACY_GET"
+	case MsgPrivacySet:
+		return "PRIVACY_SET"
+	case MsgPrivacy:
+		return "PRIVACY"
+	case MsgSecretAck:
+		return "SECRET_ACK"
+	case MsgSecretSync:
+		return "SECRET_SYNC"
+	case MsgSecretSynced:
+		return "SECRET_SYNCED"
+	case MsgSecretAcked:
+		return "SECRET_ACKED"
+	case MsgChatFlags:
+		return "CHAT_FLAGS"
+	case MsgChatFlagsSet:
+		return "CHAT_FLAGS_SET"
+	case MsgPasswordChange:
+		return "PASSWORD_CHANGE"
+	case MsgPasswordChanged:
+		return "PASSWORD_CHANGED"
+	case MsgTOTPSetup:
+		return "TOTP_SETUP"
+	case MsgTOTPSetupInfo:
+		return "TOTP_SETUP_INFO"
+	case MsgTOTPConfirm:
+		return "TOTP_CONFIRM"
+	case MsgTOTPDisable:
+		return "TOTP_DISABLE"
+	case MsgTOTPState:
+		return "TOTP_STATE"
+	case MsgBillingPlans:
+		return "BILLING_PLANS"
+	case MsgBillingOffers:
+		return "BILLING_OFFERS"
+	case MsgBillingCheckout:
+		return "BILLING_CHECKOUT"
+	case MsgBillingPayment:
+		return "BILLING_PAYMENT"
+	case MsgBillingStatus:
+		return "BILLING_STATUS"
+	case MsgSubscription:
+		return "SUBSCRIPTION"
+	case MsgBillingCancel:
+		return "BILLING_CANCEL"
+	case MsgKeyState:
+		return "KEY_STATE"
+	case MsgCallInvite:
+		return "CALL_INVITE"
+	case MsgCallAccept:
+		return "CALL_ACCEPT"
+	case MsgCallDecline:
+		return "CALL_DECLINE"
+	case MsgCallHangup:
+		return "CALL_HANGUP"
+	case MsgCallState:
+		return "CALL_STATE"
+	case MsgCallSignal:
+		return "CALL_SIGNAL"
 	default:
+		// Only MsgReserved (the zero value, which never appears on the wire) and types
+		// a future build adds reach here. TestEveryMsgTypeHasAName keeps the first
+		// list from silently growing back: 70 of 116 types used to land here, so every
+		// log line and metric label for them read "UNKNOWN".
 		return "UNKNOWN"
 	}
 }
@@ -106,7 +250,7 @@ func (t MsgType) String() string {
 // clients can react by range (e.g. 1xxx = retryable transport).
 type ErrorCode uint32
 
-// Capability flags negotiated in Hello/Welcome. Advertising via a bitset keeps
+// Cap is a capability flag negotiated in Hello/Welcome. Advertising via a bitset keeps
 // negotiation forward-compatible: unknown bits are ignored, so old servers and
 // new clients still agree on the intersection.
 type Cap uint32

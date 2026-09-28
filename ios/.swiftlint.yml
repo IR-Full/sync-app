@@ -1,0 +1,64 @@
+# SwiftLint, run as a CI gate.
+#
+# `only_rules` rather than the default set, deliberately. SwiftLint's defaults
+# are largely about house style — line length, file length, type body length —
+# and switching them on wholesale against an existing 12k-line codebase produces
+# a baseline nobody triages, then a `swiftlint:disable` culture, then a linter
+# nobody reads. The same reasoning as server/.golangci.yml.
+#
+# What is listed below is the subset that finds DEFECTS: a force unwrap that
+# will crash, a comparison that cannot fail, an unused capture that hides a
+# retain cycle. If a rule here fires, the answer is to change the code rather
+# than the config.
+
+only_rules:
+  # Crashes waiting to happen.
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  # Memory: the two shapes that leak a view controller or a connection.
+  - unowned_variable_capture
+  - weak_delegate
+  # Concurrency and control flow.
+  - unneeded_break_in_switch
+  - empty_count           # `isEmpty` is O(1); `count == 0` is not on every type
+  - duplicate_imports
+  - unused_capture_list
+  - unused_closure_parameter
+  - unused_control_flow_label
+  - unused_enumerated
+  - unused_optional_binding
+  - unused_setter_value
+  # Correctness traps specific to Swift's standard library.
+  - empty_string
+  - first_where           # `first(where:)` short-circuits; `filter().first` does not
+  - last_where
+  - contains_over_first_not_nil
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_range_nil_comparison
+  - reduce_boolean
+  - toggle_bool
+  - discarded_notification_center_observer
+  - notification_center_detachment
+  - overridden_super_call
+  - redundant_optional_initialization
+  - self_in_property_initialization
+
+# Resolved against the directory SwiftLint runs in, which is already `ios` — an
+# `ios/` prefix here matches `ios/ios/...` and therefore nothing.
+excluded:
+  - SyncAppKit/.build
+  - build
+
+# An error everywhere, tests included.
+#
+# SwiftLint has no per-rule `excluded` for built-in rules, so the choice is
+# "error in tests too" or "excluded from tests entirely" — and the second would
+# switch off every other rule on the test suite as well. Tests construct URLs
+# through a `url(_:)` helper that fails with a named message instead.
+force_unwrapping:
+  severity: error
+
+custom_rules: {}

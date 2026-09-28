@@ -162,7 +162,7 @@ func gzipDecompress(b []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer zr.Close()
+	defer func() { _ = zr.Close() }() // read-only reader; a close error cannot affect the bytes already returned
 	// Bound decompression output to guard against zip bombs.
 	lr := io.LimitReader(zr, MaxPayloadSize+1)
 	out, err := io.ReadAll(lr)

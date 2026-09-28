@@ -95,6 +95,7 @@ fun NewChatScreen(
                                 stringResource(
                                     when (tab) {
                                         NewChatTab.DIRECT -> R.string.new_chat_tab_direct
+                                        NewChatTab.SECRET -> R.string.secret_new
                                         NewChatTab.GROUP -> R.string.new_chat_tab_group
                                         NewChatTab.JOIN -> R.string.new_chat_tab_join
                                     },
@@ -112,6 +113,12 @@ fun NewChatScreen(
                         busy = state.busy,
                         onUsernameChange = viewModel::onUsernameChange,
                         onSubmit = viewModel::findByUsername,
+                    )
+                    NewChatTab.SECRET -> SecretTab(
+                        username = state.secretUsername,
+                        busy = state.busy,
+                        onUsernameChange = viewModel::onSecretUsernameChange,
+                        onSubmit = viewModel::createSecretChat,
                     )
                     NewChatTab.GROUP -> GroupTab(
                         title = state.groupTitle,
@@ -184,6 +191,41 @@ private fun DirectTab(
         Spacer(Modifier.height(12.dp))
         SubmitButton(
             text = stringResource(R.string.new_chat_find),
+            busy = busy,
+            enabled = username.isNotBlank(),
+            onClick = onSubmit,
+        )
+    }
+}
+
+/**
+ * Starting a secret chat.
+ *
+ * Deliberately the same shape as [DirectTab] — one handle, one button — because that is
+ * what it is: a chat with one other person. The only difference is the explanatory line,
+ * which is worth having exactly once, here, rather than repeated inside the conversation.
+ */
+@Composable
+private fun SecretTab(
+    username: String,
+    busy: Boolean,
+    onUsernameChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Column {
+        OutlinedTextField(
+            value = username,
+            onValueChange = onUsernameChange,
+            label = { Text(stringResource(R.string.new_chat_username_label)) },
+            prefix = { Text("@") },
+            singleLine = true,
+            enabled = !busy,
+            supportingText = { Text(stringResource(R.string.secret_new_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+        SubmitButton(
+            text = stringResource(R.string.secret_create),
             busy = busy,
             enabled = username.isNotBlank(),
             onClick = onSubmit,

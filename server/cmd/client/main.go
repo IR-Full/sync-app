@@ -69,7 +69,7 @@ func main() {
 		fmt.Println("connect:", err)
 		os.Exit(1)
 	}
-	defer cl.conn.Close()
+	defer func() { _ = cl.conn.Close() }()
 
 	if err := cl.handshake(*deviceID); err != nil {
 		fmt.Println("handshake:", err)
@@ -142,7 +142,13 @@ func dial(wsURL, tcpAddr string, useTLS, insecure, useQUIC bool) (*client, error
 			// #nosec G402 -- opt-in -insecure flag, dev self-signed servers only.
 			dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13}
 		}
-		wc, _, err := dialer.Dial(u.String(), nil)
+		wc, resp, err := dialer.Dial(u.String(), nil)
+		if resp != nil {
+			// The handshake response carries a body even on success (and especially
+			// on a rejected upgrade, where it holds the reason). Leaving it open
+			// holds the connection out of the transport's pool.
+			_ = resp.Body.Close()
+		}
 		if err != nil {
 			return nil, err
 		}

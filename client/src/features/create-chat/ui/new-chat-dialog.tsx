@@ -3,19 +3,25 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { ProtocolError } from '@/shared/api'
+import { ErrorCode, ProtocolError } from '@/shared/api'
 import { useTranslate } from '@/shared/i18n'
 import { cn } from '@/shared/lib/cn'
 import { Button, ErrorNote, Modal, TextField } from '@/shared/ui'
 
-import { directChatTarget, useCreateGroupChat, useJoinChat } from '../model/use-create-chat'
+import {
+  directChatTarget,
+  useCreateGroupChat,
+  useCreateSecretChat,
+  useJoinChat,
+} from '../model/use-create-chat'
 
-type Tab = 'direct' | 'group' | 'channel' | 'join'
+type Tab = 'direct' | 'secret' | 'group' | 'channel' | 'join'
 
 export function NewChatDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslate()
   const router = useRouter()
   const createGroup = useCreateGroupChat()
+  const createSecret = useCreateSecretChat()
   const joinChat = useJoinChat()
 
   const [tab, setTab] = useState<Tab>('direct')
@@ -35,7 +41,12 @@ export function NewChatDialog({ open, onClose }: { open: boolean; onClose: () =>
 
   function describe(caught: unknown): string {
     if (caught instanceof ProtocolError) {
-      if (caught.code === 3001) return t('error.userNotFound')
+      // Its own message because it is the one refusal here with an ANSWER. Falling
+      // through to the generic business-error text would make a purchasable feature
+      // look broken — which is exactly why the server gives it a code of its own
+      // instead of reusing FORBIDDEN.
+      if (caught.code === ErrorCode.PREMIUM_REQUIRED) return t('secret.premiumRequired')
+      if (caught.code === ErrorCode.NOT_FOUND) return t('error.userNotFound')
       if (caught.class === 'throttle') return t('error.rateLimited')
       if (caught.class === 'business') return caught.message || t('error.unknown')
     }
@@ -51,6 +62,14 @@ export function NewChatDialog({ open, onClose }: { open: boolean; onClose: () =>
         // No chat exists yet: the gateway creates it on the first SEND to the
         // handle, so we route to a compose screen carrying the target.
         router.push(`/chats/new?to=${encodeURIComponent(target.slice(1))}`)
+      } else if (tab === 'secret') {
+        const target = directChatTarget(username)
+        if (!target) return
+        // Unlike a direct chat, this one IS created by a message: the row has to exist
+        // before either side can start a session in it, so there is nothing to defer
+        // to a first send.
+        const { info } = await createSecret.mutateAsync(target)
+        router.push(`/chats/${info.chatId}`)
       } else if (tab === 'join') {
         const chatId = await joinChat.mutateAsync(code)
         if (chatId) router.push(`/chats/${chatId}`)
@@ -74,14 +93,15 @@ export function NewChatDialog({ open, onClose }: { open: boolean; onClose: () =>
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'direct', label: t('compose.direct') },
+    { id: 'secret', label: t('secret.new') },
     { id: 'group', label: t('compose.group') },
     { id: 'channel', label: t('compose.channel') },
     { id: 'join', label: t('compose.join') },
   ]
 
-  const pending = createGroup.isPending || joinChat.isPending
+  const pending = createGroup.isPending || createSecret.isPending || joinChat.isPending
   const canSubmit =
-    tab === 'direct'
+    tab === 'direct' || tab === 'secret'
       ? username.trim().length > 0
       : tab === 'join'
         ? code.trim().length > 0
@@ -121,6 +141,21 @@ export function NewChatDialog({ open, onClose }: { open: boolean; onClose: () =>
             spellCheck={false}
             onChange={(event) => setUsername(event.target.value)}
           />
+        )}
+
+        {tab === 'secret' && (
+          <>
+            <TextField
+              label={t('compose.username')}
+              hint={t('compose.directHint')}
+              prefix="@"
+              value={username}
+              autoCapitalize="none"
+              spellCheck={false}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+            <p className="text-ink-faint text-xs">{t('secret.newHint')}</p>
+          </>
         )}
 
         {(tab === 'group' || tab === 'channel') && (
@@ -166,9 +201,11 @@ export function NewChatDialog({ open, onClose }: { open: boolean; onClose: () =>
           <Button onClick={submit} loading={pending} disabled={!canSubmit} type="button">
             {tab === 'direct'
               ? t('compose.open')
-              : tab === 'join'
-                ? t('compose.join')
-                : t('compose.create')}
+              : tab === 'secret'
+                ? t('secret.create')
+                : tab === 'join'
+                  ? t('compose.join')
+                  : t('compose.create')}
           </Button>
         </div>
       </div>

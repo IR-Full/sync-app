@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useChatStore } from '@/entities/chat'
+import { useSecretStore } from '@/entities/secret-chat'
 import { useSessionStore } from '@/entities/session'
 import { useUserDirectory } from '@/entities/user'
 import { ProtocolError, useSyncAppClient, type Session } from '@/shared/api'
@@ -102,15 +103,30 @@ export function useRestoreSession(): { restoring: boolean } {
   const loadChats = useChatStore((state) => state.load)
   const [restoring, setRestoring] = useState(false)
   const attempted = useRef(false)
+  /** bumped to re-run the effect after a failed attempt */
+  const [attempt, setAttempt] = useState(0)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     hydrate()
   }, [hydrate])
 
+  useEffect(
+    () => () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+    },
+    [],
+  )
+
   useEffect(() => {
     if (status !== 'authenticated' || !session?.token) return
-    // Strict Mode mounts effects twice; a second dial would race the first.
-    if (attempted.current || client.state !== 'idle') return
+    // Strict Mode mounts effects twice; a second dial would race the first, and
+    // `attempted` is what prevents that. The state check skips the dial when one
+    // is already in progress or established — but it has to admit 'closed' as
+    // well as 'idle', because a failed first connect leaves the client exactly
+    // there. Accepting only 'idle' made the retry below unreachable.
+    const dialable = client.state === 'idle' || client.state === 'closed'
+    if (attempted.current || !dialable) return
     attempted.current = true
 
     setRestoring(true)
@@ -131,10 +147,25 @@ export function useRestoreSession(): { restoring: boolean } {
         })
       })
       .catch((error) => {
-        if (error instanceof ProtocolError && error.class === 'auth') clear()
+        if (error instanceof ProtocolError && error.class === 'auth') {
+          clear()
+          return
+        }
+        // Anything else is transient — the server was down, the network was not
+        // up yet. The client deliberately does NOT retry a *first* connect on its
+        // own (it rejects so the caller can report), and it clears its reconnect
+        // flag when it does, so without a retry here the user sits on a fully
+        // rendered app with a dead socket until they reload the page.
+        retryTimer.current = setTimeout(
+          () => {
+            attempted.current = false
+            setAttempt((n) => n + 1)
+          },
+          Math.min(1000 * 2 ** attempt, 30_000),
+        )
       })
       .finally(() => setRestoring(false))
-  }, [client, status, session, clear, loadChats, updateSession])
+  }, [client, status, session, clear, loadChats, updateSession, attempt])
 
   return { restoring }
 }
@@ -144,6 +175,7 @@ export function useLogout() {
   const clearSession = useSessionStore((state) => state.clear)
   const resetChats = useChatStore((state) => state.reset)
   const clearUsers = useUserDirectory((state) => state.clear)
+  const forgetSecrets = useSecretStore((state) => state.forget)
   const queryClient = useQueryClient()
 
   return useCallback(() => {
@@ -151,9 +183,14 @@ export function useLogout() {
     clearSession()
     resetChats()
     clearUsers()
+    // Private keys and secret transcripts, from memory and from the vault. Two
+    // reasons, and either alone would be enough: this may be a shared machine,
+    // and the next account to sign in here would otherwise find the previous
+    // one's identity still loaded and publish it as its own.
+    forgetSecrets()
     // Cached history belongs to the account that just left.
     queryClient.clear()
-  }, [client, clearSession, resetChats, clearUsers, queryClient])
+  }, [client, clearSession, resetChats, clearUsers, forgetSecrets, queryClient])
 }
 
 /**

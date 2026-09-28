@@ -171,20 +171,37 @@ public final class SettingsRepositoryImpl: SettingsRepository, @unchecked Sendab
 /// device of the recipient — so registering the wrong (or a stale) token means
 /// silence, not a duplicate. Clearing it on "notifications off" is what stops
 /// the push at the source instead of at the device.
+/// Registration is recorded before it is sent, and retried on connect. APNs can
+/// hand over a token at any moment — routinely before there is a connection at
+/// all — and a fire-and-forget send would then be lost for good, leaving the
+/// server pushing to a dead token or never learning the new one. Unlike a
+/// message, a token has no outbox of its own, so the intent lives in `meta` and
+/// `SyncEngine.flushPushToken` drains it (see `LocalStore.MetaKey`).
 public final class PushRepositoryImpl: PushRepository, @unchecked Sendable {
     private let client: SyncAppClient
+    private let store: LocalStore
+    private let sync: SyncEngine
 
-    public init(client: SyncAppClient) {
+    public init(client: SyncAppClient, store: LocalStore, sync: SyncEngine) {
         self.client = client
+        self.store = store
+        self.sync = sync
     }
 
     public func register(deviceToken: Data) async {
         // APNs hands over raw bytes; the provider API wants them hex-encoded.
         let hex = deviceToken.map { String(format: "%02x", $0) }.joined()
-        try? await client.registerPushToken(hex)
+        await setDesired(hex)
     }
 
     public func unregister() async {
-        try? await client.registerPushToken("")
+        // An empty token is what clears it server-side, so this is a value to
+        // deliver rather than a send to skip.
+        await setDesired("")
+    }
+
+    private func setDesired(_ token: String) async {
+        try? await store.setMeta(LocalStore.MetaKey.desiredPushToken, token)
+        await sync.flushPushToken()
     }
 }

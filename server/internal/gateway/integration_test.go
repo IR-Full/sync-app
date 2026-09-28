@@ -10,6 +10,7 @@ import (
 
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
 	"github.com/SyncApp-chat/SyncApp/internal/chat"
+	"github.com/SyncApp-chat/SyncApp/internal/contact"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
 	"github.com/SyncApp-chat/SyncApp/internal/fanout"
 	"github.com/SyncApp-chat/SyncApp/internal/gateway"
@@ -74,6 +75,16 @@ func startGatewayWithPresence(t *testing.T, opts ...func(*gateway.Config)) (stri
 		Auth: authSvc, Chat: chatSvc, Msg: msgSvc, Broker: message.NewBroker(msgSvc, log), Presence: presSvc,
 		Users: st.Users, Hub: hub, Search: searchSvc, KeyDir: keydir.NewMemory(),
 		Bus: bus, Router: rtr, Replay: replay.NewMemory(),
+		// The offline queue for secret chats. Wired here rather than only in the
+		// tests that assert on it: without it SECRET_SEND silently reverts to the
+		// relay-only behaviour this queue was added to fix, and every other secret
+		// test would keep passing while the regression went unnoticed.
+		SecretQ: st.SecretQ, IDs: ids,
+		// Wired so the harness exercises the block checks. Without it every
+		// contacts handler answers ErrUnsupported and the blocklist gates — which
+		// guard `Contacts != nil` — are skipped, so a regression in them would pass
+		// the suite unnoticed. With no blocks set it changes nothing else.
+		Contacts: contact.New(st.Contacts, st.Users),
 	}, cfg, log)
 	if err := gw.StartDelivery(); err != nil {
 		t.Fatal(err)
@@ -87,6 +98,54 @@ func startGatewayWithPresence(t *testing.T, opts ...func(*gateway.Config)) (stri
 	t.Cleanup(cancel)
 	go gw.ServeTCP(ctx, ln)
 	return ln.Addr().String(), presSvc
+}
+
+// startGatewayWithoutKeyDir is startGateway with NO prekey directory, for the
+// tests that assert the server refuses secret chats it could not actually carry.
+//
+// A separate constructor rather than an option, because "there is nowhere to
+// publish keys" is a whole deployment shape rather than a tweak: several handlers
+// answer ErrUnsupported in it, and a test that means to exercise that should say
+// so at the call site.
+func startGatewayWithoutKeyDir(t *testing.T) string {
+	t.Helper()
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ids, _ := id.NewGenerator(1)
+	st := memory.New().Stores()
+	bus := eventbus.NewMemory()
+	hub := delivery.NewHub()
+
+	relayCtx, relayCancel := context.WithCancel(context.Background())
+	t.Cleanup(relayCancel)
+	go outbox.New(st.Outbox, bus, log).Run(relayCtx)
+
+	authSvc := auth.New(st.Users, st.Sessions, ids)
+	chatSvc := chat.New(st.Chats, ids)
+	msgSvc := message.New(st.Messages, st.Reads, chatSvc, bus, ids)
+	presSvc := presence.New(presence.NewMemoryBackend(), bus, time.Minute)
+	rtr := router.NewMemory()
+
+	cfg := gateway.DefaultConfig()
+	cfg.Heartbeat = time.Hour
+	cfg.NodeID = "1"
+	gw := gateway.New(gateway.Services{
+		Auth: authSvc, Chat: chatSvc, Msg: msgSvc, Broker: message.NewBroker(msgSvc, log),
+		Presence: presSvc, Users: st.Users, Hub: hub,
+		Bus: bus, Router: rtr, Replay: replay.NewMemory(),
+		SecretQ: st.SecretQ, IDs: ids,
+		// KeyDir deliberately absent.
+	}, cfg, log)
+	if err := gw.StartDelivery(); err != nil {
+		t.Fatal(err)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	go gw.ServeTCP(ctx, ln)
+	return ln.Addr().String()
 }
 
 // startTwoNodes wires TWO gateway nodes sharing one bus, router, and stores (as
@@ -163,6 +222,8 @@ type testClient struct {
 	conn        *wire.Conn
 	userID      string
 	deviceID    string
+	sessionID   string
+	token       string
 	resumeToken string
 	seq         uint64
 }
@@ -201,6 +262,66 @@ func connectWithDevice(t *testing.T, addr, user, pass, deviceID string) *testCli
 	return cl
 }
 
+// connectWithCaps registers while ADVERTISING capabilities in HELLO, so a test
+// can exercise a negotiated branch rather than only the default one.
+func connectWithCaps(t *testing.T, addr, user, pass string, caps wire.Cap) *testClient {
+	t.Helper()
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := &testClient{conn: wire.NewConn(wire.NewTCPTransport(c), false)}
+	cl.send(t, wire.MsgHello, 0, wire.HelloBody{ClientVersion: "test", Platform: "cli", Caps: caps})
+	if e := cl.read(t); e.Type != wire.MsgWelcome {
+		t.Fatalf("want WELCOME got %s", e.Type)
+	}
+	cl.send(t, wire.MsgAuth, 1, wire.AuthBody{Username: user, Password: pass, Register: true})
+	e := cl.read(t)
+	if e.Type != wire.MsgAuthOK {
+		t.Fatalf("want AUTH_OK got %s", e.Type)
+	}
+	var ok wire.AuthOKBody
+	_ = wire.Unmarshal(e.Body, &ok)
+	cl.userID, cl.deviceID = ok.UserID, ok.DeviceID
+	cl.sessionID, cl.token, cl.resumeToken = ok.SessionID, ok.Token, ok.ResumeToken
+	return cl
+}
+
+// loginWithDeviceAndCaps authenticates an EXISTING account while both asserting
+// a device id and advertising capabilities.
+//
+// Both at once, because the secret-chat queue needs both: the queue is addressed
+// by (user, device), so a reconnecting client that does not reclaim its device id
+// is addressed at nobody — and the durable half of the protocol is gated on
+// CapSecretQueue, so a client that does not advertise it gets the old silence.
+func loginWithDeviceAndCaps(t *testing.T, addr, user, pass, deviceID string, caps wire.Cap) *testClient {
+	t.Helper()
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := &testClient{conn: wire.NewConn(wire.NewTCPTransport(c), false)}
+	cl.send(t, wire.MsgHello, 0, wire.HelloBody{
+		ClientVersion: "test", Platform: "cli", DeviceID: deviceID, Caps: caps,
+	})
+	if e := cl.read(t); e.Type != wire.MsgWelcome {
+		t.Fatalf("want WELCOME got %s", e.Type)
+	}
+	cl.send(t, wire.MsgAuth, 1, wire.AuthBody{Username: user, Password: pass})
+	e := cl.read(t)
+	if e.Type != wire.MsgAuthOK {
+		t.Fatalf("want AUTH_OK got %s", e.Type)
+	}
+	var ok wire.AuthOKBody
+	_ = wire.Unmarshal(e.Body, &ok)
+	cl.userID, cl.deviceID = ok.UserID, ok.DeviceID
+	cl.sessionID, cl.token, cl.resumeToken = ok.SessionID, ok.Token, ok.ResumeToken
+	if cl.deviceID != deviceID {
+		t.Fatalf("device id was not honoured: asked for %q, got %q", deviceID, cl.deviceID)
+	}
+	return cl
+}
+
 func connectAs(t *testing.T, addr, user, pass string, register bool) *testClient {
 	t.Helper()
 	c, err := net.Dial("tcp", addr)
@@ -222,8 +343,51 @@ func connectAs(t *testing.T, addr, user, pass string, register bool) *testClient
 	_ = wire.Unmarshal(e.Body, &ok)
 	cl.userID = ok.UserID
 	cl.deviceID = ok.DeviceID
+	cl.sessionID = ok.SessionID
+	cl.token = ok.Token
 	cl.resumeToken = ok.ResumeToken
 	return cl
+}
+
+// authenticates reports whether a bearer token still opens a connection.
+//
+// This is the only honest way to test revocation: asserting that a store row has
+// revoked_at set proves the write happened, not that anything checks it. A token
+// that still authenticates after "log out" is exactly the bug this feature
+// exists to fix, and only a real AUTH round trip can see it.
+func authenticates(t *testing.T, addr, token string) bool {
+	t.Helper()
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+
+	cl := &testClient{conn: wire.NewConn(wire.NewTCPTransport(c), false)}
+	cl.send(t, wire.MsgHello, 0, wire.HelloBody{ClientVersion: "test", Platform: "cli"})
+	if e := cl.read(t); e.Type != wire.MsgWelcome {
+		t.Fatalf("want WELCOME got %s", e.Type)
+	}
+	cl.send(t, wire.MsgAuth, 1, wire.AuthBody{Token: token})
+
+	// A rejected auth may answer ERROR or simply drop the connection, so a read
+	// failure counts as "no" rather than as a test failure.
+	type res struct {
+		e   wire.Envelope
+		err error
+	}
+	ch := make(chan res, 1)
+	go func() {
+		e, err := cl.conn.ReadEnvelope()
+		ch <- res{e, err}
+	}()
+	select {
+	case r := <-ch:
+		return r.err == nil && r.e.Type == wire.MsgAuthOK
+	case <-time.After(readTimeout):
+		t.Fatal("auth probe timed out")
+		return false
+	}
 }
 
 func (c *testClient) send(t *testing.T, typ wire.MsgType, reqID uint64, body any) {
@@ -475,21 +639,16 @@ func TestMultiDeviceKeyFetchAll(t *testing.T) {
 	if bob1.deviceID == bob2.deviceID {
 		t.Fatal("expected distinct device ids for the two connections")
 	}
-	bob1.send(t, wire.MsgKeyPublish, 5, wire.KeyPublishBody{IdentityKey: "ik1", SigningKey: "sk1", SignedPreKey: "spk1"})
-	bob2.send(t, wire.MsgKeyPublish, 5, wire.KeyPublishBody{IdentityKey: "ik2", SigningKey: "sk2", SignedPreKey: "spk2"})
+	bob1.send(t, wire.MsgKeyPublish, 5, validKeyPublish(t))
+	bob2.send(t, wire.MsgKeyPublish, 5, validKeyPublish(t))
+	// Publish ACKs with KEY_STATE, so both publishes can be waited on directly
+	// instead of polling the fetch until the second device shows up.
+	bob1.readUntil(t, wire.MsgKeyState)
+	bob2.readUntil(t, wire.MsgKeyState)
 
-	// Publish is fire-and-forget, so there is no ack to wait on: poll the fetch
-	// until both devices appear rather than sleeping a guessed interval.
+	alice.send(t, wire.MsgKeyFetchAll, 6, wire.KeyFetchBody{UserID: bob1.userID})
 	var kb wire.KeyBundlesBody
-	deadline := time.Now().Add(readTimeout)
-	for len(kb.Bundles) < 2 && time.Now().Before(deadline) {
-		alice.send(t, wire.MsgKeyFetchAll, 6, wire.KeyFetchBody{UserID: bob1.userID})
-		e, ok := alice.tryRead(t, 250*time.Millisecond)
-		if !ok || e.Type != wire.MsgKeyBundles {
-			continue
-		}
-		_ = wire.Unmarshal(e.Body, &kb)
-	}
+	_ = wire.Unmarshal(alice.readUntil(t, wire.MsgKeyBundles).Body, &kb)
 	if len(kb.Bundles) != 2 {
 		t.Fatalf("expected 2 device bundles, got %d", len(kb.Bundles))
 	}
@@ -611,6 +770,56 @@ func TestSecretRelayIsOpaque(t *testing.T) {
 	}
 	if sb.FromUserID != alice.userID || sb.FromDeviceID != alice.deviceID {
 		t.Fatalf("sender not stamped: %+v", sb)
+	}
+}
+
+// A device id is asserted by the client, and real ones are not snowflakes: the
+// web client uses "web-<random>", the mobile ones a UUID. Validating the secret
+// relay's recipient device as if it were numeric would reject every one of them
+// — silently, since a dropped relay frame produces no error the sender sees.
+func TestSecretRelayAcceptsClientAssertedDeviceIDs(t *testing.T) {
+	addr := startGateway(t)
+	alice := connectWithDevice(t, addr, "alice-dev", "secret123", "web-3f2a9c")
+	bob := connectWithDevice(t, addr, "bob-dev", "secret123", "7f3e1b2a-0c4d-4e5f-8a9b-0c1d2e3f4a5b")
+
+	alice.send(t, wire.MsgSecretSend, 1, wire.SecretMsgBody{
+		ToUserID: bob.userID, ToDeviceID: bob.deviceID,
+		RatchetHeader: "aGVhZGVy", Ciphertext: "Y2lwaGVydGV4dA==",
+	})
+
+	recv := bob.readUntil(t, wire.MsgSecretRecv)
+	var sb wire.SecretMsgBody
+	_ = wire.Unmarshal(recv.Body, &sb)
+	if sb.Ciphertext != "Y2lwaGVydGV4dA==" {
+		t.Fatalf("ciphertext altered: %q", sb.Ciphertext)
+	}
+	if sb.FromDeviceID != alice.deviceID {
+		t.Fatalf("sender device not stamped: %+v", sb)
+	}
+}
+
+// A blocked sender must not be able to reach the person who blocked them through
+// the relay. Every other path to a user goes through resolveChat, which refuses;
+// this one is addressed by user id and has no chat behind it.
+func TestSecretRelayRefusesBlockedRecipient(t *testing.T) {
+	addr := startGateway(t)
+	alice := connect(t, addr, "alice-blk", "secret123")
+	bob := connect(t, addr, "bob-blk", "secret123")
+
+	// Bob blocks Alice.
+	bob.send(t, wire.MsgBlock, 1, wire.BlockBody{Target: alice.userID, Blocked: true})
+	bob.readUntil(t, wire.MsgContactList)
+
+	alice.send(t, wire.MsgSecretSend, 2, wire.SecretMsgBody{
+		ToUserID: bob.userID, ToDeviceID: bob.deviceID,
+		RatchetHeader: "aGVhZGVy", Ciphertext: "Y2lwaGVydGV4dA==",
+	})
+
+	e := alice.readUntil(t, wire.MsgError)
+	var errBody wire.ErrorBody
+	_ = wire.Unmarshal(e.Body, &errBody)
+	if errBody.Code != wire.ErrForbidden {
+		t.Fatalf("blocked secret send: got code %d, want ErrForbidden", errBody.Code)
 	}
 }
 
@@ -868,4 +1077,72 @@ func TestExpensiveActionsAreLimitedPerUser(t *testing.T) {
 	if eb.Code != wire.ErrRateLimited {
 		t.Fatalf("a second connection bought a fresh budget (got %d)", eb.Code)
 	}
+}
+
+// A peer that negotiates CAP_BATCHING gets one page frame instead of a hundred
+// NEW frames plus a terminator. The capability bit was declared and unused until
+// this existed, so the negotiation is what keeps it backward compatible: a
+// client that does not ask still gets the stream.
+func TestHistoryBatchesForCapableClients(t *testing.T) {
+	addr := startGateway(t)
+	alice := connectWithCaps(t, addr, "batchalice", "secret123", wire.CapBatching)
+	bob := connect(t, addr, "batchbob", "secret123")
+
+	const n = 5
+	for i := 0; i < n; i++ {
+		alice.send(t, wire.MsgSend, uint64(10+i), wire.SendBody{
+			ChatID: "@batchbob", DedupKey: "batch" + itoaTest(i), Text: "m" + itoaTest(i),
+		})
+		alice.readUntil(t, wire.MsgSendAck)
+	}
+
+	alice.send(t, wire.MsgHistory, 100, wire.HistoryBody{ChatID: "@batchbob", Limit: 50})
+	e := alice.readUntil(t, wire.MsgHistoryPage)
+
+	var page wire.HistoryPageBody
+	if err := wire.Unmarshal(e.Body, &page); err != nil {
+		t.Fatalf("decode page: %v", err)
+	}
+	if len(page.Messages) != n {
+		t.Fatalf("page carried %d messages, want %d", len(page.Messages), n)
+	}
+	if !page.Done {
+		t.Error("a short page must be marked done")
+	}
+	// The RESOLVED id, not the "@handle" that was asked for: this is the one
+	// frame that says which chat the page came from.
+	if page.ChatID == "" || page.ChatID[0] == '@' {
+		t.Fatalf("page chat id is %q, want a resolved id", page.ChatID)
+	}
+	_ = bob
+}
+
+// The default client advertises no batching, so it must still get the stream —
+// otherwise adding the page would have broken every shipped mobile build.
+func TestHistoryStreamsForClientsWithoutBatching(t *testing.T) {
+	addr := startGateway(t)
+	alice := connect(t, addr, "streamalice", "secret123")
+	bob := connect(t, addr, "streambob", "secret123")
+
+	alice.send(t, wire.MsgSend, 10, wire.SendBody{
+		ChatID: "@streambob", DedupKey: "s1", Text: "only",
+	})
+	alice.readUntil(t, wire.MsgSendAck)
+
+	alice.send(t, wire.MsgHistory, 100, wire.HistoryBody{ChatID: "@streambob", Limit: 50})
+
+	// A NEW frame per message, then the terminator.
+	nw := alice.readUntil(t, wire.MsgNew)
+	var msg wire.NewMessageBody
+	_ = wire.Unmarshal(nw.Body, &msg)
+	if msg.Text != "only" {
+		t.Fatalf("history streamed %q", msg.Text)
+	}
+	done := alice.readUntil(t, wire.MsgHistoryOK)
+	var ok wire.HistoryOKBody
+	_ = wire.Unmarshal(done.Body, &ok)
+	if !ok.Done {
+		t.Error("a short page must be marked done")
+	}
+	_ = bob
 }

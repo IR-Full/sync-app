@@ -33,3 +33,15 @@ const (
 	presencePageSize = 200
 	maxPresencePages = 10
 )
+
+// routeBatchSize bounds ONE router batch lookup and the node→recipients map built
+// from it.
+//
+// The bound has to live here rather than being inherited from whatever page size
+// the caller happens to use: a Redis pipeline of unbounded length is a single
+// request that can stall the connection, and a map keyed by node holding every
+// recipient of a million-member channel is the coordinator heap problem that
+// hot-chat sharding already exists to avoid. 200 is comfortably inside one
+// network MTU's worth of small HKEYS commands and turns any realistic group into
+// a single round trip.
+const routeBatchSize = 200

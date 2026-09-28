@@ -23,19 +23,23 @@
          selected build configuration, so dev / stage / prod is a scheme choice
          and never a code change. See Config/*.xcconfig. -->
     <key>SyncAppEnvironment</key>
-    <string>$(SyncApp_ENVIRONMENT)</string>
+    <string>$(SYNCAPP_ENVIRONMENT)</string>
     <key>SyncAppGatewayURL</key>
-    <string>$(SyncApp_GATEWAY_URL)</string>
+    <string>$(SYNCAPP_GATEWAY_URL)</string>
     <key>SyncAppTCPHost</key>
-    <string>$(SyncApp_TCP_HOST)</string>
+    <string>$(SYNCAPP_TCP_HOST)</string>
     <key>SyncAppTCPPort</key>
-    <string>$(SyncApp_TCP_PORT)</string>
+    <string>$(SYNCAPP_TCP_PORT)</string>
     <key>SyncAppTransport</key>
-    <string>$(SyncApp_TRANSPORT)</string>
+    <string>$(SYNCAPP_TRANSPORT)</string>
     <key>SyncAppMediaBaseURL</key>
-    <string>$(SyncApp_MEDIA_BASE_URL)</string>
+    <string>$(SYNCAPP_MEDIA_BASE_URL)</string>
     <key>SyncAppAllowsInsecureTLS</key>
-    <string>$(SyncApp_ALLOWS_INSECURE_TLS)</string>
+    <string>$(SYNCAPP_ALLOWS_INSECURE_TLS)</string>
+    <key>SyncAppTLSPins</key>
+    <string>$(SYNCAPP_TLS_PINS)</string>
+    <key>SyncAppTLSPinsExpireAt</key>
+    <string>$(SYNCAPP_TLS_PINS_EXPIRE_AT)</string>
 
     <!-- Cleartext is permitted for localhost only, and only so `go run
          ./cmd/server` works out of the box over ws://. Stage and prod use wss://

@@ -116,6 +116,74 @@ func TestCallDeclineEndsOneToOne(t *testing.T) {
 	}
 }
 
+// mutableChats lets a test add a member after a call has already started.
+type mutableChats struct{ members *[]string }
+
+func (m mutableChats) IsMember(_ context.Context, _, userID string) (bool, error) {
+	for _, id := range *m.members {
+		if id == userID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+func (m mutableChats) MemberIDs(context.Context, string) ([]string, error) { return *m.members, nil }
+
+// Invite rings every member at the time of the call, so everyone then in the chat
+// is legitimately in the roster. Someone who joins the chat LATER is not — and
+// leaving a room is only meaningful for someone in it. Without the roster check
+// they could write a "left" row for a participant that never existed, and in a
+// room down to two the settle() it triggers ends everyone else's conversation.
+func TestLateChatJoinerCannotHangUpOrDeclineACallTheyAreNotIn(t *testing.T) {
+	members := []string{"alice", "bob"}
+	bus := &capBus{}
+	ids, _ := id.NewGenerator(3)
+	s := New(memory.New().Stores().Calls, mutableChats{members: &members}, bus, ids)
+	ctx := context.Background()
+
+	c, err := s.Invite(ctx, "chat1", "alice", "devA", model.CallVideo, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Accept(ctx, c.ID, "bob", "devB", 2); err != nil {
+		t.Fatal(err)
+	}
+
+	// Mallory joins the chat only now: a chat member, but never rung.
+	members = append(members, "mallory")
+
+	if err := s.Hangup(ctx, c.ID, "mallory", 3); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("late joiner hangup: got %v, want ErrForbidden", err)
+	}
+	if err := s.Decline(ctx, c.ID, "mallory", 3); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("late joiner decline: got %v, want ErrForbidden", err)
+	}
+
+	// The call Alice and Bob are on is untouched, and no junk row was written.
+	got, _ := s.Get(ctx, c.ID)
+	if got.State != model.CallActive {
+		t.Fatalf("call state = %s, want active — an outsider ended it", got.State)
+	}
+	parts, err := s.Participants(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range parts {
+		if p.UserID == "mallory" {
+			t.Fatalf("outsider got a participant row: %+v", p)
+		}
+	}
+
+	// They can still JOIN — chat membership is what entitles someone to enter.
+	if _, err := s.Accept(ctx, c.ID, "mallory", "devM", 4); err != nil {
+		t.Fatalf("late joiner should still be able to accept: %v", err)
+	}
+	// And having joined, they may now leave.
+	if err := s.Hangup(ctx, c.ID, "mallory", 5); err != nil {
+		t.Fatalf("participant hangup after joining: %v", err)
+	}
+}
+
 func TestConferenceStaysAliveWhileTwoRemain(t *testing.T) {
 	s, _ := newSvc("alice", "bob", "carol")
 	ctx := context.Background()

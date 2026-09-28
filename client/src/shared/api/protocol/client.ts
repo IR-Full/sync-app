@@ -73,6 +73,16 @@ export interface ClientEvents {
   callSignal: Body.CallSignal
   /** ciphertext delivered from a peer device in a secret chat */
   secret: Body.SecretMsg
+  /**
+   * This account's subscription and entitlements changed.
+   *
+   * A PUSH and not only a reply, because the change is not the client's doing: a
+   * payment settles minutes after the user closed the checkout page, a period lapses
+   * overnight. Until the client hears it, it goes on offering features the server has
+   * started refusing — which the user experiences as the app breaking rather than as a
+   * plan ending.
+   */
+  subscription: Body.Subscription
   /** an error frame that did not correlate to any in-flight request */
   error: ProtocolError
   /** the session is no longer valid — the app must send the user back to login */
@@ -307,7 +317,7 @@ export class SyncAppClient {
 
   private async resumeSession(): Promise<void> {
     const session = this.session!
-    await this.request<Body.ResumeOK>(
+    const reply = await this.request<Body.ResumeOK>(
       MsgType.RESUME,
       {
         resumeToken: session.resumeToken,
@@ -315,7 +325,22 @@ export class SyncAppClient {
       } satisfies Body.Encodable<Body.Resume>,
       { expect: MsgType.RESUME_OK, skipReadyCheck: true },
     )
-    this.onAuthenticated(session)
+    /*
+     * The resume token ROTATED, and keeping the old one is not a missed
+     * optimisation — it ends the session.
+     *
+     * Resuming CONSUMES the token that was sent. The server remembers the consumed
+     * one precisely so that presenting it again is detectable, and treats that as
+     * theft: two parties holding one token, with no way to tell which is the owner,
+     * so it kills the chain. A client that kept the old token would therefore work
+     * for exactly one reconnect and then log itself out.
+     *
+     * An older gateway sends nothing here, in which case the existing token is still
+     * current — hence the emptiness check rather than an unconditional overwrite,
+     * which would blank it.
+     */
+    const rotated = reply.body.resumeToken ?? ''
+    this.onAuthenticated(rotated ? { ...session, resumeToken: rotated } : session)
   }
 
   private async authenticate(): Promise<void> {
@@ -423,6 +448,15 @@ export class SyncAppClient {
     this.livenessTimer = null
   }
 
+  /** Fails one in-flight request and forgets it. */
+  private failPending(requestId: number, error: unknown): void {
+    const pending = this.pending.get(requestId)
+    if (!pending) return
+    this.pending.delete(requestId)
+    clearTimeout(pending.timer)
+    pending.reject(error)
+  }
+
   private rejectAllPending(error: unknown): void {
     for (const [, pending] of this.pending) {
       clearTimeout(pending.timer)
@@ -463,6 +497,19 @@ export class SyncAppClient {
         body = decodeBody(envelope.type, envelope.body)
       } catch (error) {
         console.error(`[SyncApp] cannot decode ${msgTypeName(envelope.type)} body`, error)
+        // If this was the answer to a request, fail that request now. Returning
+        // here used to leave the caller's promise pending until the 15s timeout,
+        // which turns a decodable-schema mismatch — `generated/` behind the
+        // server's `body.proto` — into a UI that hangs instead of reporting.
+        if (envelope.requestId !== 0 && this.pending.has(envelope.requestId)) {
+          this.failPending(
+            envelope.requestId,
+            new ProtocolError(
+              ErrorCode.BAD_FRAME,
+              `cannot decode ${msgTypeName(envelope.type)} body`,
+            ),
+          )
+        }
         return
       }
     }
@@ -562,6 +609,12 @@ export class SyncAppClient {
         break
       case MsgType.SECRET_RECV:
         this.emit('secret', envelope.body as Body.SecretMsg)
+        break
+      case MsgType.SUBSCRIPTION:
+        // Also arrives as a REPLY to BILLING_STATUS, which the request machinery
+        // correlates and consumes before reaching here — so this branch only sees the
+        // unsolicited push, which is the one nothing else is waiting for.
+        this.emit('subscription', envelope.body as Body.Subscription)
         break
       case MsgType.ERROR:
       case MsgType.AUTH_ERR: {

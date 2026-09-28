@@ -73,7 +73,7 @@ private val AppTypography = Typography(
 )
 
 @Composable
-fun syncappTheme(
+fun SyncAppTheme(
     themeMode: ThemeMode,
     language: LanguageMode,
     content: @Composable () -> Unit,

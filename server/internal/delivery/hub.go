@@ -7,33 +7,53 @@
 // node, one Hub holds everyone.
 package delivery
 
+import "hash/fnv"
+
 // NewHub creates an empty routing table.
 func NewHub() *Hub {
-	return &Hub{users: make(map[string]map[string]Sink)}
+	h := &Hub{}
+	for i := range h.shards {
+		h.shards[i].users = make(map[string]map[string]Sink)
+	}
+	return h
+}
+
+// shardFor picks the shard owning a user.
+//
+// FNV-1a rather than something cryptographic: the input is an id the client
+// cannot choose (a server-minted snowflake), so there is no adversary to
+// distribute against — only the natural clustering of sequential ids, which any
+// avalanching hash breaks up. It is also the same hash the sharded message store
+// uses, so there is one bucketing idiom in the codebase rather than two.
+func (h *Hub) shardFor(userID string) *hubShard {
+	f := fnv.New32a()
+	_, _ = f.Write([]byte(userID))
+	return &h.shards[f.Sum32()%hubShards]
 }
 
 // Register adds a sink and returns an unregister func to call on disconnect.
 func (h *Hub) Register(userID string, s Sink) func() {
-	h.mu.Lock()
-	if h.users[userID] == nil {
-		h.users[userID] = make(map[string]Sink)
+	sh := h.shardFor(userID)
+	sh.mu.Lock()
+	if sh.users[userID] == nil {
+		sh.users[userID] = make(map[string]Sink)
 	}
-	h.users[userID][s.DeviceID()] = s
-	h.mu.Unlock()
+	sh.users[userID][s.DeviceID()] = s
+	sh.mu.Unlock()
 
 	return func() {
-		h.mu.Lock()
-		if devs := h.users[userID]; devs != nil {
+		sh.mu.Lock()
+		if devs := sh.users[userID]; devs != nil {
 			// Only remove if it is still the same sink (guards against a
 			// reconnect having replaced it).
 			if cur, ok := devs[s.DeviceID()]; ok && cur == s {
 				delete(devs, s.DeviceID())
 			}
 			if len(devs) == 0 {
-				delete(h.users, userID)
+				delete(sh.users, userID)
 			}
 		}
-		h.mu.Unlock()
+		sh.mu.Unlock()
 	}
 }
 
@@ -41,13 +61,14 @@ func (h *Hub) Register(userID string, s Sink) func() {
 // sinks reached; 0 means the user is offline on this node (caller may enqueue a
 // push notification).
 func (h *Hub) Route(userID string, d Delivery) int {
-	h.mu.RLock()
-	devs := h.users[userID]
+	sh := h.shardFor(userID)
+	sh.mu.RLock()
+	devs := sh.users[userID]
 	sinks := make([]Sink, 0, len(devs))
 	for _, s := range devs {
 		sinks = append(sinks, s)
 	}
-	h.mu.RUnlock()
+	sh.mu.RUnlock()
 
 	n := 0
 	for _, s := range sinks {
@@ -62,12 +83,13 @@ func (h *Hub) Route(userID string, d Delivery) int {
 // messages, which are addressed to a single device, not all of a user's
 // devices). Returns true if that device was connected on this node.
 func (h *Hub) RouteDevice(userID, deviceID string, d Delivery) bool {
-	h.mu.RLock()
+	sh := h.shardFor(userID)
+	sh.mu.RLock()
 	var s Sink
-	if devs := h.users[userID]; devs != nil {
+	if devs := sh.users[userID]; devs != nil {
 		s = devs[deviceID]
 	}
-	h.mu.RUnlock()
+	sh.mu.RUnlock()
 	if s == nil {
 		return false
 	}
@@ -76,7 +98,8 @@ func (h *Hub) RouteDevice(userID, deviceID string, d Delivery) bool {
 
 // IsOnline reports whether the user has any connected device on this node.
 func (h *Hub) IsOnline(userID string) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return len(h.users[userID]) > 0
+	sh := h.shardFor(userID)
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
+	return len(sh.users[userID]) > 0
 }

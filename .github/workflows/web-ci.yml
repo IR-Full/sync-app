@@ -1,0 +1,69 @@
+name: Web CI
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: typecheck · lint · test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Matches the toolchain the project is developed against; `npm ci`
+          # needs the lockfile to have been produced by a compatible npm.
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      # `ci`, not `install`: it fails on a lockfile that disagrees with
+      # package.json instead of quietly resolving something else, which is the
+      # only way a CI install is worth anything.
+      - name: Install dependencies
+        run: npm ci
+
+      # Runs first because it is the cheapest gate and the one that regressed
+      # unnoticed before this job existed: `tsc` was red with 13 errors and
+      # nothing ran it.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test:coverage
+
+      # The summary is small and makes a drop visible in the PR without anyone
+      # opening the artifact.
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const s = require('./coverage/coverage-summary.json').total;
+              const row = (k) => \`| \${k} | \${s[k].pct}% | \${s[k].covered}/\${s[k].total} |\`;
+              const out = [
+                '| metric | % | covered |',
+                '|---|---|---|',
+                row('lines'), row('branches'), row('functions'),
+              ].join('\n');
+              console.log(out);
+              require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, out + '\n');
+            "
+          fi
+
+      - name: Build
+        run: npm run build

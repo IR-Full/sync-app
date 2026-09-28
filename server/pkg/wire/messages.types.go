@@ -37,6 +37,15 @@ type AuthBody struct {
 	// changed with MsgProfileSet, so there is exactly one writer of the field
 	// and no ambiguity about whether a login re-asserts it.
 	DisplayName string `json:"display_name,omitempty"`
+	// TOTPCode is the second factor, sent on the RETRY after the server answered
+	// ErrTwoFactorRequired. A client cannot know in advance whether an account has
+	// one — asking would make this an oracle for which accounts are protected —
+	// so the flow is: send credentials, get told a code is needed, send both.
+	//
+	// A recovery code is accepted here too. The user who has lost their phone is
+	// looking at the same prompt, and making them find a different screen for it is
+	// how a recovery path goes unused.
+	TOTPCode string `json:"totp_code,omitempty"`
 }
 
 // AuthOKBody confirms identity and returns a fresh token for later resumes. It
@@ -206,6 +215,15 @@ type ResumeBody struct {
 type ResumeOKBody struct {
 	SessionID string `json:"session_id"`
 	FromSeq   uint64 `json:"from_seq"`
+	// ResumeToken is the NEXT token, because resuming consumes the one that was
+	// used. A client that keeps its old token after a successful resume will fail
+	// the next one — and, worse, will look to the server exactly like a thief
+	// replaying a consumed token, which ends the session.
+	//
+	// Rotation is the point: an unrotated resume token granted access for the
+	// session whole 14-day life from a single capture, and its use was invisible
+	// because the real client kept working alongside it.
+	ResumeToken string `json:"resume_token,omitempty"`
 }
 
 // ErrorBody is the generic error payload.
@@ -249,6 +267,13 @@ type MediaURLBody struct {
 type SearchBody struct {
 	Query string `json:"query"`
 	Limit int    `json:"limit"`
+	// ChatID narrows to one conversation, SenderID to one author. Both are
+	// filters WITHIN what the caller may already see: the server scopes every
+	// search by chat membership first, and a named chat is verified against it
+	// rather than trusted — a chat id is guessable, so treating it as a filter
+	// alone would turn "search in this chat" into a way to read one.
+	ChatID   string `json:"chat_id,omitempty"`
+	SenderID string `json:"sender_id,omitempty"`
 }
 
 // SearchHit is one result row.
@@ -258,6 +283,10 @@ type SearchHit struct {
 	SenderID  string `json:"sender_id"`
 	Seq       uint64 `json:"seq"`
 	Text      string `json:"text"`
+	// CreatedAt is the ranking key a client can show and re-sort by. Seq is a
+	// PER-CHAT counter, so it cannot order results that span chats — which is the
+	// mistake the server's own ranking used to make.
+	CreatedAt int64 `json:"created_at,omitempty"`
 }
 
 // SearchResultsBody is the ranked, permission-filtered result set.
@@ -269,9 +298,14 @@ type SearchResultsBody struct {
 // --- Secret-chat (E2E) bodies. The server treats Ciphertext/keys as opaque. ---
 
 // KeyPublishBody uploads a device's long-term identity keys and a batch of
-// one-time prekeys for X3DH. Keys are base64 raw-url encoded; IdentityKey and
-// prekeys are X25519 public keys, SigningKey is an Ed25519 public key, and
-// SignedPreKeySig is the Ed25519 signature over SignedPreKey.
+// one-time prekeys for X3DH. Keys are **standard base64 with padding**
+// (`base64.StdEncoding`) — not raw-url, which an earlier version of this comment
+// claimed and no client ever used. IdentityKey and prekeys are 32-byte X25519
+// public keys, SigningKey is a 32-byte Ed25519 public key, and SignedPreKeySig is
+// the 64-byte Ed25519 signature over SignedPreKey.
+//
+// The gateway validates all of that (and that the signature verifies) before the
+// bundle reaches the directory; see gateway.validateKeyBundle.
 type KeyPublishBody struct {
 	IdentityKey     string   `json:"identity_key"`
 	SigningKey      string   `json:"signing_key"`
@@ -296,6 +330,35 @@ type KeyBundleBody struct {
 	SignedPreKey    string `json:"signed_prekey"`
 	SignedPreKeySig string `json:"signed_prekey_sig"`
 	OneTimePreKey   string `json:"one_time_prekey,omitempty"`
+}
+
+// KeyStateBody answers KEY_PUBLISH: what the directory now holds for this device.
+//
+// The reply exists because of a gap that was invisible from both ends. One-time
+// prekeys are consumed one per peer that starts a session, so a popular device runs
+// its batch down on its own; when the batch is empty X3DH silently falls back to
+// three Diffie-Hellmans instead of four, which is weaker and reported to nobody.
+// Only the OWNER can refill, and the owner is not the party doing the fetching — so
+// the count has to come back here, on the publish, and nowhere else.
+//
+// SignedPreKeyAgeMs is the second half: a signed prekey published once and never
+// rotated is a single key protecting every future session start. The client decides
+// when to rotate; the server just reports how old the one it holds is, because the
+// client cannot know whether its own publish ever landed.
+type KeyStateBody struct {
+	// OneTimePreKeysLeft is what the directory holds AFTER this publish was applied,
+	// capped at MaxOneTimePreKeys. A client tops up when it drops below its own
+	// threshold rather than at zero: reaching zero has already cost somebody the
+	// stronger handshake.
+	OneTimePreKeysLeft int `json:"one_time_prekeys_left"`
+	// SignedPreKeyAgeMs is how long ago the stored signed prekey first appeared. Zero
+	// when this publish introduced it.
+	SignedPreKeyAgeMs int64 `json:"signed_prekey_age_ms,omitempty"`
+	// Accepted is the number of prekeys from THIS frame the directory kept. Lower
+	// than what was sent when the per-publish cap or the per-device ceiling trimmed
+	// it — which a client that keeps private halves needs to know, or it holds
+	// private keys for public ones nobody will ever fetch.
+	Accepted int `json:"accepted"`
 }
 
 // KeyBundlesBody carries every device's prekey bundle for a user. A sender uses
@@ -337,9 +400,79 @@ type SecretMsgBody struct {
 	ToDeviceID   string `json:"to_device_id"`
 	FromUserID   string `json:"from_user_id,omitempty"`   // filled by server on relay
 	FromDeviceID string `json:"from_device_id,omitempty"` // filled by server on relay
-	// RatchetHeader + Ciphertext are the Double-Ratchet wire bytes (base64).
-	RatchetHeader string `json:"ratchet_header"`
-	Ciphertext    string `json:"ciphertext"`
+	// The LEGACY text form, and its two halves are encoded DIFFERENTLY — the field
+	// comment used to claim both were base64, which is wrong and would reject every
+	// real message if anyone believed it:
+	//
+	//   - RatchetHeader is TEXT. Every client puts a JSON object there (the X3DH
+	//     bootstrap on the first message, the ratchet header after), and the
+	//     receiving client calls a JSON parse on it.
+	//   - Ciphertext IS base64, because it is genuinely opaque bytes.
+	//
+	// Header + Cipher are the same two values as raw bytes.
+	//
+	// Both exist because only one can be used per connection, and which one is a
+	// property of the PEER rather than of the message. Base64 was the only form,
+	// and it cost 33% on the wire plus an encode and a decode at each end — which
+	// is precisely what this project wrote a binary protocol to avoid. But a client
+	// built against the string fields reads nothing from the binary ones, so the
+	// old form cannot simply go.
+	//
+	// The decision is made by the handler, which knows what the peer negotiated;
+	// the codec just maps whichever fields are set. That is why this is not a
+	// capability check inside Marshal: the codec is a package-level singleton with
+	// no idea who it is encoding for, and threading connection state into it would
+	// be a much larger change than carrying two fields.
+	//
+	// Readers accept EITHER. Use SecretPayload to get the bytes without caring.
+	RatchetHeader string `json:"ratchet_header,omitempty"`
+	Ciphertext    string `json:"ciphertext,omitempty"`
+	Header        []byte `json:"header,omitempty"`
+	Cipher        []byte `json:"cipher,omitempty"`
+	// QueueID is set ONLY on a replay out of the offline queue, and it is what
+	// the receiver echoes in SECRET_ACKED to have the row dropped. Empty means
+	// this arrived live and there is nothing to acknowledge — which keeps the
+	// common path free of an id that exists solely to be deleted.
+	QueueID string `json:"queue_id,omitempty"`
+}
+
+// SecretAckBody reports what the relay did with a SECRET_SEND.
+//
+// Sent because the relay used to answer nothing at all: a client could not tell
+// "the peer has it" from "the peer is offline" from "the server dropped it on
+// the floor", and it drew the same state for all three. Devices is how many of
+// the recipient's live devices the ciphertext reached; Queued says the rest was
+// stored for later.
+type SecretAckBody struct {
+	ToUserID   string `json:"to_user_id"`
+	ToDeviceID string `json:"to_device_id,omitempty"`
+	Devices    int32  `json:"devices"`
+	Queued     bool   `json:"queued,omitempty"`
+}
+
+// SecretSyncBody asks for ciphertext this device missed while it was away.
+// After is the QueueID of the last envelope the device stored (empty = from the
+// start), so an interrupted sync resumes instead of restarting.
+type SecretSyncBody struct {
+	After string `json:"after,omitempty"`
+	Limit int32  `json:"limit,omitempty"`
+}
+
+// SecretSyncedBody ends one sync page. Done=false means there is more behind
+// NextAfter — a device that has been away a long time pages rather than
+// receiving an unbounded burst.
+type SecretSyncedBody struct {
+	Count     int32  `json:"count"`
+	NextAfter string `json:"next_after,omitempty"`
+	Done      bool   `json:"done,omitempty"`
+}
+
+// SecretAckedBody confirms envelopes are stored on the device and may be
+// dropped. The queue is at-least-once on purpose: deleting on send would lose
+// the message when the socket dies between the write and the client persisting
+// it, which is the same failure the queue exists to fix, moved one step later.
+type SecretAckedBody struct {
+	IDs []string `json:"ids"`
 }
 
 // BodyCodec encodes/decodes envelope bodies. It is a seam: the MVP uses JSON for
@@ -662,9 +795,192 @@ type ChatInfoBody struct {
 // the beginning) — because a client with more chats than fit in one frame has
 // to be able to resume, and the id is the only cursor that stays valid while
 // the list is being read.
+// BillingPlansBody asks what is purchasable.
+//
+// Country comes from the CLIENT rather than from a GeoIP lookup on the server: the
+// user knows which market they are in, and a lookup that guesses wrong offers a
+// payment method their bank does not support.
+type BillingPlansBody struct {
+	Country string `json:"country,omitempty"`
+}
+
+// BillingOffersBody is the catalogue for one market.
+type BillingOffersBody struct {
+	Offers []PlanOfferWire `json:"offers,omitempty"`
+}
+
+// PlanOfferWire is one purchasable plan.
+//
+// AmountMinor is an INTEGER in the currency minor unit — kopeks, cents. Never a
+// float and never a formatted string: a price is an exact quantity, binary floating
+// point cannot hold 0.01, and a client that renders the price from a float
+// eventually shows a number that differs from what it charges.
+type PlanOfferWire struct {
+	Plan        string   `json:"plan"`
+	AmountMinor int64    `json:"amount_minor"`
+	Currency    string   `json:"currency"`
+	PeriodDays  int32    `json:"period_days"`
+	Methods     []string `json:"methods,omitempty"`
+}
+
+// BillingCheckoutBody starts a payment.
+type BillingCheckoutBody struct {
+	Plan   string `json:"plan"`
+	Method string `json:"method,omitempty"`
+	// IdempotencyKey is REQUIRED and is the client. A retried checkout must reach the
+	// same payment rather than starting a second one, and only the client knows two
+	// requests are the same request — a key the server invents differs on every
+	// retry, which is the same as having none.
+	IdempotencyKey string `json:"idempotency_key"`
+	Country        string `json:"country,omitempty"`
+	ReturnURL      string `json:"return_url,omitempty"`
+}
+
+// BillingPaymentBody is where to send the user.
+type BillingPaymentBody struct {
+	PaymentID   string `json:"payment_id"`
+	Status      string `json:"status"`
+	AmountMinor int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	// PayURL is followed; QRPayload is DISPLAYED. They are not interchangeable — an
+	// SBP QR payload is not a URL, and a client that renders it as a link produces a
+	// broken one.
+	PayURL    string `json:"pay_url,omitempty"`
+	QRPayload string `json:"qr_payload,omitempty"`
+	// Deduplicated means this was a repeat of an earlier request and no new charge
+	// was made. Reported rather than hidden so a client can tell "already paying"
+	// from "paying again".
+	Deduplicated bool `json:"deduplicated,omitempty"`
+}
+
+// BillingStatusBody asks for the caller subscription. No fields: it is always the
+// caller own, because a subscription is not something one account may read of
+// another.
+type BillingStatusBody struct{}
+
+// BillingCancelBody stops renewal. No fields, and no "immediately" option: the
+// period is paid for, and a product that takes away what was bought the moment
+// someone clicks cancel teaches them not to click it.
+type BillingCancelBody struct{}
+
+// SubscriptionBody is the caller tier and what it grants.
+//
+// Sent as a reply to BILLING_STATUS and PUSHED whenever the subscription changes —
+// a payment settling, a cancellation, a period lapsing. The push is what keeps a
+// client from offering features the server has started refusing.
+//
+// Entitlements are sent EXPLICITLY rather than derived from the plan name. The
+// client would otherwise have to encode the policy too, and the two copies drift:
+// a server that raises the upload ceiling would need every client updated before
+// anyone could use it.
+type SubscriptionBody struct {
+	Plan   string `json:"plan"`
+	Status string `json:"status"`
+	// PeriodEnd is when access lapses without a renewal (unix millis, 0 = no expiry).
+	PeriodEnd         int64 `json:"period_end,omitempty"`
+	CancelAtPeriodEnd bool  `json:"cancel_at_period_end,omitempty"`
+
+	SecretChats        bool  `json:"secret_chats,omitempty"`
+	MaxUploadBytes     int64 `json:"max_upload_bytes,omitempty"`
+	MaxPinnedChats     int32 `json:"max_pinned_chats,omitempty"`
+	Folders            bool  `json:"folders,omitempty"`
+	AdvancedSearch     bool  `json:"advanced_search,omitempty"`
+	PriorityDelivery   bool  `json:"priority_delivery,omitempty"`
+	VoiceTranscription bool  `json:"voice_transcription,omitempty"`
+	Badge              bool  `json:"badge,omitempty"`
+}
+
+// PasswordChangeBody replaces the caller password.
+//
+// The old password is required even though the connection is already
+// authenticated. A session token is enough to ACT as the account but not enough
+// to replace its credential: a stolen token would otherwise become permanent
+// ownership, which is exactly what a password change is supposed to take back.
+type PasswordChangeBody struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+// PasswordChangedBody confirms the change and says how many OTHER sessions were
+// signed out. The caller own session survives — signing someone out of the device
+// they are using to secure the account is a good way to have them not finish.
+type PasswordChangedBody struct {
+	SessionsRevoked int32 `json:"sessions_revoked"`
+}
+
+// TOTPSetupBody begins enrolment. No fields: the server mints the secret, because
+// a client-chosen one is a client-chosen second factor.
+type TOTPSetupBody struct{}
+
+// TOTPSetupInfoBody carries the new secret and the otpauth:// URI an
+// authenticator app scans.
+//
+// The factor is NOT yet enforced at this point. Enrolment is two steps on purpose:
+// without a confirmation step a mis-scanned QR code locks an account out of
+// itself, which is the most common way a 2FA rollout goes wrong.
+type TOTPSetupInfoBody struct {
+	Secret string `json:"secret"`
+	URI    string `json:"uri"`
+}
+
+// TOTPConfirmBody proves the user can produce a code, which is what enrols them.
+type TOTPConfirmBody struct {
+	Code string `json:"code"`
+}
+
+// TOTPDisableBody removes the factor. Password AND a code, because someone holding
+// only a stolen session token must not be able to take off the factor that would
+// keep them out of the next login.
+type TOTPDisableBody struct {
+	Password string `json:"password"`
+	Code     string `json:"code"`
+}
+
+// TOTPStateBody is the current second-factor state, plus the recovery codes on the
+// one occasion they are shown.
+//
+// RecoveryCodes is populated ONLY in the reply to TOTP_CONFIRM. The stored form is
+// an argon2id hash, so there is nothing to show later — which is the property that
+// makes a leak of the table worthless, and the reason the client has to tell the
+// user to write them down now.
+type TOTPStateBody struct {
+	Enabled       bool     `json:"enabled"`
+	RecoveryLeft  int32    `json:"recovery_left"`
+	RecoveryCodes []string `json:"recovery_codes,omitempty"`
+	ConfirmedAtMs int64    `json:"confirmed_at_ms,omitempty"`
+}
+
+// ChatFlagsBody sets the caller's own settings for one chat.
+//
+// MutedUntil is a unix-millis deadline, not a flag: "mute for eight hours" is what
+// muting usually means and a boolean cannot express it, while a distant deadline
+// expresses "forever". 0 unmutes.
+type ChatFlagsBody struct {
+	ChatID     string `json:"chat_id"`
+	MutedUntil int64  `json:"muted_until,omitempty"`
+	Pinned     bool   `json:"pinned,omitempty"`
+	Archived   bool   `json:"archived,omitempty"`
+}
+
+// ChatFlagsSetBody echoes the flags now stored, so a client that raced two
+// changes converges on what the server has rather than on what it last sent.
+type ChatFlagsSetBody struct {
+	ChatID     string `json:"chat_id"`
+	MutedUntil int64  `json:"muted_until,omitempty"`
+	Pinned     bool   `json:"pinned,omitempty"`
+	Archived   bool   `json:"archived,omitempty"`
+}
+
 type ChatListBody struct {
 	After string `json:"after,omitempty"`
 	Limit int    `json:"limit,omitempty"`
+	// AfterActivity is the other half of the cursor: the previous page's last
+	// LastActivityAt. The list is ordered by activity, which reorders as messages
+	// arrive, so a cursor naming only a chat id would skip and repeat rows exactly
+	// when the chat is busy.
+	AfterActivity int64 `json:"after_activity,omitempty"`
+	// IncludeArchived lists the archived pile instead of hiding it.
+	IncludeArchived bool `json:"include_archived,omitempty"`
 }
 
 // ChatSummary is one row of the chat list: enough to render an entry without a
@@ -681,13 +997,34 @@ type ChatSummary struct {
 	// PeerID is filled for DIRECT chats only: the other participant. A 1:1 chat
 	// has no title, so without this the entry has nothing to be named after.
 	PeerID string `json:"peer_id,omitempty"`
+
+	// The rest is what a chat list actually draws, and none of it used to be sent.
+	// A client that wanted a preview, a badge or a sort order had to call HISTORY
+	// per chat to work it out — so the server's N+1 moved to the client and became
+	// N+1 over the network.
+	//
+	// LastMessage previews the newest live message (nil for an empty chat).
+	LastMessage *NewMessageBody `json:"last_message,omitempty"`
+	// UnreadCount is how many messages sit above the caller's read cursor.
+	UnreadCount int64 `json:"unread_count,omitempty"`
+	// LastActivityAt is the sort key AND the paging cursor. It falls back to the
+	// chat's creation time so a new empty chat appears at the top, not the bottom.
+	LastActivityAt int64 `json:"last_activity_at,omitempty"`
+	// The caller's own settings for this chat.
+	MutedUntil int64 `json:"muted_until,omitempty"`
+	Pinned     bool  `json:"pinned,omitempty"`
+	Archived   bool  `json:"archived,omitempty"`
 }
 
 // ChatsBody is one page of the caller's chat list plus the cursor to resume from.
 type ChatsBody struct {
 	Chats     []ChatSummary `json:"chats,omitempty"`
 	NextAfter string        `json:"next_after,omitempty"`
-	Done      bool          `json:"done"`
+	// NextAfterActivity completes the cursor. Both halves are echoed back in the
+	// next CHAT_LIST, so the client never has to reconstruct a sort key it did not
+	// choose.
+	NextAfterActivity int64 `json:"next_after_activity,omitempty"`
+	Done              bool  `json:"done"`
 }
 
 // ProfileGetBody reads a user's public profile. Target is a user id or
@@ -730,6 +1067,102 @@ type AccountDeleteBody struct {
 type AccountDeletedBody struct {
 	UserID    string `json:"user_id"`
 	DeletedAt int64  `json:"deleted_at"`
+}
+
+// PrivacyGetBody asks for the caller's own visibility settings.
+//
+// No target field, deliberately: these are not readable for anyone else, and a
+// message that could name someone would leak exactly what it exists to protect.
+type PrivacyGetBody struct{}
+
+// PrivacySetBody replaces the caller's settings.
+//
+// Every field is sent every time. A partial update would make "nobody"
+// indistinguishable from "not specified", and the field whose whole purpose is
+// to withhold something is the worst one to have an ambiguous empty value.
+type PrivacySetBody struct {
+	LastSeen string `json:"last_seen"`
+	Avatar   string `json:"avatar"`
+	Groups   string `json:"groups"`
+	// PushPreview allows message text in the push payload. See PrivacyBody.
+	PushPreview bool `json:"push_preview,omitempty"`
+}
+
+// PrivacyBody is the current settings, echoed after a get or a set.
+type PrivacyBody struct {
+	LastSeen string `json:"last_seen"`
+	Avatar   string `json:"avatar"`
+	Groups   string `json:"groups"`
+	// PushPreview allows message TEXT in the push payload. The audience for this
+	// one is not another user but Apple and Google: the notification path used to
+	// include a preview of every message unconditionally, so a third party saw the
+	// contents of every conversation. Defaults false — the old behaviour was a leak,
+	// not a setting anyone had chosen.
+	PushPreview bool `json:"push_preview,omitempty"`
+}
+
+// HistoryPageBody is one backfill page delivered as a single frame.
+//
+// The per-message NEW stream it replaces is still used for peers that did not
+// negotiate CapBatching, so both shapes carry exactly the same messages — a page
+// is a transport optimisation, not a different answer.
+type HistoryPageBody struct {
+	Messages []NewMessageBody `json:"messages"`
+	// ChatID is the RESOLVED id even when the request addressed "@handle": this
+	// frame is the only one that says which chat the page came from.
+	ChatID     string `json:"chat_id"`
+	NextBefore uint64 `json:"next_before"`
+	Done       bool   `json:"done"`
+}
+
+// SessionListBody asks for every live session of the caller's account. It has no
+// fields: the account is the authenticated connection, and letting a client name
+// a different one would make this a cross-account enumeration primitive.
+type SessionListBody struct{}
+
+// SessionInfo describes one live session.
+//
+// It deliberately carries NO token. The point of the list is to let a person
+// recognise a device well enough to decide whether to kill it; handing every
+// device the credentials of every other would turn a read into a lateral-movement
+// tool, which is the opposite of what this is for.
+type SessionInfo struct {
+	SessionID string `json:"session_id"`
+	DeviceID  string `json:"device_id"`
+	Platform  string `json:"platform"`
+	CreatedAt int64  `json:"created_at"`
+	ExpiresAt int64  `json:"expires_at"`
+	// Current marks the session this connection authenticated with, so a client
+	// can label it and warn before revoking it.
+	Current bool `json:"current"`
+}
+
+// SessionsBody is the answer to SessionListBody.
+type SessionsBody struct {
+	Sessions []SessionInfo `json:"sessions"`
+}
+
+// SessionRevokeBody kills sessions.
+//
+// An empty SessionID means "every session except this one" — the "sign out
+// everywhere else" a person reaches for after losing a device. AllIncludingCurrent
+// extends the sweep to this connection too; it is a separate field because "log
+// out everywhere, including here" and "log out everywhere but here" are different
+// intentions, and a client should not have to express the difference by omitting
+// something.
+type SessionRevokeBody struct {
+	SessionID           string `json:"session_id,omitempty"`
+	AllIncludingCurrent bool   `json:"all_including_current,omitempty"`
+}
+
+// SessionRevokedBody reports what the revoke actually did. The count matters: a
+// client that asked to sign out five devices and signed out one should say so
+// rather than show a checkmark.
+type SessionRevokedBody struct {
+	Revoked int `json:"revoked"`
+	// Self is true when the caller's own session was among those killed, so the
+	// client drops its token instead of waiting for the connection to fail.
+	Self bool `json:"self"`
 }
 
 // FanoutShardBody is one chunk of a hot chat's recipients plus the message to

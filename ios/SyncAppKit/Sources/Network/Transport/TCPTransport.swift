@@ -18,13 +18,21 @@ public actor TCPTransport: Transport {
     private let port: UInt16
     private let useTLS: Bool
     private let allowSelfSignedCertificates: Bool
+    private let pinning: PinningPolicy?
     private var connection: NWConnection?
 
-    public init(host: String, port: UInt16, useTLS: Bool, allowSelfSignedCertificates: Bool = false) {
+    public init(
+        host: String,
+        port: UInt16,
+        useTLS: Bool,
+        allowSelfSignedCertificates: Bool = false,
+        pinning: PinningPolicy? = nil
+    ) {
         self.host = host
         self.port = port
         self.useTLS = useTLS
         self.allowSelfSignedCertificates = allowSelfSignedCertificates
+        self.pinning = pinning
     }
 
     public func connect() async throws {
@@ -38,6 +46,16 @@ public actor TCPTransport: Transport {
                 sec_protocol_options_set_verify_block(
                     tls.securityProtocolOptions,
                     { _, _, complete in complete(true) },
+                    DispatchQueue.global()
+                )
+            } else if let pinning, pinning.governs(host) {
+                // Checked BEFORE the dev branch would matter: the two are mutually
+                // exclusive by construction, and ordering them this way means a
+                // build that somehow set both gets the permissive one rather than
+                // silently believing it is pinned.
+                sec_protocol_options_set_verify_block(
+                    tls.securityProtocolOptions,
+                    pinning.verifyBlock(host: host),
                     DispatchQueue.global()
                 )
             }

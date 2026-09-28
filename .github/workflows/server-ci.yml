@@ -48,6 +48,36 @@ jobs:
       - name: Test with race detector
         run: go test -race -count=1 ./...
 
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      # vet, gosec and govulncheck cover correctness-by-compiler, security and
+      # CVEs. This covers the gap between them: unchecked errors, dead code,
+      # comparisons that cannot fail, doc comments naming a symbol that moved.
+      # The enabled set is deliberately small — see server/.golangci.yml.
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v2.1.6
+          working-directory: server
+          args: --timeout=5m
+
   vulncheck:
     name: govulncheck
     runs-on: ubuntu-latest
@@ -99,7 +129,7 @@ jobs:
         run: gosec -severity medium -exclude-generated -exclude=G115 ./...
 
   fuzz:
-    name: Fuzz protocol parser
+    name: Fuzz the parsers
     runs-on: ubuntu-latest
 
     defaults:
@@ -117,5 +147,122 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
-      - name: Fuzz FuzzParser
+      - name: Fuzz the client frame/envelope parser
         run: go test ./pkg/wire -run=xxx -fuzz=FuzzParser -fuzztime=60s
+
+      # The bus-side decoder is the second parser fed bytes it did not write: a
+      # node-targeted delivery can arrive truncated, or from a node running a
+      # different build. It carries every delivered message in the system, so a
+      # panic here takes the delivery goroutine down rather than dropping a frame.
+      - name: Fuzz the node-delivery decoder
+        run: go test ./internal/router -run=xxx -fuzz=FuzzDecodeNodeDelivery -fuzztime=60s
+
+  integration:
+    name: Integration (Postgres · Redis · NATS)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: server
+
+    # The tests for these packages already existed and skipped on every run,
+    # because nothing set the variables that switch them on. That is the worst
+    # shape for a test to be in: present, green, and exercising nothing. Service
+    # containers are used rather than `docker compose` so the runner waits on the
+    # health checks itself and the job fails on a dependency that never came up.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: syncapp
+          POSTGRES_PASSWORD: syncapp
+          POSTGRES_DB: syncapp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U syncapp"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      nats:
+        image: nats:2.10-alpine
+        ports:
+          - 4222:4222
+          - 8222:8222
+        options: >-
+          --health-cmd "wget --spider -q http://localhost:8222/healthz"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      # The sharded-platform test needs two or more DSNs. Two databases on one
+      # server satisfy it: it asserts that Load builds one outbox per shard, not
+      # that the shards live on separate hosts.
+      - name: Create shard databases
+        env:
+          PGPASSWORD: syncapp
+        run: |
+          for db in syncapp_shard_1 syncapp_shard_2; do
+            psql -h localhost -U syncapp -d syncapp -c "CREATE DATABASE $db"
+          done
+
+      # -count=1 because a cached PASS from a run where these tests skipped
+      # would defeat the entire purpose of the job.
+      - name: Run the suite against live dependencies
+        env:
+          SYNCAPP_TEST_REDIS_ADDR: localhost:6379
+          SYNCAPP_TEST_NATS_URL: nats://localhost:4222
+          SYNCAPP_TEST_PG_DSN: postgres://syncapp:syncapp@localhost:5432/syncapp?sslmode=disable
+          SYNCAPP_TEST_SHARD_DSNS: postgres://syncapp:syncapp@localhost:5432/syncapp_shard_1?sslmode=disable,postgres://syncapp:syncapp@localhost:5432/syncapp_shard_2?sslmode=disable
+        run: go test -count=1 ./...
+
+      # A guard against the job going quietly hollow again: if the variables stop
+      # reaching the tests, every one of them skips and the job still passes.
+      - name: Assert the integration tests actually ran
+        env:
+          SYNCAPP_TEST_REDIS_ADDR: localhost:6379
+          SYNCAPP_TEST_NATS_URL: nats://localhost:4222
+          SYNCAPP_TEST_PG_DSN: postgres://syncapp:syncapp@localhost:5432/syncapp?sslmode=disable
+        run: |
+          set -o pipefail
+
+          go test -count=1 -v -run 'Redis|NATS|Postgres|Shard' \
+            ./internal/keydir/... ./internal/router/... \
+            ./internal/presence/... ./pkg/eventbus/... \
+            ./internal/store/postgres/... 2>&1 | tee run.log
+
+          if grep -q -- "--- SKIP" run.log; then
+            echo "::error::An integration test skipped, which means its dependency was not wired in:"
+            grep -- "--- SKIP" run.log
+            exit 1
+          fi
+
+          passed=$(grep -c -- "--- PASS" run.log || true)
+          echo "integration tests that ran: $passed"
+
+          if [ "$passed" -eq 0 ]; then
+            echo "::error::No integration test ran at all"
+            exit 1
+          fi

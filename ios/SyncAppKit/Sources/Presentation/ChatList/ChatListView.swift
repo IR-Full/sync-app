@@ -82,8 +82,60 @@ final class ChatListViewModel: ObservableObject {
         Task { await chatRepository.hideLocally(chatID: summary.chat.id) }
     }
 
-    func toggleMute(_ summary: ChatSummary) {
-        Task { await chatRepository.setMuted(chatID: summary.chat.id, muted: !summary.chat.isMuted) }
+    /// The presets a mute menu offers.
+    ///
+    /// Durations rather than a switch, because the server stores a DEADLINE and a
+    /// boolean cannot express the thing people actually want. `nil` is "unmute".
+    /// Computed, not stored. A stored `static let` would capture the strings at first
+    /// access and keep them after the user switches language in settings — and the
+    /// language override is the whole reason `l(_:)` exists rather than
+    /// `String(localized:)`.
+    static var mutePresets: [(label: String, duration: TimeInterval?)] { [
+        (l("chats.mute.hour"), 60 * 60),
+        (l("chats.mute.eightHours"), 8 * 60 * 60),
+        (l("chats.mute.week"), 7 * 24 * 60 * 60),
+        (l("chats.mute.forever"), 10 * 365 * 24 * 60 * 60),
+    ] }
+
+    /// Every flag write sends all three values, because the wire carries no field
+    /// presence — so the two the user did not touch are read off the row they are
+    /// looking at rather than defaulted, which would silently clear them.
+    func mute(_ summary: ChatSummary, for duration: TimeInterval?) {
+        let chat = summary.chat
+        Task {
+            await chatRepository.setFlags(
+                chatID: chat.id,
+                mutedUntil: duration.map { Date().addingTimeInterval($0) },
+                pinned: chat.isPinned,
+                archived: chat.isArchived
+            )
+        }
+    }
+
+    func togglePin(_ summary: ChatSummary) {
+        let chat = summary.chat
+        Task {
+            await chatRepository.setFlags(
+                chatID: chat.id,
+                mutedUntil: chat.mutedUntil,
+                pinned: !chat.isPinned,
+                archived: chat.isArchived
+            )
+        }
+    }
+
+    func setArchived(_ summary: ChatSummary, _ archived: Bool) {
+        let chat = summary.chat
+        Task {
+            await chatRepository.setFlags(
+                chatID: chat.id,
+                mutedUntil: chat.mutedUntil,
+                // Archiving an unread pinned chat and leaving it pinned puts it at the
+                // top of a list the user just said they do not want to look at.
+                pinned: archived ? false : chat.isPinned,
+                archived: archived
+            )
+        }
     }
 
     /// Fills in what little the app can know about a peer's name. The protocol
@@ -106,6 +158,7 @@ struct ChatListView: View {
     @StateObject private var model: ChatListViewModel
     @State private var isPresentingNewChat = false
     @State private var isPresentingProfile = false
+    @State private var isPresentingArchive = false
     @State private var path: [String] = []
 
     private let account: Account
@@ -141,6 +194,12 @@ struct ChatListView: View {
                     }
                     .accessibilityLabel(l("chats.new"))
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { isPresentingArchive = true } label: {
+                        Image(systemName: "archivebox")
+                    }
+                    .accessibilityLabel(l("chats.archive.title"))
+                }
             }
             .searchable(text: $model.searchText, prompt: l("chats.search"))
             .onChange(of: model.searchText) { _ in model.search() }
@@ -154,7 +213,13 @@ struct ChatListView: View {
                 }
             }
             .sheet(isPresented: $isPresentingProfile) {
-                ProfileView(account: account, media: factory.media)
+                ProfileView(account: account, media: factory.media, security: factory.security)
+            }
+            .sheet(isPresented: $isPresentingArchive) {
+                ArchivedChatsView(factory: factory) { chatID in
+                    isPresentingArchive = false
+                    path.append(chatID)
+                }
             }
         }
         .task { model.start() }
@@ -189,13 +254,43 @@ struct ChatListView: View {
                         Button(role: .destructive) { model.hide(summary) } label: {
                             Label(l("chats.hide"), systemImage: "eye.slash")
                         }
-                        Button { model.toggleMute(summary) } label: {
+                        Button { model.setArchived(summary, true) } label: {
+                            Label(l("chats.archive"), systemImage: "archivebox")
+                        }
+                        .tint(.gray)
+                    }
+                    .swipeActions(edge: .leading) {
+                        Button { model.togglePin(summary) } label: {
                             Label(
-                                summary.chat.isMuted ? l("chats.unmute") : l("chats.mute"),
-                                systemImage: summary.chat.isMuted ? "bell" : "bell.slash"
+                                summary.chat.isPinned ? l("chats.unpin") : l("chats.pin"),
+                                systemImage: summary.chat.isPinned ? "pin.slash" : "pin"
                             )
                         }
-                        .tint(.indigo)
+                        .tint(.orange)
+                    }
+                    .contextMenu {
+                        Button { model.togglePin(summary) } label: {
+                            Label(
+                                summary.chat.isPinned ? l("chats.unpin") : l("chats.pin"),
+                                systemImage: summary.chat.isPinned ? "pin.slash" : "pin"
+                            )
+                        }
+                        if summary.chat.isMuted {
+                            Button { model.mute(summary, for: nil) } label: {
+                                Label(l("chats.unmute"), systemImage: "bell")
+                            }
+                        } else {
+                            Menu {
+                                ForEach(ChatListViewModel.mutePresets, id: \.label) { preset in
+                                    Button(preset.label) { model.mute(summary, for: preset.duration) }
+                                }
+                            } label: {
+                                Label(l("chats.mute"), systemImage: "bell.slash")
+                            }
+                        }
+                        Button { model.setArchived(summary, true) } label: {
+                            Label(l("chats.archive"), systemImage: "archivebox")
+                        }
                     }
                 }
             }
@@ -240,10 +335,23 @@ private struct ChatRow: View {
             Avatar(
                 title: title,
                 seed: summary.chat.id,
-                isOnline: summary.isPeerOnline && summary.chat.kind == .direct
+                // Two-party, not just `.direct`: a secret chat has a peer whose
+                // presence is just as meaningful, and the narrower check left the dot
+                // permanently off there.
+                isOnline: summary.isPeerOnline && summary.chat.kind.isTwoParty
             )
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
+                    // The lock is the whole visual difference a secret chat gets.
+                    // Deliberately: it is a chat, and a row that looked like a
+                    // different kind of object is what made the previous design feel
+                    // like a separate app nobody opened.
+                    if summary.chat.kind.isEndToEnd {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(Color.green)
+                            .accessibilityLabel(l("chat.secret.badge"))
+                    }
                     Text(title).font(.body.weight(.semibold)).lineLimit(1)
                     if summary.chat.isMuted {
                         Image(systemName: "bell.slash.fill")
@@ -251,6 +359,12 @@ private struct ChatRow: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
+                    if summary.chat.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(l("chats.pinned"))
+                    }
                     if let stamp = summary.chat.lastMessageAt {
                         Text(stamp.chatListStamp())
                             .font(.caption)
@@ -272,6 +386,133 @@ private struct ChatRow: View {
                             .background(Capsule().fill(summary.chat.isMuted ? Color.secondary : Color.accentColor))
                     }
                 }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+
+/// The archived pile.
+///
+/// Its own screen rather than a filter on the main list, because the point of
+/// archiving is that the rows are NOT in the way. Reads from the same cache through
+/// `observeArchivedChats`, so it needs no fetch of its own and works offline.
+@MainActor
+private final class ArchivedChatsViewModel: ObservableObject {
+    @Published private(set) var chats: [ChatSummary] = []
+    @Published private(set) var hasLoaded = false
+
+    private let chatRepository: any ChatRepository
+    private let tasks = TaskBag()
+    private var hasStarted = false
+
+    init(chats: any ChatRepository) {
+        self.chatRepository = chats
+    }
+
+    func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
+        tasks.add(Task { [weak self] in
+            guard let self else { return }
+            for await summaries in self.chatRepository.observeArchivedChats() {
+                self.chats = summaries
+                self.hasLoaded = true
+            }
+        })
+    }
+
+    func unarchive(_ summary: ChatSummary) {
+        let chat = summary.chat
+        Task {
+            await chatRepository.setFlags(
+                chatID: chat.id,
+                mutedUntil: chat.mutedUntil,
+                pinned: chat.isPinned,
+                archived: false
+            )
+        }
+    }
+}
+
+struct ArchivedChatsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var model: ArchivedChatsViewModel
+    private let onOpen: (String) -> Void
+
+    init(factory: ViewFactory, onOpen: @escaping (String) -> Void) {
+        self.onOpen = onOpen
+        _model = StateObject(wrappedValue: ArchivedChatsViewModel(chats: factory.chats))
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if !model.hasLoaded {
+                    StateView(.loading)
+                } else if model.chats.isEmpty {
+                    StateView(.empty(
+                        title: l("chats.archive.empty.title"),
+                        message: l("chats.archive.empty.message"),
+                        systemImage: "archivebox"
+                    ))
+                } else {
+                    List(model.chats) { summary in
+                        Button { onOpen(summary.chat.id) } label: {
+                            ArchivedRow(summary: summary)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button { model.unarchive(summary) } label: {
+                                Label(l("chats.unarchive"), systemImage: "tray.and.arrow.up")
+                            }
+                            .tint(.accentColor)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(l("chats.archive.title"))
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(l("common.done")) { dismiss() }
+                }
+            }
+        }
+        .task { model.start() }
+    }
+}
+
+private struct ArchivedRow: View {
+    let summary: ChatSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Avatar(title: summary.chat.title, seed: summary.chat.id)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 4) {
+                    if summary.chat.kind.isEndToEnd {
+                        Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Color.green)
+                    }
+                    Text(summary.chat.title.isEmpty ? l("chats.untitled") : summary.chat.title)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
+                if !summary.chat.lastMessagePreview.isEmpty {
+                    Text(summary.chat.lastMessagePreview)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            if summary.unreadCount > 0 {
+                Text("\(summary.unreadCount)")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.secondary))
             }
         }
         .padding(.vertical, 4)

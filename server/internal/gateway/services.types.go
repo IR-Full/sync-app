@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
+	"github.com/SyncApp-chat/SyncApp/internal/billing"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/media"
 	"github.com/SyncApp-chat/SyncApp/internal/message"
 	"github.com/SyncApp-chat/SyncApp/internal/model"
@@ -22,23 +24,80 @@ import (
 // gRPC clients, both satisfy these.
 
 // AuthService is the identity/session API the gateway calls.
+//
+// The session-management half is part of THIS interface rather than an optional
+// capability discovered by type assertion, and that is deliberate. A capability
+// the monolith has and the gRPC client does not is a feature that vanishes when
+// somebody enables the split — the topology drift the risk register names. Being
+// on the interface makes forgetting it a compile error in both wirings.
 type AuthService interface {
 	Register(ctx context.Context, username, password, displayName, deviceID, platform string) (*model.Session, *model.User, error)
 	Login(ctx context.Context, username, password, deviceID, platform string) (*model.Session, *model.User, error)
 	Authenticate(ctx context.Context, token string) (*auth.Identity, error)
 	Resume(ctx context.Context, resumeToken string) (*auth.Identity, error)
+
+	// ListSessions returns the user's LIVE sessions (revoked and expired filtered
+	// out): "where am I signed in".
+	ListSessions(ctx context.Context, userID string) ([]*model.Session, error)
+	// RevokeOwned kills one session, but only if it belongs to userID — a session
+	// id is not a secret, so an unscoped revoke would let any account sign out any
+	// other. Returns store.ErrNotFound for both "no such session" and "not yours",
+	// so the id space is not an existence oracle.
+	RevokeOwned(ctx context.Context, userID, sessionID string) error
+	// RevokeAll kills every live session, sparing keepSessionID (pass "" for none).
+	// Returns how many were actually killed.
+	RevokeAll(ctx context.Context, userID, keepSessionID string) (int, error)
+	// DeleteAccount erases the account after re-confirming the password.
+	DeleteAccount(ctx context.Context, userID, password string) error
+
+	// LoginWithCode is Login plus a second factor. On the interface rather than
+	// discovered by assertion, for the reason stated above: a capability the
+	// monolith has and the gRPC wiring does not is a feature that vanishes when
+	// somebody enables the split.
+	LoginWithCode(ctx context.Context, username, password, code, deviceID, platform string) (*model.Session, *model.User, error)
+	// ChangePassword replaces the password after re-confirming the old one, then
+	// revokes every other session. Returns how many were killed.
+	//
+	// Until this existed a password could not be changed at all, so a leaked one
+	// meant a permanently lost account: revoking sessions does not stop whoever
+	// knows the password from signing in again.
+	ChangePassword(ctx context.Context, userID, oldPassword, newPassword, keepSessionID string) (int, error)
+
+	// The second factor. BeginTOTP mints a secret; ConfirmTOTP enforces it and
+	// returns the recovery codes once; DisableTOTP needs the password AND a code.
+	BeginTOTP(ctx context.Context, userID, issuer string) (secret, uri string, err error)
+	ConfirmTOTP(ctx context.Context, userID, code string) ([]string, error)
+	DisableTOTP(ctx context.Context, userID, password, code string) error
+	TwoFactorEnabled(ctx context.Context, userID string) bool
+	RecoveryCodesLeft(ctx context.Context, userID string) int
 }
 
 // ChatService is the chat/membership API the gateway calls.
 type ChatService interface {
 	EnsureDirect(ctx context.Context, userA, userB string) (*model.Chat, error)
+	// EnsureSecret returns the canonical SECRET chat for a pair. It coexists with
+	// the ordinary direct chat with that person — choosing the secret one is the
+	// whole point of having it.
+	EnsureSecret(ctx context.Context, userA, userB string) (*model.Chat, error)
 	FindDirect(ctx context.Context, userA, userB string) (*model.Chat, error)
 	Get(ctx context.Context, chatID string) (*model.Chat, error)
 	Members(ctx context.Context, chatID string) ([]*model.ChatMember, error)
-	// UserChats pages the caller's chat list by chat id (after="" starts at the
-	// beginning). It is the only way a fresh install learns which chats it is
-	// in — everything else about a chat arrives as a consequence of traffic.
+	// IsMember answers one membership question without materialising a roster.
+	// The distinction matters for a channel: Members loads everyone, which is the
+	// wrong shape for "may this one person see this one thing".
+	IsMember(ctx context.Context, chatID, userID string) (bool, error)
+	// UserChats pages the caller's chat list. It is the only way a fresh install
+	// learns which chats it is in — everything else about a chat arrives as a
+	// consequence of traffic.
 	UserChats(ctx context.Context, userID, after string, limit int) ([]model.ChatSummary, error)
+	// UserChatPage is UserChats with the cursor and filters a real list needs:
+	// activity order, an archived pile, and a composite cursor that survives the
+	// list reordering underneath it.
+	UserChatPage(ctx context.Context, userID string, p chat.ChatPage) ([]model.ChatSummary, error)
+	// SetChatFlags writes the caller's OWN mute/pin/archive for a chat. Scoped by
+	// (chat, user), so there is no shape of the call that touches another member's
+	// row — these are one person's settings about a shared conversation.
+	SetChatFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) (model.MemberFlags, error)
 	CreateGroup(ctx context.Context, ownerID, title string, typ model.ChatType, members []string) (*model.Chat, error)
 }
 
@@ -77,6 +136,25 @@ type MediaService interface {
 // SearchService is the full-text query API (optional).
 type SearchService interface {
 	Query(ctx context.Context, userID, query string, limit int) ([]search.Result, error)
+	// QueryFiltered adds the optional narrowing a client can ask for (one chat,
+	// one sender). It is on the interface rather than discovered by type assertion
+	// for the reason stated on AuthService: a capability the monolith has and the
+	// gRPC wiring does not is a feature that disappears when somebody enables the
+	// split.
+	QueryFiltered(ctx context.Context, q search.Query) ([]search.Result, error)
+}
+
+// BillingService owns subscriptions and entitlements (optional).
+//
+// Optional, and its absence is a coherent deployment rather than a broken one:
+// everybody is on the free tier, which is a tier. The gateway reads entitlements on
+// several paths, so the degradation has to be a real answer and not an error.
+type BillingService interface {
+	Plans(country string) []billing.PlanOffer
+	Checkout(ctx context.Context, req billing.CheckoutRequest) (*billing.Checkout, error)
+	Subscription(ctx context.Context, userID string) *model.Subscription
+	Entitlements(ctx context.Context, userID string) model.Entitlements
+	Cancel(ctx context.Context, userID string) (*model.Subscription, error)
 }
 
 // CallService owns call/conference signaling (optional). The server never
@@ -107,6 +185,10 @@ type ContactService interface {
 	SetBlocked(ctx context.Context, ownerID, target string, blocked bool, now int64) error
 	// BlocksBetween reports whether either side blocked the other (delivery gate).
 	BlocksBetween(ctx context.Context, a, b string) (bool, error)
+	// IsContact reports whether userID is in ownerID's address book — the check
+	// behind a "visible to my contacts" privacy setting. Asked in that direction
+	// deliberately: the owner's list decides, not the viewer's.
+	IsContact(ctx context.Context, ownerID, userID string) (bool, error)
 }
 
 // ScheduleService defers sends and lists/cancels pending ones (optional).

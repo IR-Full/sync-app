@@ -39,7 +39,7 @@ func toProto(v any) proto.Message {
 	case WelcomeBody:
 		return &pb.Welcome{ServerVersion: b.ServerVersion, SessionId: b.SessionID, Caps: uint32(b.Caps), HeartbeatMs: int32(b.HeartbeatMs), MaxInflight: int32(b.MaxInflight), ResumeSupported: b.ResumeSupported}
 	case AuthBody:
-		return &pb.Auth{Token: b.Token, Username: b.Username, Password: b.Password, Register: b.Register, DisplayName: b.DisplayName}
+		return &pb.Auth{Token: b.Token, Username: b.Username, Password: b.Password, Register: b.Register, DisplayName: b.DisplayName, TotpCode: b.TOTPCode}
 	case AuthOKBody:
 		return &pb.AuthOK{
 			UserId: b.UserID, DeviceId: b.DeviceID, SessionId: b.SessionID, Token: b.Token, ResumeToken: b.ResumeToken,
@@ -81,7 +81,7 @@ func toProto(v any) proto.Message {
 	case ResumeBody:
 		return &pb.Resume{ResumeToken: b.ResumeToken, LastAckSeq: b.LastAckSeq}
 	case ResumeOKBody:
-		return &pb.ResumeOK{SessionId: b.SessionID, FromSeq: b.FromSeq}
+		return &pb.ResumeOK{SessionId: b.SessionID, FromSeq: b.FromSeq, ResumeToken: b.ResumeToken}
 	case ErrorBody:
 		return &pb.Error{Code: uint32(b.Code), Message: b.Message, RetryAfterMs: int32(b.RetryAfterMs)}
 	case MediaInitBody:
@@ -93,7 +93,7 @@ func toProto(v any) proto.Message {
 	case MediaURLBody:
 		return &pb.MediaURL{MediaRef: b.MediaRef, DownloadUrl: b.DownloadURL, ExpiresAt: b.ExpiresAt}
 	case SearchBody:
-		return &pb.Search{Query: b.Query, Limit: int32(b.Limit)}
+		return &pb.Search{Query: b.Query, Limit: int32(b.Limit), ChatId: b.ChatID, SenderId: b.SenderID}
 	case SearchResultsBody:
 		return searchResultsToProto(b)
 	case KeyPublishBody:
@@ -104,8 +104,32 @@ func toProto(v any) proto.Message {
 		return keyBundleToProto(b)
 	case KeyBundlesBody:
 		return keyBundlesToProto(b)
+	case KeyStateBody:
+		return &pb.KeyState{
+			OneTimePrekeysLeft: int32(b.OneTimePreKeysLeft),
+			SignedPrekeyAgeMs:  b.SignedPreKeyAgeMs,
+			Accepted:           int32(b.Accepted),
+		}
 	case SecretMsgBody:
-		return &pb.SecretMsg{ToUserId: b.ToUserID, ToDeviceId: b.ToDeviceID, FromUserId: b.FromUserID, FromDeviceId: b.FromDeviceID, RatchetHeader: b.RatchetHeader, Ciphertext: b.Ciphertext}
+		return &pb.SecretMsg{
+			ToUserId: b.ToUserID, ToDeviceId: b.ToDeviceID,
+			FromUserId: b.FromUserID, FromDeviceId: b.FromDeviceID,
+			RatchetHeader: b.RatchetHeader, Ciphertext: b.Ciphertext,
+			RatchetHeaderBin: b.Header, CiphertextBin: b.Cipher,
+			QueueId: b.QueueID,
+		}
+	case ChatFlagsBody:
+		return &pb.ChatFlags{ChatId: b.ChatID, MutedUntil: b.MutedUntil, Pinned: b.Pinned, Archived: b.Archived}
+	case ChatFlagsSetBody:
+		return &pb.ChatFlagsSet{ChatId: b.ChatID, MutedUntil: b.MutedUntil, Pinned: b.Pinned, Archived: b.Archived}
+	case SecretAckBody:
+		return &pb.SecretAck{ToUserId: b.ToUserID, ToDeviceId: b.ToDeviceID, Devices: b.Devices, Queued: b.Queued}
+	case SecretSyncBody:
+		return &pb.SecretSync{After: b.After, Limit: b.Limit}
+	case SecretSyncedBody:
+		return &pb.SecretSynced{Count: b.Count, NextAfter: b.NextAfter, Done: b.Done}
+	case SecretAckedBody:
+		return &pb.SecretAcked{Ids: b.IDs}
 	case SetUsernameBody:
 		return &pb.SetUsername{ChatId: b.ChatID, Username: b.Username}
 	case InviteCreateBody:
@@ -125,7 +149,7 @@ func toProto(v any) proto.Message {
 	case ChatInfoBody:
 		return &pb.ChatInfo{ChatId: b.ChatID, Type: b.Type, Title: b.Title, OwnerId: b.OwnerID}
 	case ChatListBody:
-		return &pb.ChatList{After: b.After, Limit: int32(b.Limit)}
+		return &pb.ChatList{After: b.After, Limit: int32(b.Limit), AfterActivity: b.AfterActivity, IncludeArchived: b.IncludeArchived}
 	case ChatsBody:
 		return chatsToProto(b)
 	case ProfileGetBody:
@@ -138,6 +162,67 @@ func toProto(v any) proto.Message {
 		return &pb.AccountDelete{Password: b.Password, Reason: b.Reason}
 	case AccountDeletedBody:
 		return &pb.AccountDeleted{UserId: b.UserID, DeletedAt: b.DeletedAt}
+	case BillingPlansBody:
+		return &pb.BillingPlans{Country: b.Country}
+	case BillingOffersBody:
+		return billingOffersToProto(b)
+	case BillingCheckoutBody:
+		return &pb.BillingCheckout{
+			Plan: b.Plan, Method: b.Method, IdempotencyKey: b.IdempotencyKey,
+			Country: b.Country, ReturnUrl: b.ReturnURL,
+		}
+	case BillingPaymentBody:
+		return &pb.BillingPayment{
+			PaymentId: b.PaymentID, Status: b.Status, AmountMinor: b.AmountMinor,
+			Currency: b.Currency, PayUrl: b.PayURL, QrPayload: b.QRPayload,
+			Deduplicated: b.Deduplicated,
+		}
+	case BillingStatusBody:
+		return &pb.BillingStatus{}
+	case BillingCancelBody:
+		return &pb.BillingCancel{}
+	case SubscriptionBody:
+		return &pb.Subscription{
+			Plan: b.Plan, Status: b.Status, PeriodEnd: b.PeriodEnd,
+			CancelAtPeriodEnd: b.CancelAtPeriodEnd,
+			SecretChats:       b.SecretChats, MaxUploadBytes: b.MaxUploadBytes,
+			MaxPinnedChats: b.MaxPinnedChats, Folders: b.Folders,
+			AdvancedSearch: b.AdvancedSearch, PriorityDelivery: b.PriorityDelivery,
+			VoiceTranscription: b.VoiceTranscription, Badge: b.Badge,
+		}
+	case PasswordChangeBody:
+		return &pb.PasswordChange{OldPassword: b.OldPassword, NewPassword: b.NewPassword}
+	case PasswordChangedBody:
+		return &pb.PasswordChanged{SessionsRevoked: b.SessionsRevoked}
+	case TOTPSetupBody:
+		return &pb.TOTPSetup{}
+	case TOTPSetupInfoBody:
+		return &pb.TOTPSetupInfo{Secret: b.Secret, Uri: b.URI}
+	case TOTPConfirmBody:
+		return &pb.TOTPConfirm{Code: b.Code}
+	case TOTPDisableBody:
+		return &pb.TOTPDisable{Password: b.Password, Code: b.Code}
+	case TOTPStateBody:
+		return &pb.TOTPState{
+			Enabled: b.Enabled, RecoveryLeft: b.RecoveryLeft,
+			RecoveryCodes: b.RecoveryCodes, ConfirmedAtMs: b.ConfirmedAtMs,
+		}
+	case PrivacyGetBody:
+		return &pb.PrivacyGet{}
+	case PrivacySetBody:
+		return &pb.PrivacySet{LastSeen: b.LastSeen, Avatar: b.Avatar, Groups: b.Groups, PushPreview: b.PushPreview}
+	case PrivacyBody:
+		return &pb.Privacy{LastSeen: b.LastSeen, Avatar: b.Avatar, Groups: b.Groups, PushPreview: b.PushPreview}
+	case HistoryPageBody:
+		return historyPageToProto(b)
+	case SessionListBody:
+		return &pb.SessionList{}
+	case SessionsBody:
+		return sessionsToProto(b)
+	case SessionRevokeBody:
+		return &pb.SessionRevoke{SessionId: b.SessionID, AllIncludingCurrent: b.AllIncludingCurrent}
+	case SessionRevokedBody:
+		return &pb.SessionRevoked{Revoked: int32(b.Revoked), Self: b.Self}
 	case FanoutShardBody:
 		return &pb.FanoutShard{Body: newMessageToProto(b.Body), Members: b.Members}
 	case InvitesBody:
@@ -213,7 +298,7 @@ func protoTarget(v any) (proto.Message, func()) {
 	case *AuthBody:
 		m := &pb.Auth{}
 		return m, func() {
-			*t = AuthBody{Token: m.Token, Username: m.Username, Password: m.Password, Register: m.Register, DisplayName: m.DisplayName}
+			*t = AuthBody{Token: m.Token, Username: m.Username, Password: m.Password, Register: m.Register, DisplayName: m.DisplayName, TOTPCode: m.TotpCode}
 		}
 	case *AuthOKBody:
 		m := &pb.AuthOK{}
@@ -282,7 +367,7 @@ func protoTarget(v any) (proto.Message, func()) {
 		return m, func() { *t = ResumeBody{ResumeToken: m.ResumeToken, LastAckSeq: m.LastAckSeq} }
 	case *ResumeOKBody:
 		m := &pb.ResumeOK{}
-		return m, func() { *t = ResumeOKBody{SessionID: m.SessionId, FromSeq: m.FromSeq} }
+		return m, func() { *t = ResumeOKBody{SessionID: m.SessionId, FromSeq: m.FromSeq, ResumeToken: m.ResumeToken} }
 	case *ErrorBody:
 		m := &pb.Error{}
 		return m, func() { *t = ErrorBody{Code: ErrorCode(m.Code), Message: m.Message, RetryAfterMs: int(m.RetryAfterMs)} }
@@ -300,7 +385,9 @@ func protoTarget(v any) (proto.Message, func()) {
 		return m, func() { *t = MediaURLBody{MediaRef: m.MediaRef, DownloadURL: m.DownloadUrl, ExpiresAt: m.ExpiresAt} }
 	case *SearchBody:
 		m := &pb.Search{}
-		return m, func() { *t = SearchBody{Query: m.Query, Limit: int(m.Limit)} }
+		return m, func() {
+			*t = SearchBody{Query: m.Query, Limit: int(m.Limit), ChatID: m.ChatId, SenderID: m.SenderId}
+		}
 	case *SearchResultsBody:
 		m := &pb.SearchResults{}
 		return m, func() { *t = searchResultsFromProto(m) }
@@ -315,14 +402,53 @@ func protoTarget(v any) (proto.Message, func()) {
 	case *KeyBundleBody:
 		m := &pb.KeyBundle{}
 		return m, func() { *t = keyBundleFromProto(m) }
+	case *KeyStateBody:
+		m := &pb.KeyState{}
+		return m, func() {
+			*t = KeyStateBody{
+				OneTimePreKeysLeft: int(m.OneTimePrekeysLeft),
+				SignedPreKeyAgeMs:  m.SignedPrekeyAgeMs,
+				Accepted:           int(m.Accepted),
+			}
+		}
 	case *KeyBundlesBody:
 		m := &pb.KeyBundles{}
 		return m, func() { *t = keyBundlesFromProto(m) }
 	case *SecretMsgBody:
 		m := &pb.SecretMsg{}
 		return m, func() {
-			*t = SecretMsgBody{ToUserID: m.ToUserId, ToDeviceID: m.ToDeviceId, FromUserID: m.FromUserId, FromDeviceID: m.FromDeviceId, RatchetHeader: m.RatchetHeader, Ciphertext: m.Ciphertext}
+			*t = SecretMsgBody{
+				ToUserID: m.ToUserId, ToDeviceID: m.ToDeviceId,
+				FromUserID: m.FromUserId, FromDeviceID: m.FromDeviceId,
+				RatchetHeader: m.RatchetHeader, Ciphertext: m.Ciphertext,
+				Header: m.RatchetHeaderBin, Cipher: m.CiphertextBin,
+				QueueID: m.QueueId,
+			}
 		}
+	case *ChatFlagsBody:
+		m := &pb.ChatFlags{}
+		return m, func() {
+			*t = ChatFlagsBody{ChatID: m.ChatId, MutedUntil: m.MutedUntil, Pinned: m.Pinned, Archived: m.Archived}
+		}
+	case *ChatFlagsSetBody:
+		m := &pb.ChatFlagsSet{}
+		return m, func() {
+			*t = ChatFlagsSetBody{ChatID: m.ChatId, MutedUntil: m.MutedUntil, Pinned: m.Pinned, Archived: m.Archived}
+		}
+	case *SecretAckBody:
+		m := &pb.SecretAck{}
+		return m, func() {
+			*t = SecretAckBody{ToUserID: m.ToUserId, ToDeviceID: m.ToDeviceId, Devices: m.Devices, Queued: m.Queued}
+		}
+	case *SecretSyncBody:
+		m := &pb.SecretSync{}
+		return m, func() { *t = SecretSyncBody{After: m.After, Limit: m.Limit} }
+	case *SecretSyncedBody:
+		m := &pb.SecretSynced{}
+		return m, func() { *t = SecretSyncedBody{Count: m.Count, NextAfter: m.NextAfter, Done: m.Done} }
+	case *SecretAckedBody:
+		m := &pb.SecretAcked{}
+		return m, func() { *t = SecretAckedBody{IDs: m.Ids} }
 	case *SetUsernameBody:
 		m := &pb.SetUsername{}
 		return m, func() { *t = SetUsernameBody{ChatID: m.ChatId, Username: m.Username} }
@@ -354,7 +480,12 @@ func protoTarget(v any) (proto.Message, func()) {
 		}
 	case *ChatListBody:
 		m := &pb.ChatList{}
-		return m, func() { *t = ChatListBody{After: m.After, Limit: int(m.Limit)} }
+		return m, func() {
+			*t = ChatListBody{
+				After: m.After, Limit: int(m.Limit),
+				AfterActivity: m.AfterActivity, IncludeArchived: m.IncludeArchived,
+			}
+		}
 	case *ChatsBody:
 		m := &pb.Chats{}
 		return m, func() { *t = chatsFromProto(m) }
@@ -377,6 +508,105 @@ func protoTarget(v any) (proto.Message, func()) {
 	case *AccountDeletedBody:
 		m := &pb.AccountDeleted{}
 		return m, func() { *t = AccountDeletedBody{UserID: m.UserId, DeletedAt: m.DeletedAt} }
+	case *BillingPlansBody:
+		m := &pb.BillingPlans{}
+		return m, func() { *t = BillingPlansBody{Country: m.Country} }
+	case *BillingOffersBody:
+		m := &pb.BillingOffers{}
+		return m, func() { *t = billingOffersFromProto(m) }
+	case *BillingCheckoutBody:
+		m := &pb.BillingCheckout{}
+		return m, func() {
+			*t = BillingCheckoutBody{
+				Plan: m.Plan, Method: m.Method, IdempotencyKey: m.IdempotencyKey,
+				Country: m.Country, ReturnURL: m.ReturnUrl,
+			}
+		}
+	case *BillingPaymentBody:
+		m := &pb.BillingPayment{}
+		return m, func() {
+			*t = BillingPaymentBody{
+				PaymentID: m.PaymentId, Status: m.Status, AmountMinor: m.AmountMinor,
+				Currency: m.Currency, PayURL: m.PayUrl, QRPayload: m.QrPayload,
+				Deduplicated: m.Deduplicated,
+			}
+		}
+	case *BillingStatusBody:
+		m := &pb.BillingStatus{}
+		return m, func() { *t = BillingStatusBody{} }
+	case *BillingCancelBody:
+		m := &pb.BillingCancel{}
+		return m, func() { *t = BillingCancelBody{} }
+	case *SubscriptionBody:
+		m := &pb.Subscription{}
+		return m, func() {
+			*t = SubscriptionBody{
+				Plan: m.Plan, Status: m.Status, PeriodEnd: m.PeriodEnd,
+				CancelAtPeriodEnd: m.CancelAtPeriodEnd,
+				SecretChats:       m.SecretChats, MaxUploadBytes: m.MaxUploadBytes,
+				MaxPinnedChats: m.MaxPinnedChats, Folders: m.Folders,
+				AdvancedSearch: m.AdvancedSearch, PriorityDelivery: m.PriorityDelivery,
+				VoiceTranscription: m.VoiceTranscription, Badge: m.Badge,
+			}
+		}
+	case *PasswordChangeBody:
+		m := &pb.PasswordChange{}
+		return m, func() {
+			*t = PasswordChangeBody{OldPassword: m.OldPassword, NewPassword: m.NewPassword}
+		}
+	case *PasswordChangedBody:
+		m := &pb.PasswordChanged{}
+		return m, func() { *t = PasswordChangedBody{SessionsRevoked: m.SessionsRevoked} }
+	case *TOTPSetupBody:
+		m := &pb.TOTPSetup{}
+		return m, func() { *t = TOTPSetupBody{} }
+	case *TOTPSetupInfoBody:
+		m := &pb.TOTPSetupInfo{}
+		return m, func() { *t = TOTPSetupInfoBody{Secret: m.Secret, URI: m.Uri} }
+	case *TOTPConfirmBody:
+		m := &pb.TOTPConfirm{}
+		return m, func() { *t = TOTPConfirmBody{Code: m.Code} }
+	case *TOTPDisableBody:
+		m := &pb.TOTPDisable{}
+		return m, func() { *t = TOTPDisableBody{Password: m.Password, Code: m.Code} }
+	case *TOTPStateBody:
+		m := &pb.TOTPState{}
+		return m, func() {
+			*t = TOTPStateBody{
+				Enabled: m.Enabled, RecoveryLeft: m.RecoveryLeft,
+				RecoveryCodes: m.RecoveryCodes, ConfirmedAtMs: m.ConfirmedAtMs,
+			}
+		}
+	case *PrivacyGetBody:
+		m := &pb.PrivacyGet{}
+		return m, func() { *t = PrivacyGetBody{} }
+	case *PrivacySetBody:
+		m := &pb.PrivacySet{}
+		return m, func() {
+			*t = PrivacySetBody{LastSeen: m.LastSeen, Avatar: m.Avatar, Groups: m.Groups, PushPreview: m.PushPreview}
+		}
+	case *PrivacyBody:
+		m := &pb.Privacy{}
+		return m, func() {
+			*t = PrivacyBody{LastSeen: m.LastSeen, Avatar: m.Avatar, Groups: m.Groups, PushPreview: m.PushPreview}
+		}
+	case *HistoryPageBody:
+		m := &pb.HistoryPage{}
+		return m, func() { *t = historyPageFromProto(m) }
+	case *SessionListBody:
+		m := &pb.SessionList{}
+		return m, func() { *t = SessionListBody{} }
+	case *SessionsBody:
+		m := &pb.Sessions{}
+		return m, func() { *t = sessionsFromProto(m) }
+	case *SessionRevokeBody:
+		m := &pb.SessionRevoke{}
+		return m, func() {
+			*t = SessionRevokeBody{SessionID: m.SessionId, AllIncludingCurrent: m.AllIncludingCurrent}
+		}
+	case *SessionRevokedBody:
+		m := &pb.SessionRevoked{}
+		return m, func() { *t = SessionRevokedBody{Revoked: int(m.Revoked), Self: m.Self} }
 	case *FanoutShardBody:
 		m := &pb.FanoutShard{}
 		return m, func() {
@@ -498,7 +728,7 @@ func newMessageFromProto(m *pb.NewMessage) NewMessageBody {
 func searchResultsToProto(b SearchResultsBody) *pb.SearchResults {
 	out := &pb.SearchResults{Query: b.Query}
 	for _, h := range b.Hits {
-		out.Hits = append(out.Hits, &pb.SearchHit{MessageId: h.MessageID, ChatId: h.ChatID, SenderId: h.SenderID, Seq: h.Seq, Text: h.Text})
+		out.Hits = append(out.Hits, &pb.SearchHit{MessageId: h.MessageID, ChatId: h.ChatID, SenderId: h.SenderID, Seq: h.Seq, Text: h.Text, CreatedAt: h.CreatedAt})
 	}
 	return out
 }
@@ -506,7 +736,7 @@ func searchResultsToProto(b SearchResultsBody) *pb.SearchResults {
 func searchResultsFromProto(m *pb.SearchResults) SearchResultsBody {
 	out := SearchResultsBody{Query: m.Query}
 	for _, h := range m.Hits {
-		out.Hits = append(out.Hits, SearchHit{MessageID: h.MessageId, ChatID: h.ChatId, SenderID: h.SenderId, Seq: h.Seq, Text: h.Text})
+		out.Hits = append(out.Hits, SearchHit{MessageID: h.MessageId, ChatID: h.ChatId, SenderID: h.SenderId, Seq: h.Seq, Text: h.Text, CreatedAt: h.CreatedAt})
 	}
 	return out
 }
@@ -743,23 +973,36 @@ func draftsFromProto(m *pb.Drafts) DraftsBody {
 }
 
 func chatsToProto(b ChatsBody) *pb.Chats {
-	out := &pb.Chats{NextAfter: b.NextAfter, Done: b.Done}
+	out := &pb.Chats{NextAfter: b.NextAfter, NextAfterActivity: b.NextAfterActivity, Done: b.Done}
 	for _, c := range b.Chats {
-		out.Chats = append(out.Chats, &pb.ChatSummary{
+		row := &pb.ChatSummary{
 			ChatId: c.ChatID, Type: c.Type, Title: c.Title, OwnerId: c.OwnerID,
 			Username: c.Username, LastSeq: c.LastSeq, MyRole: c.MyRole, PeerId: c.PeerID,
-		})
+			UnreadCount: c.UnreadCount, LastActivityAt: c.LastActivityAt,
+			MutedUntil: c.MutedUntil, Pinned: c.Pinned, Archived: c.Archived,
+		}
+		if c.LastMessage != nil {
+			row.LastMessage = newMessageToProto(*c.LastMessage)
+		}
+		out.Chats = append(out.Chats, row)
 	}
 	return out
 }
 
 func chatsFromProto(m *pb.Chats) ChatsBody {
-	b := ChatsBody{NextAfter: m.NextAfter, Done: m.Done}
+	b := ChatsBody{NextAfter: m.NextAfter, NextAfterActivity: m.NextAfterActivity, Done: m.Done}
 	for _, c := range m.Chats {
-		b.Chats = append(b.Chats, ChatSummary{
+		row := ChatSummary{
 			ChatID: c.ChatId, Type: c.Type, Title: c.Title, OwnerID: c.OwnerId,
 			Username: c.Username, LastSeq: c.LastSeq, MyRole: c.MyRole, PeerID: c.PeerId,
-		})
+			UnreadCount: c.UnreadCount, LastActivityAt: c.LastActivityAt,
+			MutedUntil: c.MutedUntil, Pinned: c.Pinned, Archived: c.Archived,
+		}
+		if c.LastMessage != nil {
+			lm := newMessageFromProto(c.LastMessage)
+			row.LastMessage = &lm
+		}
+		b.Chats = append(b.Chats, row)
 	}
 	return b
 }
@@ -782,4 +1025,72 @@ func invitesFromProto(m *pb.Invites) InvitesBody {
 		})
 	}
 	return b
+}
+
+// sessionsToProto / sessionsFromProto convert the session list. Split out rather
+// than inlined because the repeated field makes the switch arms unreadable, the
+// same way newMessageToProto is.
+func sessionsToProto(b SessionsBody) *pb.Sessions {
+	m := &pb.Sessions{Sessions: make([]*pb.SessionInfo, 0, len(b.Sessions))}
+	for _, s := range b.Sessions {
+		m.Sessions = append(m.Sessions, &pb.SessionInfo{
+			SessionId: s.SessionID, DeviceId: s.DeviceID, Platform: s.Platform,
+			CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, Current: s.Current,
+		})
+	}
+	return m
+}
+
+func sessionsFromProto(m *pb.Sessions) SessionsBody {
+	b := SessionsBody{Sessions: make([]SessionInfo, 0, len(m.Sessions))}
+	for _, s := range m.Sessions {
+		b.Sessions = append(b.Sessions, SessionInfo{
+			SessionID: s.SessionId, DeviceID: s.DeviceId, Platform: s.Platform,
+			CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, Current: s.Current,
+		})
+	}
+	return b
+}
+
+// historyPageToProto / historyPageFromProto convert a backfill page. Split out
+// for the same reason newMessageToProto is: a repeated field makes the switch
+// arm unreadable.
+func historyPageToProto(b HistoryPageBody) *pb.HistoryPage {
+	m := &pb.HistoryPage{ChatId: b.ChatID, NextBefore: b.NextBefore, Done: b.Done}
+	m.Messages = make([]*pb.NewMessage, 0, len(b.Messages))
+	for _, msg := range b.Messages {
+		m.Messages = append(m.Messages, newMessageToProto(msg))
+	}
+	return m
+}
+
+func historyPageFromProto(m *pb.HistoryPage) HistoryPageBody {
+	b := HistoryPageBody{ChatID: m.ChatId, NextBefore: m.NextBefore, Done: m.Done}
+	b.Messages = make([]NewMessageBody, 0, len(m.Messages))
+	for _, msg := range m.Messages {
+		b.Messages = append(b.Messages, newMessageFromProto(msg))
+	}
+	return b
+}
+
+func billingOffersToProto(b BillingOffersBody) *pb.BillingOffers {
+	out := &pb.BillingOffers{}
+	for _, o := range b.Offers {
+		out.Offers = append(out.Offers, &pb.PlanOffer{
+			Plan: o.Plan, AmountMinor: o.AmountMinor, Currency: o.Currency,
+			PeriodDays: o.PeriodDays, Methods: o.Methods,
+		})
+	}
+	return out
+}
+
+func billingOffersFromProto(m *pb.BillingOffers) BillingOffersBody {
+	out := BillingOffersBody{}
+	for _, o := range m.Offers {
+		out.Offers = append(out.Offers, PlanOfferWire{
+			Plan: o.Plan, AmountMinor: o.AmountMinor, Currency: o.Currency,
+			PeriodDays: o.PeriodDays, Methods: o.Methods,
+		})
+	}
+	return out
 }

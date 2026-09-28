@@ -149,7 +149,7 @@ class BodyCodecTest {
     fun `bodiless types are known to carry nothing`() {
         assertFalse(BodyCodec.hasBody(MsgType.PING))
         assertFalse(BodyCodec.hasBody(MsgType.PONG))
-        assertFalse(BodyCodec.hasBody(MsgType.T_ACK))
+        assertFalse(BodyCodec.hasBody(MsgType.TRANSPORT_ACK))
         assertTrue(BodyCodec.hasBody(MsgType.NEW))
     }
 

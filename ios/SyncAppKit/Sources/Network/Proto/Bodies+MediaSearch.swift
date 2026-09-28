@@ -113,15 +113,31 @@ public struct MediaURLBody: ProtoMessage, Sendable, Equatable {
 public struct SearchBody: ProtoMessage, Sendable, Equatable {
     public var query = ""
     public var limit: Int32 = 0
+    /// Optional narrowing: one chat, one sender, or both.
+    ///
+    /// Neither is trusted as a security boundary — the server still intersects the
+    /// result with the caller's own membership, so naming a chat one is not in
+    /// narrows an empty set rather than opening a door.
+    public var chatID = ""
+    public var senderID = ""
 
-    public init(query: String = "", limit: Int32 = 0) {
+    public init(
+        query: String = "",
+        limit: Int32 = 0,
+        chatID: String = "",
+        senderID: String = ""
+    ) {
         self.query = query
         self.limit = limit
+        self.chatID = chatID
+        self.senderID = senderID
     }
 
     public func encode(to w: inout ProtoWriter) {
         w.string(1, query)
         w.int32(2, limit)
+        w.string(3, chatID)
+        w.string(4, senderID)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -130,6 +146,8 @@ public struct SearchBody: ProtoMessage, Sendable, Equatable {
             switch f.number {
             case 1: query = try r.string()
             case 2: limit = try r.int32()
+            case 3: chatID = try r.string()
+            case 4: senderID = try r.string()
             default: try r.skip(f)
             }
         }
@@ -143,6 +161,9 @@ public struct SearchHitBody: ProtoMessage, Sendable, Equatable {
     public var senderID = ""
     public var seq: UInt64 = 0
     public var text = ""
+    /// When the message was sent. A hit list without it can only be grouped by chat,
+    /// and "where did I see this" is nearly always a question about when.
+    public var createdAt: Int64 = 0
 
     public init() {}
 
@@ -152,6 +173,7 @@ public struct SearchHitBody: ProtoMessage, Sendable, Equatable {
         w.string(3, senderID)
         w.uint64(4, seq)
         w.string(5, text)
+        w.int64(6, createdAt)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -163,6 +185,7 @@ public struct SearchHitBody: ProtoMessage, Sendable, Equatable {
             case 3: senderID = try r.string()
             case 4: seq = try r.uint64()
             case 5: text = try r.string()
+            case 6: createdAt = try r.int64()
             default: try r.skip(f)
             }
         }

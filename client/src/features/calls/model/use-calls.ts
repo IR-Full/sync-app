@@ -112,6 +112,64 @@ export function useCallEngine(): void {
     })
   }, [client, selfId])
 
+  // --- the connection going away
+  //
+  // Signaling rides the same socket, so a drop mid-call silently stops SDP/ICE
+  // from reaching anyone while the overlay still says "in a call". The server also
+  // owns the room: it may well have ended it (the other side hung up, or our
+  // participant row was settled) while we were away, and nothing re-asks. So tear
+  // the media down on a drop, and re-read the roster once we are back — the server
+  // is the authority on whether the room still exists.
+  useEffect(() => {
+    if (!selfId) return
+
+    return client.on('state', (state) => {
+      const store = useCallStore.getState()
+      if (!store.room) return
+
+      if (state === 'reconnecting' || state === 'closed') {
+        // Keep the room on screen while merely reconnecting, so a two-second blip
+        // does not look like a dropped call — but stop pretending media flows.
+        session.current?.close()
+        session.current = null
+        pending.current = []
+        store.setJoined(false)
+        store.setLocalStream(null)
+        if (state === 'closed') {
+          store.setError('connection-lost')
+          store.reset()
+        }
+        return
+      }
+
+      if (state === 'ready') {
+        // Ask for the room again rather than assuming it survived. The reply is
+        // correlated, so it does NOT arrive as a `callState` push — it has to be
+        // reconciled here.
+        const callId = store.room.callId
+        void client
+          .request<Wire.CallState>(
+            MsgType.CALL_STATE,
+            { callId },
+            { expect: MsgType.CALL_STATE },
+          )
+          .then((reply) => {
+            const current = useCallStore.getState()
+            // Another room may have started while the request was in flight.
+            if (current.room?.callId !== callId) return
+            const room = roomFromWire(reply.body)
+            current.setRoom(room)
+            if (room.state === 'ended') current.reset()
+          })
+          .catch(() => {
+            // The room is gone, or the request failed: either way there is
+            // nothing to return to, and a stale overlay is worse than none.
+            useCallStore.getState().reset()
+          })
+      }
+    })
+  }, [client, selfId])
+
   // Expose the session to the actions hook below without re-creating it.
   useEffect(() => {
     engineRef.session = session

@@ -9,6 +9,7 @@ import com.syncapp.messenger.domain.model.ChatKind
 import com.syncapp.messenger.domain.model.UserSummary
 import com.syncapp.messenger.domain.repository.UserRepository
 import com.syncapp.messenger.domain.usecase.CreateGroupChatUseCase
+import com.syncapp.messenger.domain.usecase.CreateSecretChatUseCase
 import com.syncapp.messenger.domain.usecase.FindUserUseCase
 import com.syncapp.messenger.domain.usecase.JoinChatUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,11 +27,19 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class NewChatTab { DIRECT, GROUP, JOIN }
+enum class NewChatTab { DIRECT, SECRET, GROUP, JOIN }
 
 data class NewChatUiState(
     val tab: NewChatTab = NewChatTab.DIRECT,
     val username: String = "",
+    /**
+     * The peer for a secret chat, kept separate from [username].
+     *
+     * Two fields rather than one shared by the tabs: a half-typed handle on one tab
+     * appearing on the other reads as a bug, and the two do different things — one opens
+     * an existing conversation, the other creates a chat.
+     */
+    val secretUsername: String = "",
     val groupTitle: String = "",
     val groupMembers: String = "",
     val asChannel: Boolean = false,
@@ -50,6 +59,7 @@ sealed interface NewChatDestination {
 class NewChatViewModel @Inject constructor(
     private val findUser: FindUserUseCase,
     private val createGroup: CreateGroupChatUseCase,
+    private val createSecret: CreateSecretChatUseCase,
     private val joinChat: JoinChatUseCase,
     private val mediaUrls: MediaUrlCache,
     userRepository: UserRepository,
@@ -86,6 +96,37 @@ class NewChatViewModel @Inject constructor(
     fun onAsChannelChange(value: Boolean) = _state.update { it.copy(asChannel = value) }
 
     fun onInviteCodeChange(value: String) = _state.update { it.copy(inviteCode = value, error = null) }
+
+    fun onSecretUsernameChange(value: String) = _state.update {
+        it.copy(secretUsername = value, error = null)
+    }
+
+    /**
+     * Creates a secret chat — a chat TYPE, chosen here alongside direct, group and
+     * channel.
+     *
+     * Unlike a direct chat this one IS created by a request rather than coming into
+     * existence on the first send: both sides need the row to exist before either can
+     * start a session in it, so there is nothing to defer.
+     *
+     * A refusal for a free account arrives as `PREMIUM_REQUIRED`, which
+     * [com.syncapp.messenger.presentation.components.localized] renders as an upgrade
+     * message rather than as a generic rejection.
+     */
+    fun createSecretChat() {
+        val current = _state.value
+        if (current.busy || current.secretUsername.isBlank()) return
+        _state.update { it.copy(busy = true, error = null) }
+        viewModelScope.launch {
+            when (val outcome = createSecret(current.secretUsername)) {
+                is Outcome.Success -> {
+                    _state.update { it.copy(busy = false, secretUsername = "") }
+                    _destinations.emit(NewChatDestination.ByChatId(outcome.value.id))
+                }
+                is Outcome.Failure -> _state.update { it.copy(busy = false, error = outcome.error) }
+            }
+        }
+    }
 
     /**
      * Looks a person up by handle: a profile read, with no side effect on the

@@ -6,13 +6,15 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.syncapp.messenger.MainActivity
 import com.syncapp.messenger.R
+import com.syncapp.messenger.data.ActiveChatTracker
+import com.syncapp.messenger.database.dao.MessageDao
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,14 +29,17 @@ import javax.inject.Singleton
 @Singleton
 class NotificationPresenter @Inject constructor(
     private val context: Context,
+    private val activeChat: ActiveChatTracker,
+    private val messages: MessageDao,
 ) {
-    fun show(chatId: String, messageId: String, title: String, body: String) {
+    suspend fun show(chatId: String, messageId: String, title: String, body: String) {
         if (!hasPermission()) return
+        if (shouldSuppress(chatId, messageId)) return
         val manager = context.getSystemService<NotificationManager>() ?: return
 
         val intent = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("$DEEP_LINK_SCHEME://chat/$chatId"),
+            "$DEEP_LINK_SCHEME://chat/$chatId".toUri(),
             context,
             MainActivity::class.java,
         ).apply {
@@ -57,6 +62,24 @@ class NotificationPresenter @Inject constructor(
             .build()
 
         manager.notify(notificationIdFor(messageId, chatId), notification)
+    }
+
+    /**
+     * Whether this push has already been answered by the app itself.
+     *
+     * Two cases, both of which produce a notification for something the user has
+     * already got. Push and socket delivery are independent paths — the gateway
+     * pushes to devices it does not see connected at that instant, which includes
+     * one whose socket reconnected a moment later — so the message frequently
+     * lands in the database before (or instead of) the notification arriving:
+     *
+     *  - the chat is open on screen, so the message is visible as it arrives;
+     *  - the message is already stored, so the socket delivered it.
+     */
+    private suspend fun shouldSuppress(chatId: String, messageId: String): Boolean {
+        if (chatId.isNotEmpty() && activeChat.chatId.value == chatId) return true
+        if (messageId.isEmpty()) return false
+        return messages.findById(messageId) != null
     }
 
     /** POST_NOTIFICATIONS only exists from API 33; before that, posting is always allowed. */

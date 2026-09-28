@@ -16,7 +16,10 @@
     "test:protocol": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-protocol.mts",
     "test:features": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-features.mts",
     "test:secret": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-secret.mts",
-    "test:secret-responder": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-secret-responder.mts"
+    "test:secret-responder": "node --experimental-strip-types --import ./scripts/ts-resolve.mjs scripts/e2e-secret-responder.mts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@noble/ciphers": "^2.3.0",
@@ -31,17 +34,23 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^3.2.7",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "eslint-config-prettier": "^10.1.8",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   },
   "ignoreScripts": [
     "sharp",

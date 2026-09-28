@@ -17,16 +17,22 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
-// New builds the moderation service. bannedTerms are matched case-insensitively.
+// New builds the moderation service. bannedTerms are matched against normalized
+// text (see normalize), so look-alike alphabets, invisible characters, digit
+// substitutions and injected punctuation do not evade the filter.
 func New(bus eventbus.Bus, bannedTerms []string, log *slog.Logger) *Service {
-	lowered := make([]string, len(bannedTerms))
-	for i, t := range bannedTerms {
-		lowered[i] = strings.ToLower(t)
+	terms := make([]string, 0, len(bannedTerms))
+	for _, t := range bannedTerms {
+		// A term that normalizes to nothing (punctuation only) would match every
+		// message, so it is dropped rather than allowed to flag everything.
+		if n := normalize(t); n != "" {
+			terms = append(terms, n)
+		}
 	}
 	return &Service{
 		bus:    bus,
 		log:    log,
-		banned: lowered,
+		banned: terms,
 		// Flag users exceeding ~5 msg/s sustained (burst 15).
 		spam: ratelimit.NewLimiter(5, 15),
 	}
@@ -45,10 +51,11 @@ func (s *Service) onMessage(ctx context.Context, e eventbus.Event) error {
 	if err := wire.Unmarshal(e.Data, &b); err != nil {
 		return err
 	}
-	// Rule 1: banned-term filter.
-	lower := strings.ToLower(b.Text)
+	// Rule 1: banned-term filter, on normalized text so the match survives
+	// homoglyphs, zero-width characters and leetspeak.
+	normalized := normalize(b.Text)
 	for _, term := range s.banned {
-		if term != "" && strings.Contains(lower, term) {
+		if strings.Contains(normalized, term) {
 			s.record(AbuseEvent{
 				UserID: b.SenderID, ChatID: b.ChatID, MessageID: b.MessageID,
 				Rule: "banned_term", Detail: term, At: time.Now().UnixMilli(),

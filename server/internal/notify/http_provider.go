@@ -57,10 +57,14 @@ func (p *HTTPProvider) Send(ctx context.Context, job PushJob) error {
 // pushPayload is what the endpoint receives. message_id is included so the
 // provider (and the device) can dedup: delivery is at-least-once by design.
 type pushPayload struct {
-	Token     string `json:"token"`
-	Platform  string `json:"platform,omitempty"`
-	Title     string `json:"title"`
-	Body      string `json:"body"`
+	Token    string `json:"token"`
+	Platform string `json:"platform,omitempty"`
+	Title    string `json:"title"`
+	// Body is the message preview, and it is omitted rather than empty when the
+	// recipient has not opted into previews: an empty string renders as a blank
+	// notification body on some platforms, while an absent field lets the client
+	// choose what to show.
+	Body      string `json:"body,omitempty"`
 	ChatID    string `json:"chat_id"`
 	MessageID string `json:"message_id"`
 }
@@ -68,11 +72,21 @@ type pushPayload struct {
 // SendToDevice delivers one notification, retrying only failures that a retry
 // can fix.
 func (p *HTTPProvider) SendToDevice(ctx context.Context, dev DeviceToken, job PushJob) error {
-	body, err := json.Marshal(pushPayload{
+	// A preview-less job is the DEFAULT, not a degraded case: message text reaches
+	// the provider only for accounts that opted in (see fanout's PreviewPolicy).
+	// So the payload has to be a usable notification without a body — the device
+	// wakes, fetches over its own authenticated connection, and renders the real
+	// content locally. Sending an empty Body would render as a blank notification
+	// on some platforms, which is why the field is omitted entirely instead.
+	payload := pushPayload{
 		Token: dev.Token, Platform: dev.Platform,
-		Title: "New message", Body: job.Preview,
+		Title:  "New message",
 		ChatID: job.ChatID, MessageID: job.MessageID,
-	})
+	}
+	if job.Preview != "" {
+		payload.Body = job.Preview
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}

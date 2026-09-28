@@ -28,8 +28,15 @@ func (c *conn) handleChatCreate(ctx context.Context, e wire.Envelope) error {
 	if typ == "" {
 		typ = model.ChatGroup
 	}
+	// A secret chat is created here, alongside groups and channels, rather than
+	// through a separate call — that is the change that makes it a chat TYPE
+	// instead of a side channel. Its shape is different enough to branch away
+	// immediately: it is two-party, has no title, and takes exactly one member.
+	if typ == model.ChatSecret {
+		return c.createSecretChat(ctx, e, body)
+	}
 	if typ != model.ChatGroup && typ != model.ChatChannel {
-		return c.replyError(e.RequestID, wire.ErrBadArg, "type must be group or channel")
+		return c.replyError(e.RequestID, wire.ErrBadArg, "type must be group, channel or secret")
 	}
 	title := strings.TrimSpace(body.Title)
 	if title == "" || len(title) > maxChatTitle {
@@ -55,6 +62,18 @@ func (c *conn) handleChatCreate(ctx context.Context, e wire.Envelope) error {
 		}
 		if uid == c.userID {
 			continue // the creator is added as owner below
+		}
+		// Someone who set "nobody may add me to groups" is not added — and the
+		// refusal names them rather than failing silently, because a creator who
+		// sees a group appear without the person they invited will simply try
+		// again. "Nobody" still leaves them able to JOIN by link; it only stops
+		// them being dragged in.
+		u, err := c.gw.svc.Users.GetUser(ctx, uid)
+		if err != nil {
+			return c.replyForError(e.RequestID, err)
+		}
+		if !c.gw.maySee(ctx, uid, c.userID, u.Privacy.Groups) {
+			return c.replyError(e.RequestID, wire.ErrForbidden, "cannot add "+m+" to a group")
 		}
 		members = append(members, uid)
 	}

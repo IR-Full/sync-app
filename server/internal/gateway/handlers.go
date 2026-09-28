@@ -26,6 +26,16 @@ func (c *conn) authByToken(ctx context.Context, token string) (*authIdentity, er
 }
 
 func (c *conn) authByPassword(ctx context.Context, username, password, displayName string, register bool) (*authIdentity, error) {
+	return c.authByPasswordWithCode(ctx, username, password, "", displayName, register)
+}
+
+// authByPasswordWithCode is authByPassword with a second factor.
+//
+// The code travels on the RETRY: a client cannot know in advance whether an
+// account enforces a factor, and asking would make the protocol an oracle for
+// which accounts are protected. So the flow is credentials → ErrTwoFactorRequired
+// → credentials plus code.
+func (c *conn) authByPasswordWithCode(ctx context.Context, username, password, code, displayName string, register bool) (*authIdentity, error) {
 	platform := c.platform
 	if platform == "" {
 		platform = "unknown"
@@ -53,7 +63,7 @@ func (c *conn) authByPassword(ctx context.Context, username, password, displayNa
 		}
 		sess, user, err = c.gw.svc.Auth.Register(ctx, username, password, displayName, c.deviceID, platform)
 	} else {
-		sess, user, err = c.gw.svc.Auth.Login(ctx, username, password, c.deviceID, platform)
+		sess, user, err = c.gw.svc.Auth.LoginWithCode(ctx, username, password, code, c.deviceID, platform)
 	}
 	if err != nil {
 		return nil, err
@@ -80,9 +90,22 @@ func stateChanging(t wire.MsgType) bool {
 		wire.MsgPollCreate, wire.MsgPollVote, wire.MsgPollClose,
 		wire.MsgContactAdd, wire.MsgContactRemove, wire.MsgBlock,
 		wire.MsgForward, wire.MsgSchedule, wire.MsgScheduleCancel,
-		wire.MsgPin, wire.MsgUnpin, wire.MsgDraftSet,
+		wire.MsgPin, wire.MsgUnpin, wire.MsgDraftSet, wire.MsgChatFlags,
+		// Every account-security path runs argon2id: cheap to ask for, memory-hard
+		// to serve. They are also the paths where an unmetered retry loop is a
+		// credential-guessing loop.
+		wire.MsgPasswordChange, wire.MsgTOTPSetup, wire.MsgTOTPConfirm, wire.MsgTOTPDisable,
+		// A checkout reaches an EXTERNAL acquirer, so an unmetered loop makes this
+		// server hammer somebody else's API. Cancel writes.
+		wire.MsgBillingCheckout, wire.MsgBillingCancel,
 		wire.MsgSetUsername, wire.MsgInviteCreate, wire.MsgInviteRevoke, wire.MsgJoin, wire.MsgSetRole,
+		// SECRET_ACKED deletes rows, so it is metered with the other writes.
+		wire.MsgSecretAcked,
 		wire.MsgChatCreate, wire.MsgPushToken, wire.MsgProfileSet,
+		// Session management writes to the session table and, for account deletion,
+		// runs an argon2id verify. Both are cheap to ask for and expensive to serve.
+		wire.MsgSessionRevoke, wire.MsgAccountDelete, wire.MsgSessionList,
+		wire.MsgPrivacyGet, wire.MsgPrivacySet,
 		// ProfileGet is read-only but resolves handles, which makes an unmetered
 		// one a username-enumeration primitive.
 		wire.MsgProfileGet,
@@ -94,10 +117,44 @@ func stateChanging(t wire.MsgType) bool {
 	}
 }
 
+// amplifying reports whether a message type is a READ that costs the server more
+// to answer than it costs the client to ask.
+//
+// These used to be outside flood control entirely, on the reasoning that a read
+// changes nothing. That confuses "harmless" with "free". HISTORY is the clearest
+// case: one small frame draws a database page and streams up to a hundred full
+// message frames back, and a client can ask again immediately. CHAT_LIST, the
+// *_SYNC pair and the *_LIST family are the same shape in miniature — a query
+// whose answer is unbounded by the request that asked for it.
+//
+// Kept separate from stateChanging rather than merged into it, because the two
+// budgets want different numbers: writes are rare and expensive to get wrong,
+// reads are frequent and normal. One bucket for both would either throttle
+// scrolling or stop metering sends.
+func amplifying(t wire.MsgType) bool {
+	switch t {
+	case wire.MsgHistory, wire.MsgChatList, wire.MsgThread, wire.MsgRead,
+		wire.MsgPinList, wire.MsgDraftSync, wire.MsgContactSync,
+		wire.MsgInviteList, wire.MsgScheduleList,
+		// Both read a row and a policy table per call. Cheap individually, and the
+		// kind of thing a client polls in a loop if nothing stops it.
+		wire.MsgBillingPlans, wire.MsgBillingStatus,
+		// SECRET_SYNC is the same shape as HISTORY: one small frame draws a page
+		// of full ciphertext frames back, and the client can ask again at once.
+		wire.MsgSecretSync:
+		return true
+	default:
+		return false
+	}
+}
+
 // dispatch routes an authenticated inbound envelope to the right handler.
 func (c *conn) dispatch(ctx context.Context, e wire.Envelope) error {
 	if stateChanging(e.Type) && !c.sendLimit.Allow() {
 		return c.replyErrorRetry(e.RequestID, wire.ErrFlood, "rate limited", 1000)
+	}
+	if amplifying(e.Type) && !c.readLimit.Allow() {
+		return c.replyErrorRetry(e.RequestID, wire.ErrFlood, "read rate limited", 1000)
 	}
 	switch e.Type {
 	case wire.MsgPing:
@@ -174,10 +231,40 @@ func (c *conn) dispatch(ctx context.Context, e wire.Envelope) error {
 		return c.handleChatCreate(ctx, e)
 	case wire.MsgChatList:
 		return c.handleChatList(ctx, e)
+	case wire.MsgChatFlags:
+		return c.handleChatFlags(ctx, e)
+	case wire.MsgPasswordChange:
+		return c.handlePasswordChange(ctx, e)
+	case wire.MsgBillingPlans:
+		return c.handleBillingPlans(ctx, e)
+	case wire.MsgBillingCheckout:
+		return c.handleBillingCheckout(ctx, e)
+	case wire.MsgBillingStatus:
+		return c.handleBillingStatus(ctx, e)
+	case wire.MsgBillingCancel:
+		return c.handleBillingCancel(ctx, e)
+	case wire.MsgTOTPSetup:
+		return c.handleTOTPSetup(ctx, e)
+	case wire.MsgTOTPConfirm:
+		return c.handleTOTPConfirm(ctx, e)
+	case wire.MsgTOTPDisable:
+		return c.handleTOTPDisable(ctx, e)
+	case wire.MsgTOTPState:
+		return c.handleTOTPState(ctx, e)
 	case wire.MsgProfileGet:
 		return c.handleProfileGet(ctx, e)
 	case wire.MsgProfileSet:
 		return c.handleProfileSet(ctx, e)
+	case wire.MsgSessionList:
+		return c.handleSessionList(ctx, e)
+	case wire.MsgSessionRevoke:
+		return c.handleSessionRevoke(ctx, e)
+	case wire.MsgAccountDelete:
+		return c.handleAccountDelete(ctx, e)
+	case wire.MsgPrivacyGet:
+		return c.handlePrivacyGet(ctx, e)
+	case wire.MsgPrivacySet:
+		return c.handlePrivacySet(ctx, e)
 	case wire.MsgPushToken:
 		return c.handlePushToken(ctx, e)
 	case wire.MsgEdit:
@@ -196,6 +283,10 @@ func (c *conn) dispatch(ctx context.Context, e wire.Envelope) error {
 		return c.handleChatExport(ctx, e)
 	case wire.MsgSecretSend:
 		return c.handleSecretSend(ctx, e)
+	case wire.MsgSecretSync:
+		return c.handleSecretSync(ctx, e)
+	case wire.MsgSecretAcked:
+		return c.handleSecretAcked(ctx, e)
 	case wire.MsgMediaInit:
 		return c.handleMediaInit(ctx, e)
 	case wire.MsgMediaFetch:

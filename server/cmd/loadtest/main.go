@@ -45,7 +45,7 @@ func main() {
 	msgs := flag.Int("msgs", 50, "messages per connection")
 	idle := flag.Duration("idle", 0, "idle-scale mode: hold connections open for this long and report per-conn server cost (e.g. 30s)")
 	metricsURL := flag.String("metrics", "http://localhost:8080/metrics", "server /metrics endpoint (idle mode)")
-	gcURL := flag.String("gc", "http://localhost:8080/debug/pprof/heap?gc=1", "pprof heap URL used to force a server GC before the loaded scrape (needs SyncApp_PPROF=1); empty to skip")
+	gcURL := flag.String("gc", "http://localhost:8080/debug/pprof/heap?gc=1", "pprof heap URL used to force a server GC before the loaded scrape (needs SYNCAPP_PPROF=1); empty to skip")
 	flag.Parse()
 
 	if *idle > 0 {
@@ -326,13 +326,13 @@ func openConn(addr string, idx int) (*sess, error) {
 		return nil, err
 	}
 	if e, err := conn.ReadEnvelope(); err != nil || e.Type != wire.MsgWelcome {
-		return nil, fmt.Errorf("welcome: %v", err)
+		return nil, fmt.Errorf("welcome: %w", err)
 	}
 	if err := conn.Send(wire.MsgAuth, 2, 0, 2, wire.AuthBody{Username: user, Password: "loadtest123", Register: true}); err != nil {
 		return nil, err
 	}
 	if e, err := conn.ReadEnvelope(); err != nil || e.Type != wire.MsgAuthOK {
-		return nil, fmt.Errorf("auth: %v", err)
+		return nil, fmt.Errorf("auth: %w", err)
 	}
 	return &sess{conn: conn, user: user, seq: 2}, nil
 }

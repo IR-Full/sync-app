@@ -434,7 +434,19 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 0) {
-                    Text(model.title()).font(.headline)
+                    HStack(spacing: 4) {
+                        // The header lock, the second and last visual difference a
+                        // secret chat gets. Everything else on this screen — the
+                        // transcript, the composer, replies, edits — is the same code,
+                        // which is the entire argument for making it a chat type.
+                        if model.chat?.kind.isEndToEnd == true {
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                                .foregroundStyle(Color.green)
+                                .accessibilityLabel(l("chat.secret.badge"))
+                        }
+                        Text(model.title()).font(.headline)
+                    }
                     if let status = model.statusLine() {
                         Text(status)
                             .font(.caption2)
@@ -444,6 +456,10 @@ struct ChatView: View {
             }
         }
         .task { await model.start() }
+        // Tells the app which conversation is on screen, so a push for this chat
+        // does not put a banner over the message that is about to appear in it.
+        .onAppear { app.setVisibleChat(model.chatID) }
+        .onDisappear { app.setVisibleChat(nil) }
         .onChange(of: photoItem) { item in
             guard let item else { return }
             Task {

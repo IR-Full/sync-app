@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation'
 import { useSyncExternalStore } from 'react'
 
 import { useSettingsStore } from '@/entities/settings'
+import { SecurityPanel } from '@/features/account-security'
 import { useLogout } from '@/features/auth'
+import { PremiumPanel } from '@/features/billing'
+import { PrivacyPanel } from '@/features/privacy'
+import { DeleteAccountPanel, SessionsPanel } from '@/features/sessions'
 import { usePushToken } from '@/features/push-token'
 import { LOCALE_LABELS, LOCALES, useLocaleStore, useTranslate } from '@/shared/i18n'
 import { cn } from '@/shared/lib/cn'
@@ -194,6 +198,23 @@ export function SettingsPanel() {
           </Button>
         </div>
       </Section>
+
+      {/*
+        Sessions sit BELOW the ordinary Log out button on purpose. That button
+        only forgets the token on this device — which is what most people mean
+        by logging out — while this list is where someone goes after losing a
+        device and needs the session to actually stop working on the server.
+      */}
+      {/*
+        Security sits above the session list and below the ordinary settings. Above the
+        session list because changing the password is what REVOKES those sessions, so
+        reading downwards matches the order somebody secures an account in.
+      */}
+      <SecurityPanel />
+      <PremiumPanel />
+      <PrivacyPanel />
+      <SessionsPanel />
+      <DeleteAccountPanel />
     </div>
   )
 }

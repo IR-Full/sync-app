@@ -44,6 +44,8 @@ export function MessageMenu({
   const t = useTranslate()
   const [open, setOpen] = useState(false)
   const container = useRef<HTMLDivElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -51,7 +53,24 @@ export function MessageMenu({
       if (!container.current?.contains(event.target as Node)) setOpen(false)
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') {
+        setOpen(false)
+        // Return focus where it came from, or the keyboard user is dropped back
+        // at the top of the document with no idea what they just closed.
+        trigger.current?.focus()
+        return
+      }
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+      const items = Array.from(
+        menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+      )
+      if (items.length === 0) return
+      event.preventDefault()
+      const current = items.indexOf(document.activeElement as HTMLElement)
+      const step = event.key === 'ArrowDown' ? 1 : -1
+      // Wraps, which is what the ARIA menu pattern specifies.
+      const next = (current + step + items.length) % items.length
+      items[next]?.focus()
     }
     document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKey)
@@ -61,6 +80,13 @@ export function MessageMenu({
     }
   }, [open])
 
+  // Move focus into the menu when it opens, so the first arrow key acts on it
+  // rather than scrolling the page behind it.
+  useEffect(() => {
+    if (!open) return
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus()
+  }, [open])
+
   // A message still in the outbox has no server id, so nothing here applies.
   if (!message.seq) return null
 
@@ -68,6 +94,10 @@ export function MessageMenu({
     <button
       key={label}
       type="button"
+      // A container with role="menu" whose children are plain buttons is not a
+      // menu to a screen reader — it announces a group of unrelated controls and
+      // loses the count. The role has to be on the items too.
+      role="menuitem"
       onClick={() => {
         setOpen(false)
         onClick()
@@ -84,9 +114,11 @@ export function MessageMenu({
   return (
     <div ref={container} className="relative">
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-label={t('chat.actions')}
+        aria-haspopup="menu"
         aria-expanded={open}
         className="text-ink-faint hover:bg-surface-hover hover:text-ink rounded-full p-1 transition-colors"
       >
@@ -99,7 +131,9 @@ export function MessageMenu({
 
       {open && (
         <div
+          ref={menu}
           role="menu"
+          aria-label={t('chat.actions')}
           className="border-line bg-surface-raised absolute top-0 right-0 z-20 w-44 rounded-xl border p-1 shadow-lg"
         >
           <div className="flex justify-between gap-0.5 px-1 pb-1">
@@ -107,6 +141,8 @@ export function MessageMenu({
               <button
                 key={emoji}
                 type="button"
+                role="menuitem"
+                aria-label={t('chat.reactWith', { emoji })}
                 onClick={() => {
                   setOpen(false)
                   onReact(emoji)

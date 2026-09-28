@@ -11,15 +11,19 @@ import com.syncapp.messenger.data.sync.MessageIngestor
 import com.syncapp.messenger.data.sync.ProfileFetcher
 import com.syncapp.messenger.database.SyncAppDatabase
 import com.syncapp.messenger.domain.model.Chat
+import com.syncapp.messenger.domain.model.ChatFlags
 import com.syncapp.messenger.domain.model.ChatKind
 import com.syncapp.messenger.domain.model.ChatTarget
 import com.syncapp.messenger.domain.repository.ChatRepository
 import com.syncapp.messenger.network.SyncAppGateway
 import com.syncapp.messenger.network.protocol.ChatCreate
+import com.syncapp.messenger.network.protocol.ChatFlags as WireChatFlags
+import com.syncapp.messenger.network.protocol.ChatFlagsSet
 import com.syncapp.messenger.network.protocol.ChatInfo
 import com.syncapp.messenger.network.protocol.Invites
 import com.syncapp.messenger.network.protocol.Join
 import com.syncapp.messenger.network.protocol.MsgType
+import com.syncapp.messenger.network.request
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -28,8 +32,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 
 @Singleton
 class ChatRepositoryImpl @Inject constructor(
-    private val gateway: syncappGateway,
-    private val database: syncappDatabase,
+    private val gateway: SyncAppGateway,
+    private val database: SyncAppDatabase,
     private val history: HistoryFetcher,
     private val chatListSyncer: ChatListSyncer,
     private val ingestor: MessageIngestor,
@@ -49,6 +53,85 @@ class ChatRepositoryImpl @Inject constructor(
             rows.map { row -> row.toDomain { userId -> directory[userId] } }
         }
     }
+
+    override fun observeArchivedChats(): Flow<List<Chat>> =
+        sessionHolder.userId.flatMapLatest { selfId ->
+            combine(chats.observeArchivedChatList(selfId), users.observeAll()) { rows, knownUsers ->
+                val directory = knownUsers.associateBy({ it.userId }, { it.toDomain() })
+                rows.map { row -> row.toDomain { userId -> directory[userId] } }
+            }
+        }
+
+    /**
+     * Creates a secret chat, then records it locally with the peer attached.
+     *
+     * CHAT_INFO carries no peer — it answers with the chat that was made, not with its
+     * membership — and a two-party chat with no title and no peer renders with no name at
+     * all. So the handle is recorded here, which is also what lets the row be labelled
+     * before the peer's profile arrives.
+     */
+    override suspend fun createSecretChat(peer: String): Outcome<Chat> = runOutcome {
+        val handle = peer.trim().removePrefix("@").lowercase()
+        require(handle.isNotEmpty()) { "empty peer" }
+
+        val info: ChatInfo = gateway.request(
+            MsgType.CHAT_CREATE,
+            ChatCreate(
+                type = ChatKind.SECRET.toWire(),
+                // Titleless by construction: the server ignores a title for this type
+                // rather than validating one.
+                title = "",
+                members = listOf("@$handle"),
+            ),
+        )
+        chats.upsertKnown(
+            chatId = info.chatId,
+            type = info.type,
+            ownerId = info.ownerId,
+            peerUsername = handle,
+        )
+        chats.advanceActivity(info.chatId, System.currentTimeMillis())
+        chats.findById(info.chatId)?.toDomain()
+            ?: Chat(id = info.chatId, kind = ChatKind.SECRET, title = "@$handle")
+    }
+
+    /**
+     * Writes the flags locally first, then sends, then reconciles with the echo.
+     *
+     * Optimistic because the alternative is a toggle that visibly lags a round trip.
+     * Reconciled because the echo is what the server actually STORED — it normalises a
+     * mute deadline already in the past to "not muted", and a client that kept its own
+     * request would show a chat as muted when it is not.
+     */
+    override suspend fun setChatFlags(chatId: String, flags: ChatFlags): Outcome<ChatFlags> =
+        runOutcome {
+            chats.updateFlags(
+                chatId = chatId,
+                mutedUntil = flags.mutedUntil,
+                pinned = flags.pinned,
+                archived = flags.archived,
+            )
+            val echo: ChatFlagsSet = gateway.request(
+                MsgType.CHAT_FLAGS,
+                WireChatFlags(
+                    chatId = chatId,
+                    mutedUntil = flags.mutedUntil,
+                    pinned = flags.pinned,
+                    archived = flags.archived,
+                ),
+            )
+            chats.updateFlags(
+                chatId = chatId,
+                mutedUntil = echo.mutedUntil,
+                pinned = echo.pinned,
+                archived = echo.archived,
+            )
+            ChatFlags(
+                mutedUntil = echo.mutedUntil,
+                pinned = echo.pinned,
+                archived = echo.archived,
+            )
+        }
 
     override fun observeChat(chatId: String): Flow<Chat?> =
         combine(chats.observeChat(chatId), users.observeAll()) { entity, knownUsers ->

@@ -33,16 +33,16 @@ jobs:
           xcrun simctl list devicetypes | grep -i iphone | tail -5
 
       # This step now compiles every target, including the SwiftUI layer, because
-      # SynapsePresentationTests depends on SynapseDI. So it — not the app build
+      # SyncAppPresentationTests depends on SyncAppDI. So it — not the app build
       # — is where a compile error should surface, with the file and line.
       # Hence no -quiet.
       - name: Run Swift package tests
-        working-directory: ios/SynapseKit
+        working-directory: ios/SyncAppKit
         run: |
           set -euo pipefail
 
           xcodebuild test \
-            -scheme Synapse-Package \
+            -scheme SyncApp-Package \
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             CODE_SIGNING_ALLOWED=NO \
@@ -63,27 +63,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          rm -rf Synapse.xcodeproj
+          rm -rf SyncApp.xcodeproj
           xcodegen generate
 
           # A local package that fails to attach produces no error here — the
           # failure surfaces much later as `no such module` pointing at the
           # app's first import, which says nothing about the reference that was
           # dropped. Assert the wiring directly instead.
-          for product in SynapseDI SynapsePresentation; do
-            if ! grep -q "$product" Synapse.xcodeproj/project.pbxproj; then
+          for product in SyncAppDI SyncAppPresentation; do
+            if ! grep -q "$product" SyncApp.xcodeproj/project.pbxproj; then
               echo "::error::$product is missing from the generated project — check the 'packages' path in project.yml"
               exit 1
             fi
           done
+
+      # SwiftLint, configured in ios/.swiftlint.yml with an explicit allowlist of
+      # defect-finding rules rather than the noisy default set — the same
+      # approach as server/.golangci.yml. It runs before the build because it is
+      # far faster and needs no simulator.
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: SwiftLint
+        working-directory: ios
+        run: swiftlint lint --strict --config .swiftlint.yml
 
       - name: Resolve Swift package dependencies
         working-directory: ios
         run: |
           xcodebuild \
             -resolvePackageDependencies \
-            -project Synapse.xcodeproj \
-            -scheme 'Synapse Dev' \
+            -project SyncApp.xcodeproj \
+            -scheme 'SyncApp Dev' \
             -clonedSourcePackagesDirPath "$RUNNER_TEMP/source-packages"
 
       - name: Build the app
@@ -91,7 +102,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          rm -rf "$RUNNER_TEMP/synapse-derived-data"
+          rm -rf "$RUNNER_TEMP/syncapp-derived-data"
 
           # Deliberately not -quiet. When a package target fails to compile, the
           # only line -quiet lets through is the app's downstream
@@ -102,11 +113,11 @@ jobs:
           #
           # `set -o pipefail` is already on, so tee does not mask a failure.
           xcodebuild build \
-            -project Synapse.xcodeproj \
-            -scheme 'Synapse Dev' \
+            -project SyncApp.xcodeproj \
+            -scheme 'SyncApp Dev' \
             -configuration Dev \
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
-            -derivedDataPath "$RUNNER_TEMP/synapse-derived-data" \
+            -derivedDataPath "$RUNNER_TEMP/syncapp-derived-data" \
             -clonedSourcePackagesDirPath "$RUNNER_TEMP/source-packages" \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee "$RUNNER_TEMP/build.log"
@@ -164,7 +175,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
 
           APP="$(
-            find "$RUNNER_TEMP/synapse-derived-data" \
+            find "$RUNNER_TEMP/syncapp-derived-data" \
               -type d \
               -name '*.app' \
               -print \
@@ -176,7 +187,7 @@ jobs:
             echo "::error::Application bundle was not found"
 
             echo "::group::DerivedData contents"
-            find "$RUNNER_TEMP/synapse-derived-data" \
+            find "$RUNNER_TEMP/syncapp-derived-data" \
               -maxdepth 8 \
               -print || true
             echo "::endgroup::"
@@ -187,7 +198,7 @@ jobs:
           echo "Installing app: $APP"
 
           xcrun simctl install "$UDID" "$APP"
-          xcrun simctl launch "$UDID" chat.synapse.ios.dev
+          xcrun simctl launch "$UDID" chat.syncapp.ios.dev
 
           sleep 8
 

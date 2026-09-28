@@ -4,6 +4,7 @@ import com.syncapp.messenger.core.AppError
 import com.syncapp.messenger.core.Outcome
 import com.syncapp.messenger.domain.model.Session
 import com.syncapp.messenger.domain.repository.AuthRepository
+import com.syncapp.messenger.network.protocol.ErrorCode
 import javax.inject.Inject
 
 /**
@@ -41,6 +42,15 @@ object CredentialRules {
 }
 
 sealed interface AuthResult {
+    /**
+     * The credentials were accepted and a second factor is needed.
+     *
+     * Its own case rather than an error, because the screen's next step is different: it
+     * adds a field and keeps what was already typed, instead of clearing the form and
+     * claiming the password was wrong.
+     */
+    data object NeedsSecondFactor : AuthResult
+
     data class Success(val session: Session) : AuthResult
 
     data class Invalid(val problem: CredentialProblem) : AuthResult
@@ -49,11 +59,26 @@ sealed interface AuthResult {
 }
 
 class LoginUseCase @Inject constructor(private val repository: AuthRepository) {
-    suspend operator fun invoke(username: String, password: String): AuthResult {
+    suspend operator fun invoke(
+        username: String,
+        password: String,
+        totpCode: String = "",
+    ): AuthResult {
         CredentialRules.check(username, password)?.let { return AuthResult.Invalid(it) }
-        return when (val outcome = repository.login(CredentialRules.normalize(username), password)) {
+        val outcome = repository.login(CredentialRules.normalize(username), password, totpCode)
+        return when (outcome) {
             is Outcome.Success -> AuthResult.Success(outcome.value)
-            is Outcome.Failure -> AuthResult.Failed(outcome.error)
+            is Outcome.Failure ->
+                // A demand for a second factor is NOT a failed login, and reporting it as
+                // one would tell somebody their password is wrong when it is not — then
+                // leave them with no way in at all, since nothing would ask for the code.
+                if (outcome.error is AppError.Rejected &&
+                    (outcome.error as AppError.Rejected).code == ErrorCode.TWO_FACTOR_REQUIRED
+                ) {
+                    AuthResult.NeedsSecondFactor
+                } else {
+                    AuthResult.Failed(outcome.error)
+                }
         }
     }
 }

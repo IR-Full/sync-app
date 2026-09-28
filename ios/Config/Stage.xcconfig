@@ -8,5 +8,19 @@ SYNCAPP_TRANSPORT = webSocket
 SYNCAPP_MEDIA_BASE_URL = https:$()//stage.syncapp.example
 SYNCAPP_ALLOWS_INSECURE_TLS = NO
 
+// SHA-256 over the DER SubjectPublicKeyInfo, base64 — the same strings Android's
+// CertificatePinner takes, so both platforms pin from one list. Generate with:
+//
+//   openssl s_client -connect stage.syncapp.example:443 -servername stage.syncapp.example //     | openssl x509 -pubkey -noout //     | openssl pkey -pubin -outform der //     | openssl dgst -sha256 -binary | base64
+//
+// TWO values, always: the second is the not-yet-deployed backup key, and without it
+// a rotation cannot happen without shipping a build first. Placeholders — replace
+// with the real digests before pinning does anything (fewer than two, or these
+// literals, and the policy stays off).
+SYNCAPP_TLS_PINS =
+// Unix seconds. Past this the pins stop being enforced and ordinary CA validation
+// takes over: a build that outlives its pins keeps working instead of bricking.
+SYNCAPP_TLS_PINS_EXPIRE_AT =
+
 PRODUCT_BUNDLE_IDENTIFIER = chat.syncapp.ios.stage
 PRODUCT_NAME = SyncApp Stage

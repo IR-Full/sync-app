@@ -359,10 +359,10 @@ cd ../server && go run ./cmd/client -register -user bob -pass secret123
 
 Значения попадают в приложение через подстановку в `Info.plist` и читаются один
 раз в `ServerEnvironment.current` — ни один URL не зашит в место вызова. Переход
-на сырой TCP — это `SyncApp_TRANSPORT = tcp` в `.xcconfig`.
+на сырой TCP — это `SYNCAPP_TRANSPORT = tcp` в `.xcconfig`.
 
 Дополнительно `ServerEnvironment.current` отказывается уважать
-`SyncApp_ALLOWS_INSECURE_TLS`, когда окружение `prod`, — ошибка в конфиге не
+`SYNCAPP_ALLOWS_INSECURE_TLS`, когда окружение `prod`, — ошибка в конфиге не
 сможет тихо отключить проверку сертификата в релизной сборке.
 
 ### Тесты
@@ -417,13 +417,13 @@ deep link из тапа по уведомлению в нужный чат (в p
 устройстве.
 
 Серверная часть требует одного вашего действия: `notify.ProviderFor` шлёт на
-обобщённый HTTP-эндпоинт (`SyncApp_PUSH_ENDPOINT`), а не в APNs напрямую, и без
+обобщённый HTTP-эндпоинт (`SYNCAPP_PUSH_ENDPOINT`), а не в APNs напрямую, и без
 настройки подставляет логгер. То есть пуши дойдут, когда эндпоинт будет смотреть
 на APNs-мост:
 
 ```bash
-SyncApp_PUSH_ENDPOINT=https://your-apns-bridge/notify \
-SyncApp_PUSH_KEY=... \
+SYNCAPP_PUSH_ENDPOINT=https://your-apns-bridge/notify \
+SYNCAPP_PUSH_KEY=... \
 go run ./cmd/server
 ```
 
@@ -467,5 +467,12 @@ outbox и появилась колонка вложения (схема v2).
 
 Клиент протокола это умеет; экрана нет — по объёму работ, а не по сложности:
 треды, закрепления, пересылка, invite-ссылки и роли, отложенная отправка,
-опросы, звонки и E2E-секретные чаты. Добавить экран для любого — это ViewModel
-поверх уже существующего метода.
+опросы и звонки. Добавить экран для любого — это ViewModel поверх уже
+существующего метода.
+
+**E2E-секретных чатов в этом списке нет.** В `MsgType` есть `secretSend` /
+`secretRecv`, поэтому кадры разбираются, но во всём `SyncAppKit` нет ни X3DH, ни
+Double Ratchet, ни хранилища ключей — этот клиент не может ни создать, ни
+открыть шифртекст. Это порт `server/pkg/e2e`, а не ViewModel, и он не написан.
+`CapSecretChat` нельзя объявлять, пока он не написан: иначе сервер отправит сюда
+шифртекст, который нечем прочитать.

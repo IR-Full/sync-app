@@ -44,6 +44,20 @@ public struct ProtoWriter {
         data.append(utf8)
     }
 
+    /// A `bytes` field.
+    ///
+    /// Same wire shape as `string` — length-delimited — but it takes `Data`, which is
+    /// the point: the ratchet payload is opaque binary, and routing it through a
+    /// `String` would mean encoding it to base64 first and paying a third more on
+    /// every secret message. That was the previous design, and removing it is why this
+    /// method exists.
+    public mutating func bytes(_ field: Int, _ value: Data) {
+        guard !value.isEmpty else { return }
+        tag(field, .lengthDelimited)
+        Varint.encode(UInt64(value.count), into: &data)
+        data.append(value)
+    }
+
     public mutating func bool(_ field: Int, _ value: Bool) {
         guard value else { return }
         tag(field, .varint)

@@ -5,17 +5,21 @@ import (
 	"crypto/tls"
 
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/safego"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 	"github.com/quic-go/quic-go"
 )
 
-// ServeQUIC accepts clients over QUIC/HTTP-3-style transport. QUIC is a better
-// fit for mobile than TCP: the connection survives an IP change (WiFi↔LTE) via
-// connection migration, so a phone changing networks does not reconnect or lose
-// its session; there is no TCP head-of-line blocking; and the handshake (TLS 1.3
-// built in) is faster. Each client opens one bidirectional stream carrying the
-// same binary frame protocol as TCP/WS — only the stream source differs.
+// QUIC is a better fit for mobile than TCP: the connection survives an IP change
+// (WiFi↔LTE) via connection migration, so a phone changing networks does not
+// reconnect or lose its session; there is no TCP head-of-line blocking; and the
+// handshake (TLS 1.3 built in) is faster. Each client opens one bidirectional
+// stream carrying the same binary frame protocol as TCP/WS — only the stream
+// source differs.
 //
+// (This paragraph documented ServeQUIC, which now lives beside this file. It is
+// kept here as the transport's rationale rather than deleted with the move.)
+
 // ListenQUIC opens a QUIC listener (UDP). QUIC mandates TLS, so tlsConf must be
 // non-nil (self-signed is fine for dev). The caller may read ln.Addr() before
 // ServeQUIC (useful for ephemeral ports in tests).
@@ -61,10 +65,10 @@ func (g *Gateway) ServeQUICListener(ctx context.Context, ln *quic.Listener) erro
 			_ = conn.CloseWithError(0, "rate limited")
 			continue
 		}
-		go func() {
+		safego.Go(g.log, "gateway.serveQUIC", func() {
 			defer g.ipg.release(host)
 			g.serveQUICConn(ctx, conn)
-		}()
+		})
 	}
 }
 

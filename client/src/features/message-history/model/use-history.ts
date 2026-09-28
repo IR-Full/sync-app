@@ -45,12 +45,26 @@ export function useChatHistory(chatId: string, fetchEnabled = true) {
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async ({ pageParam }) => {
-      const page = await client.requestStream<Wire.NewMessage, Wire.HistoryOK>(
+      // Two shapes for one answer. This client advertises CAP_BATCHING, so the
+      // gateway replies with a single HISTORY_PAGE; the streamed form is still
+      // accepted because the capability is negotiated per connection and a
+      // gateway that predates the page has no way to send one.
+      //
+      // No extra plumbing is needed to accept both: `requestStream` collects
+      // frames of `itemType` and treats the FIRST frame of any other type as the
+      // terminator, so a HISTORY_PAGE arriving where a HISTORY_OK was expected
+      // resolves the request with itself as `end`.
+      const page = await client.requestStream<
+        Wire.NewMessage,
+        Wire.HistoryOK | Wire.HistoryPage
+      >(
         MsgType.HISTORY,
         { chatId, beforeSeq: pageParam, limit: config.historyPageSize },
         { itemType: MsgType.NEW, endType: MsgType.HISTORY_OK },
       )
-      const messages: ChatMessage[] = page.items.map((item) => fromWire(item, selfId))
+      const batched = 'messages' in page.end ? page.end.messages : []
+      const items = batched.length > 0 ? batched : page.items
+      const messages: ChatMessage[] = items.map((item) => fromWire(item, selfId))
       return {
         messages,
         nextBefore: page.end.nextBefore,

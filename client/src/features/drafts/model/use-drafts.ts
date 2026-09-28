@@ -57,12 +57,34 @@ export function useDraftWriter(chatId: string, delayMs = 800) {
   const connected = useIsConnected()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSaved = useRef<string | null>(null)
+  /** the text the pending timer would have written */
+  const queued = useRef<string | null>(null)
 
+  const write = useCallback(
+    (text: string) => {
+      if (lastSaved.current === text) return
+      lastSaved.current = text
+      queued.current = null
+      try {
+        client.send(MsgType.DRAFT_SET, { chatId, text, replyTo: '' })
+        useDraftStore.getState().merge([{ chatId, text, replyTo: '', updatedAt: Date.now() }])
+        void queryClient.invalidateQueries({ queryKey: queryKeys.drafts() })
+      } catch {
+        // A dropped draft is not worth surfacing; the next pause retries.
+      }
+    },
+    [client, chatId, queryClient],
+  )
+
+  // Flush on unmount instead of only clearing the timer. Switching chats or
+  // closing the composer within the debounce window used to discard whatever was
+  // typed last — which is the case a draft exists for.
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current)
+      if (queued.current !== null) write(queued.current)
     },
-    [],
+    [write],
   )
 
   return useCallback(
@@ -71,18 +93,9 @@ export function useDraftWriter(chatId: string, delayMs = 800) {
       // would create the chat just because someone typed into the box.
       if (!connected || !chatId || chatId.startsWith('@')) return
       if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(() => {
-        if (lastSaved.current === text) return
-        lastSaved.current = text
-        try {
-          client.send(MsgType.DRAFT_SET, { chatId, text, replyTo: '' })
-          useDraftStore.getState().merge([{ chatId, text, replyTo: '', updatedAt: Date.now() }])
-          void queryClient.invalidateQueries({ queryKey: queryKeys.drafts() })
-        } catch {
-          // A dropped draft is not worth surfacing; the next pause retries.
-        }
-      }, delayMs)
+      queued.current = text
+      timer.current = setTimeout(() => write(text), delayMs)
     },
-    [client, chatId, connected, delayMs, queryClient],
+    [chatId, connected, delayMs, write],
   )
 }

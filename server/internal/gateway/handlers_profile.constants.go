@@ -18,3 +18,11 @@ const (
 	maxDisplayName = 64
 	maxAvatarRef   = 128
 )
+
+// maxMuteUntil bounds a mute deadline.
+//
+// 2100-01-01. The value doubles as the "forever" the migration writes when it
+// carries the old boolean `muted` column forward, so it has to be a date a client
+// can render without apology — and a bound at all, because an unbounded deadline
+// is harmless to store and confusing to display.
+const maxMuteUntil int64 = 4102444800000

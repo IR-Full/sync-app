@@ -107,4 +107,121 @@
     <string name="notification_channel_messages">Сообщения</string>
     <string name="notification_channel_messages_description">Уведомления о новых сообщениях</string>
     <string name="notification_default_title">Новое сообщение</string>
+    <!-- Секретные чаты -->
+    <string name="secret_open">Секретный чат</string>
+    <string name="secret_title">Секретный чат с %1$s</string>
+    <string name="secret_explainer">Эти сообщения шифруются на устройстве и не попадают на сервер в читаемом виде. Они нигде не хранятся и не синхронизируются с вашими другими устройствами.</string>
+    <string name="secret_verify">Проверка</string>
+    <string name="secret_undecryptable">Не удалось расшифровать сообщение</string>
+    <string name="secret_no_devices">У контакта ещё нет устройств, настроенных для секретных чатов</string>
+    <string name="secret_identity_changed">Ключи устройства контакта изменились. Сверьте число безопасности перед отправкой.</string>
+
+    <!-- Числа безопасности -->
+    <string name="safety_title">Проверка: %1$s</string>
+    <string name="safety_explainer">Сверьте это число с собеседником по каналу, который приложение не контролирует — вслух, лично, в звонке, где вы узнаёте друг друга. Совпало — у каждого настоящие ключи другого. Не совпало — между вами кто-то подменяет ключи.</string>
+    <string name="safety_pinned">Запомнено на этом устройстве</string>
+    <string name="safety_unpinned">Ещё не запомнено</string>
+    <string name="safety_changed">Ключи этого устройства изменились</string>
+    <string name="safety_changed_hint">Переустановка отсюда выглядит точно как атака. Сверьте число, прежде чем принимать.</string>
+    <string name="safety_pin">Запомнить эти ключи</string>
+    <string name="safety_accept_change">Я сверил число — принять</string>
+    <!-- Сессии -->
+    <string name="sessions_title">Активные сессии</string>
+    <string name="sessions_explainer">Все устройства, где выполнен вход в этот аккаунт. Завершение сессии выкидывает устройство сразу — не дожидаясь истечения срока.</string>
+    <string name="sessions_revoke">Завершить</string>
+    <string name="sessions_revoke_others">Завершить все остальные сессии</string>
+    <string name="sessions_revoke_others_confirm">Все устройства, кроме этого, выйдут из аккаунта. Пригодится, если устройство потеряно.</string>
+    <string name="sessions_this_device">Это устройство</string>
+    <string name="sessions_since">Вход %1$s</string>
+    <string name="sessions_unknown_platform">Неизвестное устройство</string>
+
+    <!-- Приватность -->
+    <string name="privacy_title">Приватность</string>
+    <string name="privacy_last_seen">Был(а) в сети</string>
+    <string name="privacy_last_seen_hint">Кто видит, когда вы были в сети.</string>
+    <string name="privacy_avatar">Фото профиля</string>
+    <string name="privacy_avatar_hint">Кто видит ваше фото.</string>
+    <string name="privacy_groups">Приглашения в группы</string>
+    <string name="privacy_groups_hint">Кто может добавлять вас в группы и каналы.</string>
+    <string name="privacy_everyone">Все</string>
+    <string name="privacy_contacts">Мои контакты</string>
+    <string name="privacy_nobody">Никто</string>
+    <string name="privacy_unknown_value">Эту настройку изменила более новая версия приложения. Она действует, но эта версия не может её назвать.</string>
+
+    <!-- Аккаунт -->
+    <string name="settings_account">Аккаунт</string>
+    <string name="settings_delete_account">Удалить аккаунт</string>
+    <string name="settings_delete_account_confirm">Аккаунт, сообщения и чаты будут удалены. Отменить это нельзя. Введите пароль для подтверждения.</string>
+
+    <!-- Пароль и второй фактор -->
+    <string name="security_title">Пароль и безопасность</string>
+    <string name="security_password">Сменить пароль</string>
+    <string name="security_password_current">Текущий пароль</string>
+    <string name="security_password_new">Новый пароль</string>
+    <string name="security_password_confirm">Повторите новый пароль</string>
+    <string name="security_password_mismatch">Новые пароли не совпадают.</string>
+    <string name="security_password_changed">Пароль изменён. Других сеансов завершено: %1$d.</string>
+    <string name="security_two_factor">Двухфакторная аутентификация</string>
+    <string name="security_two_factor_on">Включена</string>
+    <string name="security_two_factor_off">Выключена</string>
+    <string name="security_two_factor_unknown">На этом сервере недоступна</string>
+    <string name="security_two_factor_enable">Включить</string>
+    <string name="security_two_factor_disable">Выключить</string>
+    <string name="security_setup_key">Ключ для настройки</string>
+    <string name="security_code">Код из 6 цифр</string>
+    <string name="security_scan_hint">Добавьте этот ключ в приложение-аутентификатор и введите код, который оно покажет.</string>
+    <string name="security_recovery_codes">Коды восстановления</string>
+    <string name="security_recovery_hint">Сохраните их сейчас. Они показываются один раз, каждый срабатывает однократно — это единственный способ войти, если аутентификатор потерян.</string>
+    <string name="security_recovery_saved">Я сохранил их</string>
+    <string name="security_recovery_left">Осталось кодов восстановления: %1$d</string>
+    <string name="error_two_factor_required">Введите код из приложения-аутентификатора.</string>
+    <string name="error_two_factor_invalid">Код не подошёл. Попробуйте следующий или код восстановления.</string>
+
+    <!-- Premium -->
+    <string name="premium_title">Premium</string>
+    <string name="premium_subtitle">Секретные чаты, большие загрузки, папки и другое.</string>
+    <string name="premium_plan">Ваш тариф</string>
+    <string name="premium_plan_free">Бесплатный</string>
+    <string name="premium_plan_premium">Premium</string>
+    <string name="premium_until">Оплачено до %1$s</string>
+    <string name="premium_cancelling">Отменится в конце периода</string>
+    <string name="premium_cancel">Отменить подписку</string>
+    <string name="premium_method_card">Банковская карта</string>
+    <string name="premium_method_sbp">СБП</string>
+    <string name="premium_pay">Перейти к оплате</string>
+    <string name="premium_qr">Отсканируйте в приложении банка</string>
+    <string name="premium_unavailable">На этом сервере платежи не настроены.</string>
+    <string name="error_premium_required">Секретные чаты входят в Premium.</string>
+
+    <!-- Флаги чатов -->
+    <string name="chats_pin">Закрепить</string>
+    <string name="chats_unpin">Открепить</string>
+    <string name="chats_mute">Без звука</string>
+    <string name="chats_unmute">Со звуком</string>
+    <string name="chats_mute_hour">На час</string>
+    <string name="chats_mute_eight_hours">На 8 часов</string>
+    <string name="chats_mute_week">На неделю</string>
+    <string name="chats_mute_forever">Пока не включу снова</string>
+    <string name="chats_archive">В архив</string>
+    <string name="chats_unarchive">Из архива</string>
+    <string name="chats_archived">В архиве</string>
+    <string name="chats_archived_count">Архив (%1$d)</string>
+    <string name="chats_archived_empty">В архиве пусто</string>
+
+    <!-- Секретные чаты -->
+    <string name="secret_badge">Сквозное шифрование</string>
+    <string name="secret_new">Секретный чат</string>
+    <string name="secret_new_hint">Шифруется на этом устройстве. Прочитать могут только ваши устройства и устройства собеседника — сервер передаёт шифртекст и не может его расшифровать.</string>
+    <string name="secret_create">Создать секретный чат</string>
+
+    <!-- Действия (добавлено) -->
+    <string name="action_confirm">Подтвердить</string>
+    <string name="action_close">Закрыть</string>
+    <string name="auth_two_factor_hint">Из приложения-аутентификатора или код восстановления.</string>
+    <plurals name="premium_period">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
 </resources>

@@ -2,6 +2,7 @@ package presence
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -39,12 +40,12 @@ func (b *redisBackend) Get(ctx context.Context, userID string) (model.Presence, 
 		p.Online = true
 		p.LastSeenMs, _ = strconv.ParseInt(v, 10, 64)
 		return p, nil
-	} else if err != redis.Nil {
+	} else if !errors.Is(err, redis.Nil) {
 		return p, err
 	}
 	if v, err := b.rdb.Get(ctx, lastSeenKey(userID)).Result(); err == nil {
 		p.LastSeenMs, _ = strconv.ParseInt(v, 10, 64)
-	} else if err != redis.Nil {
+	} else if !errors.Is(err, redis.Nil) {
 		return p, err
 	}
 	return p, nil

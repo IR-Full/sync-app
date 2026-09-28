@@ -1,0 +1,369 @@
+import XCTest
+@testable import SyncAppNetwork
+
+/// End-to-end tests of the client against a scripted gateway.
+///
+/// These are the tests that would have caught the mistakes that are easy to make
+/// when reimplementing a protocol from its server: sending AUTH before HELLO,
+/// treating a streamed history page as a single reply, letting the resume cursor
+/// leak across a fresh login, or confusing a backfilled message with live fanout.
+final class SyncAppClientTests: XCTestCase {
+
+    private func makeClient(_ gateway: FakeGateway) -> SyncAppClient {
+        SyncAppClient(
+            environment: .testing,
+            configuration: .init(requestTimeout: .seconds(3)),
+            transportFactory: { gateway }
+        )
+    }
+
+    // MARK: - Handshake
+
+    func testHandshakeOrderIsHelloThenAuth() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+
+        let session = try await client.connect(
+            credentials: .password(username: "alice", password: "secret123", register: false)
+        )
+
+        let types = await gateway.received.map(\.type)
+        XCTAssertEqual(Array(types.prefix(2)), [.hello, .auth],
+                       "the gateway reads HELLO first and rejects anything else")
+        XCTAssertEqual(session.userID, "user-1")
+        XCTAssertEqual(session.resumeToken, "resume-1")
+    }
+
+    func testHelloAdvertisesResumeButNotCompression() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let hellos = await gateway.envelopes(ofType: .hello)
+        let hello = try XCTUnwrap(hellos.first)
+        let body = try HelloBody.protoDecoded(from: hello.body)
+        XCTAssertTrue(body.caps.contains(.resume))
+        XCTAssertTrue(body.caps.contains(.typingSignals))
+        // Claimed because `SecretChatService` actually implements all four halves of
+        // it — acks, sync, acked, and the binary payload. Without the claim the gateway
+        // does not queue secret messages for this device at all, so one sent while the
+        // phone is asleep is dropped with nobody told.
+        XCTAssertTrue(body.caps.contains(.secretQueue))
+        // We cannot decompress, so we must not claim we can — otherwise the
+        // gateway will happily gzip everything it sends us.
+        XCTAssertFalse(body.caps.contains(.compression))
+        XCTAssertFalse(body.caps.contains(.zstd))
+        // Not claimed: this build relays no ciphertext for chats it did not create.
+        // The two bits are separate for exactly this reason.
+        XCTAssertFalse(body.caps.contains(.secretChat))
+        XCTAssertEqual(body.platform, "ios")
+    }
+
+    func testFirstEnvelopeSequenceStartsAtOne() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let seqs = await gateway.received.map(\.seq)
+        XCTAssertEqual(seqs.first, 1, "our per-connection sequence is 1-based")
+        XCTAssertEqual(seqs, Array(1...UInt64(seqs.count)), "and strictly monotonic")
+    }
+
+    func testFailedAuthSurfacesAsAnAuthError() async {
+        let gateway = FakeGateway()
+        await gateway.setRejectAuth(true)
+        let client = makeClient(gateway)
+
+        do {
+            _ = try await client.connect(
+                credentials: .password(username: "alice", password: "wrong", register: false)
+            )
+            XCTFail("expected authentication to fail")
+        } catch let error as ProtocolError {
+            XCTAssertTrue(error.isAuthFailure)
+            XCTAssertEqual(error.code, .unauthenticated)
+        } catch {
+            XCTFail("expected a ProtocolError, got \(error)")
+        }
+    }
+
+    // MARK: - Request correlation
+
+    func testRepliesCorrelateByRequestID() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        // Two sends in flight at once: correlation, not ordering, is what pairs
+        // each ack with its request.
+        async let first = client.sendMessage(chatID: "10", dedupKey: "key-a", text: "one")
+        async let second = client.sendMessage(chatID: "10", dedupKey: "key-b", text: "two")
+        let acks = try await [first, second]
+
+        XCTAssertEqual(Set(acks.map(\.dedupKey)), ["key-a", "key-b"])
+    }
+
+    /// The gateway streams a history page as ordinary NEW frames sharing our
+    /// request id, then terminates it with HISTORY_OK. Getting this wrong means
+    /// either resolving on the first message or hanging forever.
+    func testHistoryCollectsStreamedPageUntilTheTerminator() async throws {
+        let gateway = FakeGateway()
+        await gateway.setHistory((1...3).map { index in
+            var message = NewMessageBody()
+            message.messageID = "m\(index)"
+            message.chatID = "10"
+            message.senderID = "user-2"
+            message.chatSeq = UInt64(index)
+            message.text = "message \(index)"
+            return message
+        })
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let page = try await client.history(chatID: "10", beforeSeq: 0, limit: 50)
+        XCTAssertEqual(page.messages.count, 3)
+        XCTAssertEqual(page.messages.map(\.messageID), ["m1", "m2", "m3"])
+        XCTAssertTrue(page.page.done)
+    }
+
+    /// A backfilled message must not also arrive as a push — the shared request
+    /// id is the only thing distinguishing it from live fanout, and double
+    /// ingest would duplicate every history page in the UI.
+    func testStreamedHistoryDoesNotAlsoEmitPushEvents() async throws {
+        let gateway = FakeGateway()
+        var backfilled = NewMessageBody()
+        backfilled.messageID = "m1"
+        backfilled.chatID = "10"
+        backfilled.chatSeq = 1
+        await gateway.setHistory([backfilled])
+
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let collector = EventCollector()
+        let events = await client.events()
+        let pump = Task { for await event in events { await collector.record(event) } }
+        defer { pump.cancel() }
+
+        _ = try await client.history(chatID: "10")
+        try await Task.sleep(for: .milliseconds(120))
+
+        let messageEvents = await collector.messageCount
+        XCTAssertEqual(messageEvents, 0, "history items belong to the reply, not the push stream")
+    }
+
+    func testLiveFanoutIsEmittedAsAPushEvent() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let collector = EventCollector()
+        let events = await client.events()
+        let pump = Task { for await event in events { await collector.record(event) } }
+        defer { pump.cancel() }
+
+        var incoming = NewMessageBody()
+        incoming.messageID = "m99"
+        incoming.chatID = "10"
+        incoming.senderID = "user-2"
+        incoming.chatSeq = 9
+        incoming.text = "hello"
+        await gateway.push(.new, body: incoming)
+
+        try await Task.sleep(for: .milliseconds(150))
+        let count = await collector.messageCount
+        XCTAssertEqual(count, 1)
+        let text = await collector.lastMessageText
+        XCTAssertEqual(text, "hello")
+    }
+
+    /// The gateway pings on its heartbeat; not answering gets the connection
+    /// reaped at 60s of silence, and the PONG doubles as the activity that keeps
+    /// our presence TTL fresh.
+    func testPingIsAnsweredWithPong() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        await gateway.push(.ping, body: nil)
+        try await Task.sleep(for: .milliseconds(150))
+
+        let pongCount = await gateway.envelopes(ofType: .pong).count
+        XCTAssertEqual(pongCount, 1)
+    }
+
+    /// The `@handle` → chat-id resolve rides PIN_LIST, whose reply carries the
+    /// *resolved* snowflake. HISTORY_OK would echo the handle we sent, which is
+    /// exactly the trap this protects against.
+    func testResolveDirectChatReturnsTheSnowflakeNotTheHandle() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let chatID = try await client.resolveDirectChat(username: "bob")
+        XCTAssertEqual(chatID, "555")
+
+        let pinRequests = await gateway.envelopes(ofType: .pinList)
+        let request = try XCTUnwrap(pinRequests.first)
+        let body = try PinActionBody.protoDecoded(from: request.body)
+        XCTAssertEqual(body.chatID, "@bob", "the handle is sent as-is; the gateway resolves it")
+    }
+
+    // MARK: - Profile
+
+    /// AUTH_OK is where a token login learns who it is: no username was sent, so
+    /// anything the app knows about itself came back in this frame.
+    func testAuthOKCarriesTheProfile() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+
+        let session = try await client.connect(credentials: .token("t"))
+
+        XCTAssertEqual(session.username, "alice")
+        XCTAssertEqual(session.displayName, "Alice")
+    }
+
+    /// The empty-means-unchanged rule is the whole reason `clearAvatar` exists,
+    /// and it is the easiest thing to get wrong on the client side: sending an
+    /// empty ref to remove a picture would silently do nothing.
+    func testAvatarIsClearedByTheFlagNotByAnEmptyRef() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let withAvatar = try await client.setProfile(avatarRef: "m1-abc")
+        XCTAssertEqual(withAvatar.avatarRef, "m1-abc")
+
+        // A name-only change must leave the picture alone.
+        let renamed = try await client.setProfile(displayName: "Alice Liddell")
+        XCTAssertEqual(renamed.displayName, "Alice Liddell")
+        XCTAssertEqual(renamed.avatarRef, "m1-abc", "an omitted ref means 'leave as is'")
+
+        let cleared = try await client.setProfile(clearAvatar: true)
+        XCTAssertEqual(cleared.avatarRef, "")
+        XCTAssertEqual(cleared.displayName, "Alice Liddell", "clearing the avatar is not a rename")
+    }
+
+    /// `PROFILE_GET` takes a handle, which is what makes it the user lookup.
+    func testProfileGetSendsTheHandleAsIs() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        _ = try await client.profile(target: "@bob")
+
+        let requests = await gateway.envelopes(ofType: .profileGet)
+        let body = try ProfileGetBody.protoDecoded(from: try XCTUnwrap(requests.first).body)
+        XCTAssertEqual(body.target, "@bob")
+    }
+
+    /// Paging is the transport's job: a sync that stopped at the first page
+    /// would lose every chat past the page size, which is the bug CHAT_LIST
+    /// exists to fix.
+    func testAllChatsWalksToTheEnd() async throws {
+        let gateway = FakeGateway()
+        var first = ChatSummaryBody()
+        first.chatID = "10"
+        first.type = "direct"
+        first.peerID = "u2"
+        await gateway.setChats([first])
+
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        let chats = try await client.allChats()
+        XCTAssertEqual(chats.map(\.chatID), ["10"])
+        XCTAssertEqual(chats.first?.peerID, "u2")
+    }
+
+    func testAckPiggybacksTheHighestServerSequence() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+        _ = try await client.connect(credentials: .token("t"))
+
+        await gateway.push(.presence, body: PresenceBody())
+        try await Task.sleep(for: .milliseconds(120))
+        _ = try await client.sendMessage(chatID: "10", dedupKey: "k", text: "hi")
+
+        let sends = await gateway.envelopes(ofType: .send)
+        let send = try XCTUnwrap(sends.first)
+        XCTAssertGreaterThan(send.ack, 0, "the ack field carries the highest server seq we processed")
+    }
+
+    // MARK: - Fire-and-forget
+
+    /// READ, TYPING, EDIT and DELETE are answered only on failure, so they must
+    /// not occupy a request slot waiting for a reply that will never come.
+    func testFireAndForgetSendsRequestIDZero() async throws {
+        let gateway = FakeGateway()
+        let client = makeClient(gateway)
+
+        _ = try await client.connect(
+            credentials: .token("t")
+        )
+
+        try await client.setTyping(
+            chatID: "10",
+            active: true
+        )
+
+        try await client.markRead(
+            chatID: "10",
+            upToMessageID: "m1",
+            upToChatSeq: 4
+        )
+
+        let typing = try await gateway.waitForEnvelope(
+            ofType: .typing
+        )
+
+        let read = try await gateway.waitForEnvelope(
+            ofType: .read
+        )
+
+        XCTAssertEqual(typing.requestID, 0)
+        XCTAssertEqual(read.requestID, 0)
+    }
+}
+
+/// Collects pushes off the client's event stream.
+private actor EventCollector {
+    private(set) var messageCount = 0
+    private(set) var lastMessageText: String?
+
+    func record(_ event: SyncAppClient.Event) {
+        if case .message(let body) = event {
+            messageCount += 1
+            lastMessageText = body.text
+        }
+    }
+}
+
+extension ServerEnvironment {
+    /// A placeholder environment — the transport is injected, so none of these
+    /// values are dialled.
+    static var testing: ServerEnvironment {
+        ServerEnvironment(
+            name: .dev,
+            gatewayURL: url("ws://localhost:8080/ws"),
+            tcpHost: "localhost",
+            tcpPort: 7000,
+            transport: .webSocket,
+            mediaBaseURL: nil,
+            allowsInsecureTLS: true
+        )
+    }
+}
+
+/// A URL from a literal, without a force unwrap.
+///
+/// `force_unwrapping` is an error in this project's SwiftLint config, tests
+/// included — there is no per-rule exclusion for built-in rules, and turning the
+/// whole test suite off the linter to allow one operator is the worse trade. This
+/// fails with the offending string named, which is more than `!` would give.
+func url(_ string: String) -> URL {
+    guard let url = URL(string: string) else {
+        preconditionFailure("malformed URL literal in a test: \(string)")
+    }
+    return url
+}

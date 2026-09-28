@@ -131,7 +131,7 @@ func (s *Service) Decline(ctx context.Context, callID, userID string, now int64)
 	if err != nil {
 		return err
 	}
-	if err := s.authorize(ctx, c, userID); err != nil {
+	if err := s.authorizeParticipant(ctx, c, userID); err != nil {
 		return err
 	}
 	if err := s.store.UpsertParticipant(ctx, &model.CallParticipant{
@@ -149,7 +149,7 @@ func (s *Service) Hangup(ctx context.Context, callID, userID string, now int64) 
 	if err != nil {
 		return err
 	}
-	if err := s.authorize(ctx, c, userID); err != nil {
+	if err := s.authorizeParticipant(ctx, c, userID); err != nil {
 		return err
 	}
 	if err := s.store.UpsertParticipant(ctx, &model.CallParticipant{
@@ -188,7 +188,9 @@ func (s *Service) settle(ctx context.Context, c *model.Call, now int64) error {
 	return nil
 }
 
-// authorize allows a chat member (invited or already in the room) to act on a call.
+// authorize allows a chat member to act on a call. This is the right check for
+// JOINING (Invite/Accept): membership in the chat is what entitles someone to
+// enter the room in the first place.
 func (s *Service) authorize(ctx context.Context, c *model.Call, userID string) error {
 	member, err := s.chats.IsMember(ctx, c.ChatID, userID)
 	if err != nil {
@@ -198,6 +200,28 @@ func (s *Service) authorize(ctx context.Context, c *model.Call, userID string) e
 		return ErrForbidden
 	}
 	return nil
+}
+
+// authorizeParticipant additionally requires that the actor is actually in this
+// call's roster. Leaving a room is only meaningful for someone who is in it: with
+// chat membership alone, any member of a large group could Decline or Hangup a
+// call they were never invited to, writing a "left" row for a participant that
+// never existed — and in a call whose roster is down to two, a settle() triggered
+// by that row is what ends everyone else's conversation.
+func (s *Service) authorizeParticipant(ctx context.Context, c *model.Call, userID string) error {
+	if err := s.authorize(ctx, c, userID); err != nil {
+		return err
+	}
+	parts, err := s.store.ListParticipants(ctx, c.ID)
+	if err != nil {
+		return err
+	}
+	for _, p := range parts {
+		if p.UserID == userID {
+			return nil
+		}
+	}
+	return ErrForbidden
 }
 
 // Participants returns the room roster.

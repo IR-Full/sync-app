@@ -21,12 +21,38 @@ public enum ErrorCode: UInt32, Sendable {
     case badToken = 2001
     case sessionRevoked = 2002
     case deviceUnknown = 2003
+    /// The password was right and a two-factor code is needed.
+    ///
+    /// In the AUTH band because it only ever arrives BEFORE a session exists —
+    /// "re-authenticate" is literally what it asks for. A client shows a six-digit
+    /// prompt on the screen it is already on rather than reporting a bad password.
+    case twoFactorRequired = 2004
+    /// A resume token that had already been rotated away was presented again, so two
+    /// parties held the chain and the session has been ended.
+    ///
+    /// Distinct from `resumeExpired`: expiry is routine and recoverable with the
+    /// bearer token, while this means somebody else had the token — and it IS in the
+    /// auth band, because the session really is gone.
+    case resumeReplayed = 2005
 
     // 3xxx — authorization / business: do not retry as-is.
     case forbidden = 3000
     case notFound = 3001
     case conflict = 3002
     case badArgument = 3003
+    /// A two-factor code did not verify.
+    ///
+    /// The BUSINESS band and not auth, deliberately: this also arrives on an
+    /// AUTHENTICATED connection — confirming an enrolment, disabling the factor —
+    /// where `isAuthFailure` would discard the session and sign somebody out for
+    /// mistyping six digits.
+    case twoFactorInvalid = 3004
+    /// The feature exists and this account's tier does not include it.
+    ///
+    /// Its own code rather than `forbidden`, because the two mean different things to
+    /// a client: forbidden is final, this one has an answer — show the upgrade screen.
+    /// Business band for the same reason as above: it arrives on a live session.
+    case premiumRequired = 3005
 
     // 4xxx — throttling: retry after `retryAfterMs`.
     case rateLimited = 4000

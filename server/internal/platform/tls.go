@@ -10,16 +10,17 @@ import (
 	"log/slog"
 	"math/big"
 	"net"
-	"os"
 	"time"
+
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 )
 
 // BuildTLSConfig returns a TLS config for the client-facing listeners, or nil for
-// plaintext. Precedence: an explicit cert/key pair (SyncApp_TLS_CERT/KEY), else an
-// ephemeral self-signed cert when SyncApp_TLS_SELFSIGNED=1 (dev only), else nil
+// plaintext. Precedence: an explicit cert/key pair (SYNCAPP_TLS_CERT/KEY), else an
+// ephemeral self-signed cert when SYNCAPP_TLS_SELFSIGNED=1 (dev only), else nil
 // with a loud warning — the custom protocol must ride inside TLS in production.
 func BuildTLSConfig(log *slog.Logger) (*tls.Config, error) {
-	certFile, keyFile := os.Getenv("SyncApp_TLS_CERT"), os.Getenv("SyncApp_TLS_KEY")
+	certFile, keyFile := envcfg.Get("SYNCAPP_TLS_CERT"), envcfg.Get("SYNCAPP_TLS_KEY")
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
@@ -28,7 +29,7 @@ func BuildTLSConfig(log *slog.Logger) (*tls.Config, error) {
 		log.Info("TLS enabled (file certificate)")
 		return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, nil
 	}
-	if os.Getenv("SyncApp_TLS_SELFSIGNED") == "1" {
+	if envcfg.Get("SYNCAPP_TLS_SELFSIGNED") == "1" {
 		cert, err := genSelfSigned()
 		if err != nil {
 			return nil, err
@@ -36,7 +37,7 @@ func BuildTLSConfig(log *slog.Logger) (*tls.Config, error) {
 		log.Warn("TLS enabled with a SELF-SIGNED certificate (dev only; clients must skip verification)")
 		return &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}, nil
 	}
-	log.Warn("TLS DISABLED — traffic is plaintext. Set SyncApp_TLS_CERT/KEY (or SyncApp_TLS_SELFSIGNED=1) before production")
+	log.Warn("TLS DISABLED — traffic is plaintext. Set SYNCAPP_TLS_CERT/KEY (or SYNCAPP_TLS_SELFSIGNED=1) before production")
 	return nil, nil
 }
 
@@ -63,11 +64,26 @@ func genSelfSigned() (tls.Certificate, error) {
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: priv}, nil
 }
 
-// MediaSecret returns the HMAC key used to sign media URLs (SyncApp_MEDIA_SECRET),
+// devMediaSecret is the fallback signing key. It is a constant in a public
+// repository, which is the entire reason MediaSecretIsDefault exists: whoever
+// knows this string can forge a signed upload or download URL for any blob, so
+// a production boot has to be able to detect it rather than trust an operator
+// to have read a warning.
+const devMediaSecret = "dev-insecure-media-secret-change-me"
+
+// MediaSecret returns the HMAC key used to sign media URLs (SYNCAPP_MEDIA_SECRET),
 // or an insecure dev default. The gateway and mediad must share the same value.
 func MediaSecret() []byte {
-	if v := os.Getenv("SyncApp_MEDIA_SECRET"); v != "" {
+	if v := envcfg.Get("SYNCAPP_MEDIA_SECRET"); v != "" {
 		return []byte(v)
 	}
-	return []byte("dev-insecure-media-secret-change-me")
+	return []byte(devMediaSecret)
+}
+
+// MediaSecretIsDefault reports whether media URLs would be signed with the
+// development constant — either because nothing is set, or because someone
+// copied the default out of the logs into their configuration.
+func MediaSecretIsDefault() bool {
+	v := envcfg.Get("SYNCAPP_MEDIA_SECRET")
+	return v == "" || v == devMediaSecret
 }

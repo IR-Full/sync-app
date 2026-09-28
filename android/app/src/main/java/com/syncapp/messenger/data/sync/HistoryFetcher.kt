@@ -1,7 +1,8 @@
 package com.syncapp.messenger.data.sync
 
 import com.syncapp.messenger.database.SyncAppDatabase
-import com.syncapp.messenger.network.SyncAppGateway
+import com.syncapp.messenger.network.GatewayRequests
+import com.syncapp.messenger.network.request
 import com.syncapp.messenger.network.protocol.History
 import com.syncapp.messenger.network.protocol.HistoryOk
 import com.syncapp.messenger.network.protocol.MsgType
@@ -19,8 +20,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class HistoryFetcher @Inject constructor(
-    private val gateway: syncappGateway,
-    private val database: syncappDatabase,
+    private val gateway: GatewayRequests,
+    private val database: SyncAppDatabase,
     private val ingestor: MessageIngestor,
 ) {
     data class Page(val messages: List<NewMessage>, val done: Boolean, val nextBefore: Long)
@@ -54,12 +55,18 @@ class HistoryFetcher @Inject constructor(
         val page = page(chatId, beforeSeq = 0, limit = limit)
         ingestor.ingestAll(page.messages)
         val oldest = messages.oldestSeq(chatId) ?: 0
-        // The newest page tells us whether older pages exist only when it came back
-        // short; a full page says nothing about what is further back, so keep the
-        // existing assumption in that case.
+        // A SHORT newest page is the informative one: the server returned fewer
+        // rows than asked for, so this chat has no history older than what we now
+        // hold. A full page means there is more below it.
+        //
+        // The previous expression, `!page.done || chat.hasMoreHistory`, had these
+        // two branches the wrong way round: on a short page it kept the existing
+        // assumption — `true` by default — so a small chat went on advertising
+        // "load older" forever, and every attempt spent a round trip to be told
+        // there was nothing.
         val chat = chats.findById(chatId)
         if (chat != null && page.messages.isNotEmpty()) {
-            chats.updateHistoryCursor(chatId, oldest, hasMore = !page.done || chat.hasMoreHistory)
+            chats.updateHistoryCursor(chatId, oldest, hasMore = !page.done)
         }
     }
 

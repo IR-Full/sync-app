@@ -8,21 +8,20 @@
 // versions:
 // 	protoc-gen-go v1.34.2
 // 	protoc        v7.35.1
-// source: proto/SyncApp/v1/body.proto
+// source: proto/syncapp/v1/body.proto
 
 package wirepb
 
 import (
-	reflect "reflect"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
 )
 
 func (x *Hello) Reset() {
 	*x = Hello{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[0]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -35,7 +34,7 @@ func (x *Hello) String() string {
 func (*Hello) ProtoMessage() {}
 
 func (x *Hello) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[0]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -48,7 +47,7 @@ func (x *Hello) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Hello.ProtoReflect.Descriptor instead.
 func (*Hello) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{0}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Hello) GetClientVersion() string {
@@ -89,7 +88,7 @@ func (x *Hello) GetResumeToken() string {
 func (x *Welcome) Reset() {
 	*x = Welcome{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[1]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -102,7 +101,7 @@ func (x *Welcome) String() string {
 func (*Welcome) ProtoMessage() {}
 
 func (x *Welcome) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[1]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -115,7 +114,7 @@ func (x *Welcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Welcome.ProtoReflect.Descriptor instead.
 func (*Welcome) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{1}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Welcome) GetServerVersion() string {
@@ -163,7 +162,7 @@ func (x *Welcome) GetResumeSupported() bool {
 func (x *Auth) Reset() {
 	*x = Auth{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[2]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -176,7 +175,7 @@ func (x *Auth) String() string {
 func (*Auth) ProtoMessage() {}
 
 func (x *Auth) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[2]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -189,7 +188,7 @@ func (x *Auth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auth.ProtoReflect.Descriptor instead.
 func (*Auth) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{2}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Auth) GetToken() string {
@@ -227,10 +226,17 @@ func (x *Auth) GetDisplayName() string {
 	return ""
 }
 
+func (x *Auth) GetTotpCode() string {
+	if x != nil {
+		return x.TotpCode
+	}
+	return ""
+}
+
 func (x *AuthOK) Reset() {
 	*x = AuthOK{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[3]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -243,7 +249,7 @@ func (x *AuthOK) String() string {
 func (*AuthOK) ProtoMessage() {}
 
 func (x *AuthOK) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[3]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -256,7 +262,7 @@ func (x *AuthOK) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthOK.ProtoReflect.Descriptor instead.
 func (*AuthOK) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{3}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AuthOK) GetUserId() string {
@@ -318,7 +324,7 @@ func (x *AuthOK) GetAvatarRef() string {
 func (x *Send) Reset() {
 	*x = Send{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[4]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -331,7 +337,7 @@ func (x *Send) String() string {
 func (*Send) ProtoMessage() {}
 
 func (x *Send) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[4]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -344,7 +350,7 @@ func (x *Send) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Send.ProtoReflect.Descriptor instead.
 func (*Send) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{4}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Send) GetChatId() string {
@@ -399,7 +405,7 @@ func (x *Send) GetTtlSeconds() int32 {
 func (x *Attachment) Reset() {
 	*x = Attachment{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[5]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -412,7 +418,7 @@ func (x *Attachment) String() string {
 func (*Attachment) ProtoMessage() {}
 
 func (x *Attachment) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[5]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -425,7 +431,7 @@ func (x *Attachment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Attachment.ProtoReflect.Descriptor instead.
 func (*Attachment) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{5}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Attachment) GetKind() string {
@@ -501,7 +507,7 @@ func (x *Attachment) GetThumbRef() string {
 func (x *SendAck) Reset() {
 	*x = SendAck{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[6]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -514,7 +520,7 @@ func (x *SendAck) String() string {
 func (*SendAck) ProtoMessage() {}
 
 func (x *SendAck) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[6]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -527,7 +533,7 @@ func (x *SendAck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendAck.ProtoReflect.Descriptor instead.
 func (*SendAck) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{6}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SendAck) GetDedupKey() string {
@@ -575,7 +581,7 @@ func (x *SendAck) GetDuplicate() bool {
 func (x *NewMessage) Reset() {
 	*x = NewMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[7]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -588,7 +594,7 @@ func (x *NewMessage) String() string {
 func (*NewMessage) ProtoMessage() {}
 
 func (x *NewMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[7]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -601,7 +607,7 @@ func (x *NewMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewMessage.ProtoReflect.Descriptor instead.
 func (*NewMessage) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{7}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *NewMessage) GetMessageId() string {
@@ -712,7 +718,7 @@ func (x *NewMessage) GetExpiresAt() int64 {
 func (x *Thread) Reset() {
 	*x = Thread{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[8]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -725,7 +731,7 @@ func (x *Thread) String() string {
 func (*Thread) ProtoMessage() {}
 
 func (x *Thread) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[8]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -738,7 +744,7 @@ func (x *Thread) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Thread.ProtoReflect.Descriptor instead.
 func (*Thread) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{8}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Thread) GetChatId() string {
@@ -772,7 +778,7 @@ func (x *Thread) GetLimit() int32 {
 func (x *ThreadOK) Reset() {
 	*x = ThreadOK{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[9]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -785,7 +791,7 @@ func (x *ThreadOK) String() string {
 func (*ThreadOK) ProtoMessage() {}
 
 func (x *ThreadOK) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[9]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -798,7 +804,7 @@ func (x *ThreadOK) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadOK.ProtoReflect.Descriptor instead.
 func (*ThreadOK) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{9}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ThreadOK) GetChatId() string {
@@ -832,7 +838,7 @@ func (x *ThreadOK) GetDone() bool {
 func (x *Read) Reset() {
 	*x = Read{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[10]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -845,7 +851,7 @@ func (x *Read) String() string {
 func (*Read) ProtoMessage() {}
 
 func (x *Read) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[10]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -858,7 +864,7 @@ func (x *Read) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Read.ProtoReflect.Descriptor instead.
 func (*Read) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{10}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Read) GetChatId() string {
@@ -885,7 +891,7 @@ func (x *Read) GetUpToChatSeq() uint64 {
 func (x *ReadUpdate) Reset() {
 	*x = ReadUpdate{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[11]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -898,7 +904,7 @@ func (x *ReadUpdate) String() string {
 func (*ReadUpdate) ProtoMessage() {}
 
 func (x *ReadUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[11]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -911,7 +917,7 @@ func (x *ReadUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadUpdate.ProtoReflect.Descriptor instead.
 func (*ReadUpdate) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{11}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReadUpdate) GetChatId() string {
@@ -938,7 +944,7 @@ func (x *ReadUpdate) GetUpToChatSeq() uint64 {
 func (x *Typing) Reset() {
 	*x = Typing{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[12]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -951,7 +957,7 @@ func (x *Typing) String() string {
 func (*Typing) ProtoMessage() {}
 
 func (x *Typing) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[12]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +970,7 @@ func (x *Typing) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Typing.ProtoReflect.Descriptor instead.
 func (*Typing) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{12}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Typing) GetChatId() string {
@@ -991,7 +997,7 @@ func (x *Typing) GetActive() bool {
 func (x *React) Reset() {
 	*x = React{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[13]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1004,7 +1010,7 @@ func (x *React) String() string {
 func (*React) ProtoMessage() {}
 
 func (x *React) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[13]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1017,7 +1023,7 @@ func (x *React) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use React.ProtoReflect.Descriptor instead.
 func (*React) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{13}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *React) GetChatId() string {
@@ -1044,7 +1050,7 @@ func (x *React) GetEmoji() string {
 func (x *ReactUpdate) Reset() {
 	*x = ReactUpdate{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[14]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1057,7 +1063,7 @@ func (x *ReactUpdate) String() string {
 func (*ReactUpdate) ProtoMessage() {}
 
 func (x *ReactUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[14]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1070,7 +1076,7 @@ func (x *ReactUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactUpdate.ProtoReflect.Descriptor instead.
 func (*ReactUpdate) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{14}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ReactUpdate) GetChatId() string {
@@ -1118,7 +1124,7 @@ func (x *ReactUpdate) GetCounts() map[string]int32 {
 func (x *Presence) Reset() {
 	*x = Presence{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[15]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1131,7 +1137,7 @@ func (x *Presence) String() string {
 func (*Presence) ProtoMessage() {}
 
 func (x *Presence) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[15]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1144,7 +1150,7 @@ func (x *Presence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Presence.ProtoReflect.Descriptor instead.
 func (*Presence) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{15}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Presence) GetUserId() string {
@@ -1171,7 +1177,7 @@ func (x *Presence) GetLastSeenMs() int64 {
 func (x *Edit) Reset() {
 	*x = Edit{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[16]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1184,7 +1190,7 @@ func (x *Edit) String() string {
 func (*Edit) ProtoMessage() {}
 
 func (x *Edit) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[16]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1197,7 +1203,7 @@ func (x *Edit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Edit.ProtoReflect.Descriptor instead.
 func (*Edit) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{16}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Edit) GetChatId() string {
@@ -1224,7 +1230,7 @@ func (x *Edit) GetText() string {
 func (x *Delete) Reset() {
 	*x = Delete{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[17]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1237,7 +1243,7 @@ func (x *Delete) String() string {
 func (*Delete) ProtoMessage() {}
 
 func (x *Delete) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[17]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1250,7 +1256,7 @@ func (x *Delete) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Delete.ProtoReflect.Descriptor instead.
 func (*Delete) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{17}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Delete) GetChatId() string {
@@ -1277,7 +1283,7 @@ func (x *Delete) GetForAll() bool {
 func (x *History) Reset() {
 	*x = History{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[18]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1290,7 +1296,7 @@ func (x *History) String() string {
 func (*History) ProtoMessage() {}
 
 func (x *History) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[18]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1303,7 +1309,7 @@ func (x *History) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use History.ProtoReflect.Descriptor instead.
 func (*History) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{18}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *History) GetChatId() string {
@@ -1330,7 +1336,7 @@ func (x *History) GetLimit() int32 {
 func (x *HistoryOK) Reset() {
 	*x = HistoryOK{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[19]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1343,7 +1349,7 @@ func (x *HistoryOK) String() string {
 func (*HistoryOK) ProtoMessage() {}
 
 func (x *HistoryOK) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[19]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1356,7 +1362,7 @@ func (x *HistoryOK) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HistoryOK.ProtoReflect.Descriptor instead.
 func (*HistoryOK) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{19}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *HistoryOK) GetChatId() string {
@@ -1383,7 +1389,7 @@ func (x *HistoryOK) GetDone() bool {
 func (x *Resume) Reset() {
 	*x = Resume{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[20]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1396,7 +1402,7 @@ func (x *Resume) String() string {
 func (*Resume) ProtoMessage() {}
 
 func (x *Resume) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[20]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1409,7 +1415,7 @@ func (x *Resume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Resume.ProtoReflect.Descriptor instead.
 func (*Resume) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{20}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Resume) GetResumeToken() string {
@@ -1429,7 +1435,7 @@ func (x *Resume) GetLastAckSeq() uint64 {
 func (x *ResumeOK) Reset() {
 	*x = ResumeOK{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[21]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1442,7 +1448,7 @@ func (x *ResumeOK) String() string {
 func (*ResumeOK) ProtoMessage() {}
 
 func (x *ResumeOK) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[21]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1455,7 +1461,7 @@ func (x *ResumeOK) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResumeOK.ProtoReflect.Descriptor instead.
 func (*ResumeOK) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{21}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ResumeOK) GetSessionId() string {
@@ -1472,10 +1478,17 @@ func (x *ResumeOK) GetFromSeq() uint64 {
 	return 0
 }
 
+func (x *ResumeOK) GetResumeToken() string {
+	if x != nil {
+		return x.ResumeToken
+	}
+	return ""
+}
+
 func (x *Error) Reset() {
 	*x = Error{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[22]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1488,7 +1501,7 @@ func (x *Error) String() string {
 func (*Error) ProtoMessage() {}
 
 func (x *Error) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[22]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1501,7 +1514,7 @@ func (x *Error) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Error.ProtoReflect.Descriptor instead.
 func (*Error) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{22}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Error) GetCode() uint32 {
@@ -1528,7 +1541,7 @@ func (x *Error) GetRetryAfterMs() int32 {
 func (x *MediaInit) Reset() {
 	*x = MediaInit{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[23]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1541,7 +1554,7 @@ func (x *MediaInit) String() string {
 func (*MediaInit) ProtoMessage() {}
 
 func (x *MediaInit) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[23]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1554,7 +1567,7 @@ func (x *MediaInit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaInit.ProtoReflect.Descriptor instead.
 func (*MediaInit) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{23}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *MediaInit) GetFilename() string {
@@ -1581,7 +1594,7 @@ func (x *MediaInit) GetSize() int64 {
 func (x *MediaTicket) Reset() {
 	*x = MediaTicket{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[24]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1594,7 +1607,7 @@ func (x *MediaTicket) String() string {
 func (*MediaTicket) ProtoMessage() {}
 
 func (x *MediaTicket) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[24]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1607,7 +1620,7 @@ func (x *MediaTicket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaTicket.ProtoReflect.Descriptor instead.
 func (*MediaTicket) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{24}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *MediaTicket) GetMediaRef() string {
@@ -1634,7 +1647,7 @@ func (x *MediaTicket) GetExpiresAt() int64 {
 func (x *MediaFetch) Reset() {
 	*x = MediaFetch{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[25]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1647,7 +1660,7 @@ func (x *MediaFetch) String() string {
 func (*MediaFetch) ProtoMessage() {}
 
 func (x *MediaFetch) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[25]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1660,7 +1673,7 @@ func (x *MediaFetch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaFetch.ProtoReflect.Descriptor instead.
 func (*MediaFetch) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{25}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *MediaFetch) GetMediaRef() string {
@@ -1673,7 +1686,7 @@ func (x *MediaFetch) GetMediaRef() string {
 func (x *MediaURL) Reset() {
 	*x = MediaURL{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[26]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1686,7 +1699,7 @@ func (x *MediaURL) String() string {
 func (*MediaURL) ProtoMessage() {}
 
 func (x *MediaURL) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[26]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1699,7 +1712,7 @@ func (x *MediaURL) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MediaURL.ProtoReflect.Descriptor instead.
 func (*MediaURL) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{26}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *MediaURL) GetMediaRef() string {
@@ -1726,7 +1739,7 @@ func (x *MediaURL) GetExpiresAt() int64 {
 func (x *Search) Reset() {
 	*x = Search{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[27]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1739,7 +1752,7 @@ func (x *Search) String() string {
 func (*Search) ProtoMessage() {}
 
 func (x *Search) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[27]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1752,7 +1765,7 @@ func (x *Search) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Search.ProtoReflect.Descriptor instead.
 func (*Search) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{27}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Search) GetQuery() string {
@@ -1769,10 +1782,24 @@ func (x *Search) GetLimit() int32 {
 	return 0
 }
 
+func (x *Search) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *Search) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
+	}
+	return ""
+}
+
 func (x *SearchHit) Reset() {
 	*x = SearchHit{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[28]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1785,7 +1812,7 @@ func (x *SearchHit) String() string {
 func (*SearchHit) ProtoMessage() {}
 
 func (x *SearchHit) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[28]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1798,7 +1825,7 @@ func (x *SearchHit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchHit.ProtoReflect.Descriptor instead.
 func (*SearchHit) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{28}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SearchHit) GetMessageId() string {
@@ -1836,10 +1863,17 @@ func (x *SearchHit) GetText() string {
 	return ""
 }
 
+func (x *SearchHit) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
 func (x *SearchResults) Reset() {
 	*x = SearchResults{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[29]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1852,7 +1886,7 @@ func (x *SearchResults) String() string {
 func (*SearchResults) ProtoMessage() {}
 
 func (x *SearchResults) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[29]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1865,7 +1899,7 @@ func (x *SearchResults) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchResults.ProtoReflect.Descriptor instead.
 func (*SearchResults) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{29}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SearchResults) GetQuery() string {
@@ -1885,7 +1919,7 @@ func (x *SearchResults) GetHits() []*SearchHit {
 func (x *KeyPublish) Reset() {
 	*x = KeyPublish{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[30]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1898,7 +1932,7 @@ func (x *KeyPublish) String() string {
 func (*KeyPublish) ProtoMessage() {}
 
 func (x *KeyPublish) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[30]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1911,7 +1945,7 @@ func (x *KeyPublish) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyPublish.ProtoReflect.Descriptor instead.
 func (*KeyPublish) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{30}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *KeyPublish) GetIdentityKey() string {
@@ -1952,7 +1986,7 @@ func (x *KeyPublish) GetPrekeys() []string {
 func (x *KeyFetch) Reset() {
 	*x = KeyFetch{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[31]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1965,7 +1999,7 @@ func (x *KeyFetch) String() string {
 func (*KeyFetch) ProtoMessage() {}
 
 func (x *KeyFetch) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[31]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +2012,7 @@ func (x *KeyFetch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyFetch.ProtoReflect.Descriptor instead.
 func (*KeyFetch) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{31}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *KeyFetch) GetUserId() string {
@@ -1998,7 +2032,7 @@ func (x *KeyFetch) GetDeviceId() string {
 func (x *KeyBundle) Reset() {
 	*x = KeyBundle{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[32]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2011,7 +2045,7 @@ func (x *KeyBundle) String() string {
 func (*KeyBundle) ProtoMessage() {}
 
 func (x *KeyBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[32]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2024,7 +2058,7 @@ func (x *KeyBundle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyBundle.ProtoReflect.Descriptor instead.
 func (*KeyBundle) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{32}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *KeyBundle) GetUserId() string {
@@ -2076,10 +2110,71 @@ func (x *KeyBundle) GetOneTimePrekey() string {
 	return ""
 }
 
+// KeyState answers KeyPublish: what the directory now holds for this device.
+//
+// The reply exists because of a gap invisible from both ends. One-time prekeys are
+// consumed one per peer that starts a session, so a popular device runs its batch down
+// on its own; with an empty batch X3DH silently drops from four Diffie-Hellmans to
+// three, which is weaker and reported to nobody. Only the OWNER can refill, and the
+// owner is not the party fetching — so the count comes back here, on the publish.
+
+func (x *KeyState) Reset() {
+	*x = KeyState{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[33]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *KeyState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyState) ProtoMessage() {}
+
+func (x *KeyState) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[33]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyState.ProtoReflect.Descriptor instead.
+func (*KeyState) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *KeyState) GetOneTimePrekeysLeft() int32 {
+	if x != nil {
+		return x.OneTimePrekeysLeft
+	}
+	return 0
+}
+
+func (x *KeyState) GetSignedPrekeyAgeMs() int64 {
+	if x != nil {
+		return x.SignedPrekeyAgeMs
+	}
+	return 0
+}
+
+func (x *KeyState) GetAccepted() int32 {
+	if x != nil {
+		return x.Accepted
+	}
+	return 0
+}
+
 func (x *KeyBundles) Reset() {
 	*x = KeyBundles{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[33]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2092,7 +2187,7 @@ func (x *KeyBundles) String() string {
 func (*KeyBundles) ProtoMessage() {}
 
 func (x *KeyBundles) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[33]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2105,7 +2200,7 @@ func (x *KeyBundles) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyBundles.ProtoReflect.Descriptor instead.
 func (*KeyBundles) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{33}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *KeyBundles) GetUserId() string {
@@ -2125,7 +2220,7 @@ func (x *KeyBundles) GetBundles() []*KeyBundle {
 func (x *SecretMsg) Reset() {
 	*x = SecretMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[34]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2138,7 +2233,7 @@ func (x *SecretMsg) String() string {
 func (*SecretMsg) ProtoMessage() {}
 
 func (x *SecretMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[34]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2151,7 +2246,7 @@ func (x *SecretMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretMsg.ProtoReflect.Descriptor instead.
 func (*SecretMsg) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{34}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *SecretMsg) GetToUserId() string {
@@ -2196,10 +2291,1040 @@ func (x *SecretMsg) GetCiphertext() string {
 	return ""
 }
 
+func (x *SecretMsg) GetQueueId() string {
+	if x != nil {
+		return x.QueueId
+	}
+	return ""
+}
+
+func (x *SecretMsg) GetRatchetHeaderBin() []byte {
+	if x != nil {
+		return x.RatchetHeaderBin
+	}
+	return nil
+}
+
+func (x *SecretMsg) GetCiphertextBin() []byte {
+	if x != nil {
+		return x.CiphertextBin
+	}
+	return nil
+}
+
+// BillingPlans asks what is purchasable. country comes from the CLIENT rather than
+// from a server GeoIP lookup: the user knows their market, and a wrong guess offers
+// a payment method their bank does not support.
+
+func (x *BillingPlans) Reset() {
+	*x = BillingPlans{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[36]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BillingPlans) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingPlans) ProtoMessage() {}
+
+func (x *BillingPlans) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[36]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingPlans.ProtoReflect.Descriptor instead.
+func (*BillingPlans) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *BillingPlans) GetCountry() string {
+	if x != nil {
+		return x.Country
+	}
+	return ""
+}
+
+func (x *BillingOffers) Reset() {
+	*x = BillingOffers{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[37]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BillingOffers) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingOffers) ProtoMessage() {}
+
+func (x *BillingOffers) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[37]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingOffers.ProtoReflect.Descriptor instead.
+func (*BillingOffers) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *BillingOffers) GetOffers() []*PlanOffer {
+	if x != nil {
+		return x.Offers
+	}
+	return nil
+}
+
+// amount_minor is an INTEGER in the currency minor unit (kopeks, cents). Never a
+// float: a price is an exact quantity and binary floating point cannot hold 0.01.
+
+func (x *PlanOffer) Reset() {
+	*x = PlanOffer{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[38]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PlanOffer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlanOffer) ProtoMessage() {}
+
+func (x *PlanOffer) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[38]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlanOffer.ProtoReflect.Descriptor instead.
+func (*PlanOffer) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *PlanOffer) GetPlan() string {
+	if x != nil {
+		return x.Plan
+	}
+	return ""
+}
+
+func (x *PlanOffer) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+func (x *PlanOffer) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *PlanOffer) GetPeriodDays() int32 {
+	if x != nil {
+		return x.PeriodDays
+	}
+	return 0
+}
+
+func (x *PlanOffer) GetMethods() []string {
+	if x != nil {
+		return x.Methods
+	}
+	return nil
+}
+
+func (x *BillingCheckout) Reset() {
+	*x = BillingCheckout{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[39]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BillingCheckout) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingCheckout) ProtoMessage() {}
+
+func (x *BillingCheckout) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[39]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingCheckout.ProtoReflect.Descriptor instead.
+func (*BillingCheckout) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *BillingCheckout) GetPlan() string {
+	if x != nil {
+		return x.Plan
+	}
+	return ""
+}
+
+func (x *BillingCheckout) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *BillingCheckout) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *BillingCheckout) GetCountry() string {
+	if x != nil {
+		return x.Country
+	}
+	return ""
+}
+
+func (x *BillingCheckout) GetReturnUrl() string {
+	if x != nil {
+		return x.ReturnUrl
+	}
+	return ""
+}
+
+func (x *BillingPayment) Reset() {
+	*x = BillingPayment{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[40]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BillingPayment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingPayment) ProtoMessage() {}
+
+func (x *BillingPayment) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[40]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingPayment.ProtoReflect.Descriptor instead.
+func (*BillingPayment) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *BillingPayment) GetPaymentId() string {
+	if x != nil {
+		return x.PaymentId
+	}
+	return ""
+}
+
+func (x *BillingPayment) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *BillingPayment) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+func (x *BillingPayment) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *BillingPayment) GetPayUrl() string {
+	if x != nil {
+		return x.PayUrl
+	}
+	return ""
+}
+
+func (x *BillingPayment) GetQrPayload() string {
+	if x != nil {
+		return x.QrPayload
+	}
+	return ""
+}
+
+func (x *BillingPayment) GetDeduplicated() bool {
+	if x != nil {
+		return x.Deduplicated
+	}
+	return false
+}
+
+func (x *BillingStatus) Reset() {
+	*x = BillingStatus{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[41]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BillingStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingStatus) ProtoMessage() {}
+
+func (x *BillingStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[41]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingStatus.ProtoReflect.Descriptor instead.
+func (*BillingStatus) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *BillingCancel) Reset() {
+	*x = BillingCancel{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[42]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BillingCancel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BillingCancel) ProtoMessage() {}
+
+func (x *BillingCancel) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[42]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BillingCancel.ProtoReflect.Descriptor instead.
+func (*BillingCancel) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{42}
+}
+
+// Subscription is the caller tier and what it grants. Sent as a reply and PUSHED on
+// every change, so a client never offers a feature the server has stopped honouring.
+//
+// Entitlements are explicit rather than derived from the plan name: the client would
+// otherwise encode the policy too, and the two copies drift.
+
+func (x *Subscription) Reset() {
+	*x = Subscription{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[43]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Subscription) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Subscription) ProtoMessage() {}
+
+func (x *Subscription) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[43]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Subscription.ProtoReflect.Descriptor instead.
+func (*Subscription) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *Subscription) GetPlan() string {
+	if x != nil {
+		return x.Plan
+	}
+	return ""
+}
+
+func (x *Subscription) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *Subscription) GetPeriodEnd() int64 {
+	if x != nil {
+		return x.PeriodEnd
+	}
+	return 0
+}
+
+func (x *Subscription) GetCancelAtPeriodEnd() bool {
+	if x != nil {
+		return x.CancelAtPeriodEnd
+	}
+	return false
+}
+
+func (x *Subscription) GetSecretChats() bool {
+	if x != nil {
+		return x.SecretChats
+	}
+	return false
+}
+
+func (x *Subscription) GetMaxUploadBytes() int64 {
+	if x != nil {
+		return x.MaxUploadBytes
+	}
+	return 0
+}
+
+func (x *Subscription) GetMaxPinnedChats() int32 {
+	if x != nil {
+		return x.MaxPinnedChats
+	}
+	return 0
+}
+
+func (x *Subscription) GetFolders() bool {
+	if x != nil {
+		return x.Folders
+	}
+	return false
+}
+
+func (x *Subscription) GetAdvancedSearch() bool {
+	if x != nil {
+		return x.AdvancedSearch
+	}
+	return false
+}
+
+func (x *Subscription) GetPriorityDelivery() bool {
+	if x != nil {
+		return x.PriorityDelivery
+	}
+	return false
+}
+
+func (x *Subscription) GetVoiceTranscription() bool {
+	if x != nil {
+		return x.VoiceTranscription
+	}
+	return false
+}
+
+func (x *Subscription) GetBadge() bool {
+	if x != nil {
+		return x.Badge
+	}
+	return false
+}
+
+func (x *PasswordChange) Reset() {
+	*x = PasswordChange{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[44]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PasswordChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PasswordChange) ProtoMessage() {}
+
+func (x *PasswordChange) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[44]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PasswordChange.ProtoReflect.Descriptor instead.
+func (*PasswordChange) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *PasswordChange) GetOldPassword() string {
+	if x != nil {
+		return x.OldPassword
+	}
+	return ""
+}
+
+func (x *PasswordChange) GetNewPassword() string {
+	if x != nil {
+		return x.NewPassword
+	}
+	return ""
+}
+
+// PasswordChanged reports how many OTHER sessions were signed out. The caller own
+// session survives, so they can finish securing the account.
+
+func (x *PasswordChanged) Reset() {
+	*x = PasswordChanged{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[45]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PasswordChanged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PasswordChanged) ProtoMessage() {}
+
+func (x *PasswordChanged) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[45]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PasswordChanged.ProtoReflect.Descriptor instead.
+func (*PasswordChanged) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *PasswordChanged) GetSessionsRevoked() int32 {
+	if x != nil {
+		return x.SessionsRevoked
+	}
+	return 0
+}
+
+// TOTPSetup begins enrolment. No fields: the server mints the secret, because a
+// client-chosen secret is a client-chosen second factor.
+
+func (x *TOTPSetup) Reset() {
+	*x = TOTPSetup{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[46]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TOTPSetup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TOTPSetup) ProtoMessage() {}
+
+func (x *TOTPSetup) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[46]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TOTPSetup.ProtoReflect.Descriptor instead.
+func (*TOTPSetup) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{46}
+}
+
+// TOTPSetupInfo carries the secret and the otpauth:// URI. The factor is NOT yet
+// enforced — without a confirmation step a mis-scanned QR code locks an account
+// out of itself.
+
+func (x *TOTPSetupInfo) Reset() {
+	*x = TOTPSetupInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[47]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TOTPSetupInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TOTPSetupInfo) ProtoMessage() {}
+
+func (x *TOTPSetupInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[47]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TOTPSetupInfo.ProtoReflect.Descriptor instead.
+func (*TOTPSetupInfo) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *TOTPSetupInfo) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *TOTPSetupInfo) GetUri() string {
+	if x != nil {
+		return x.Uri
+	}
+	return ""
+}
+
+func (x *TOTPConfirm) Reset() {
+	*x = TOTPConfirm{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[48]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TOTPConfirm) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TOTPConfirm) ProtoMessage() {}
+
+func (x *TOTPConfirm) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[48]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TOTPConfirm.ProtoReflect.Descriptor instead.
+func (*TOTPConfirm) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *TOTPConfirm) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+// TOTPDisable needs password AND code: a stolen session token must not be able to
+// remove the factor that keeps it out of the next login.
+
+func (x *TOTPDisable) Reset() {
+	*x = TOTPDisable{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[49]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TOTPDisable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TOTPDisable) ProtoMessage() {}
+
+func (x *TOTPDisable) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[49]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TOTPDisable.ProtoReflect.Descriptor instead.
+func (*TOTPDisable) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *TOTPDisable) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *TOTPDisable) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+// TOTPState is the current state, plus the recovery codes on the one occasion they
+// are shown (the reply to TOTPConfirm). The stored form is a hash, so there is
+// nothing to show later.
+
+func (x *TOTPState) Reset() {
+	*x = TOTPState{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[50]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *TOTPState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TOTPState) ProtoMessage() {}
+
+func (x *TOTPState) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[50]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TOTPState.ProtoReflect.Descriptor instead.
+func (*TOTPState) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *TOTPState) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *TOTPState) GetRecoveryLeft() int32 {
+	if x != nil {
+		return x.RecoveryLeft
+	}
+	return 0
+}
+
+func (x *TOTPState) GetRecoveryCodes() []string {
+	if x != nil {
+		return x.RecoveryCodes
+	}
+	return nil
+}
+
+func (x *TOTPState) GetConfirmedAtMs() int64 {
+	if x != nil {
+		return x.ConfirmedAtMs
+	}
+	return 0
+}
+
+func (x *SecretAck) Reset() {
+	*x = SecretAck{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[51]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SecretAck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretAck) ProtoMessage() {}
+
+func (x *SecretAck) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[51]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretAck.ProtoReflect.Descriptor instead.
+func (*SecretAck) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *SecretAck) GetToUserId() string {
+	if x != nil {
+		return x.ToUserId
+	}
+	return ""
+}
+
+func (x *SecretAck) GetToDeviceId() string {
+	if x != nil {
+		return x.ToDeviceId
+	}
+	return ""
+}
+
+func (x *SecretAck) GetDevices() int32 {
+	if x != nil {
+		return x.Devices
+	}
+	return 0
+}
+
+func (x *SecretAck) GetQueued() bool {
+	if x != nil {
+		return x.Queued
+	}
+	return false
+}
+
+func (x *SecretSync) Reset() {
+	*x = SecretSync{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[52]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SecretSync) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretSync) ProtoMessage() {}
+
+func (x *SecretSync) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[52]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretSync.ProtoReflect.Descriptor instead.
+func (*SecretSync) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *SecretSync) GetAfter() string {
+	if x != nil {
+		return x.After
+	}
+	return ""
+}
+
+func (x *SecretSync) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *SecretSynced) Reset() {
+	*x = SecretSynced{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[53]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SecretSynced) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretSynced) ProtoMessage() {}
+
+func (x *SecretSynced) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[53]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretSynced.ProtoReflect.Descriptor instead.
+func (*SecretSynced) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *SecretSynced) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+func (x *SecretSynced) GetNextAfter() string {
+	if x != nil {
+		return x.NextAfter
+	}
+	return ""
+}
+
+func (x *SecretSynced) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+func (x *SecretAcked) Reset() {
+	*x = SecretAcked{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[54]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SecretAcked) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretAcked) ProtoMessage() {}
+
+func (x *SecretAcked) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[54]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretAcked.ProtoReflect.Descriptor instead.
+func (*SecretAcked) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *SecretAcked) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
 func (x *ChatExport) Reset() {
 	*x = ChatExport{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[35]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[55]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2212,7 +3337,7 @@ func (x *ChatExport) String() string {
 func (*ChatExport) ProtoMessage() {}
 
 func (x *ChatExport) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[35]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[55]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2225,7 +3350,7 @@ func (x *ChatExport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatExport.ProtoReflect.Descriptor instead.
 func (*ChatExport) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{35}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ChatExport) GetChatId() string {
@@ -2238,7 +3363,7 @@ func (x *ChatExport) GetChatId() string {
 func (x *ChatMember) Reset() {
 	*x = ChatMember{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[36]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[56]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2251,7 +3376,7 @@ func (x *ChatMember) String() string {
 func (*ChatMember) ProtoMessage() {}
 
 func (x *ChatMember) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[36]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[56]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2264,7 +3389,7 @@ func (x *ChatMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatMember.ProtoReflect.Descriptor instead.
 func (*ChatMember) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{36}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *ChatMember) GetUserId() string {
@@ -2291,7 +3416,7 @@ func (x *ChatMember) GetJoinedAt() int64 {
 func (x *ChatExportResult) Reset() {
 	*x = ChatExportResult{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[37]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[57]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2304,7 +3429,7 @@ func (x *ChatExportResult) String() string {
 func (*ChatExportResult) ProtoMessage() {}
 
 func (x *ChatExportResult) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[37]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[57]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2317,7 +3442,7 @@ func (x *ChatExportResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatExportResult.ProtoReflect.Descriptor instead.
 func (*ChatExportResult) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{37}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *ChatExportResult) GetChatId() string {
@@ -2372,7 +3497,7 @@ func (x *ChatExportResult) GetDone() bool {
 func (x *CallInvite) Reset() {
 	*x = CallInvite{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[38]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[58]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2385,7 +3510,7 @@ func (x *CallInvite) String() string {
 func (*CallInvite) ProtoMessage() {}
 
 func (x *CallInvite) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[38]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[58]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2398,7 +3523,7 @@ func (x *CallInvite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallInvite.ProtoReflect.Descriptor instead.
 func (*CallInvite) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{38}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *CallInvite) GetChatId() string {
@@ -2418,7 +3543,7 @@ func (x *CallInvite) GetKind() string {
 func (x *CallAction) Reset() {
 	*x = CallAction{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[39]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[59]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2431,7 +3556,7 @@ func (x *CallAction) String() string {
 func (*CallAction) ProtoMessage() {}
 
 func (x *CallAction) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[39]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[59]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2444,7 +3569,7 @@ func (x *CallAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallAction.ProtoReflect.Descriptor instead.
 func (*CallAction) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{39}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *CallAction) GetCallId() string {
@@ -2457,7 +3582,7 @@ func (x *CallAction) GetCallId() string {
 func (x *CallParticipant) Reset() {
 	*x = CallParticipant{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[40]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[60]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2470,7 +3595,7 @@ func (x *CallParticipant) String() string {
 func (*CallParticipant) ProtoMessage() {}
 
 func (x *CallParticipant) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[40]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[60]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2483,7 +3608,7 @@ func (x *CallParticipant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallParticipant.ProtoReflect.Descriptor instead.
 func (*CallParticipant) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{40}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *CallParticipant) GetUserId() string {
@@ -2510,7 +3635,7 @@ func (x *CallParticipant) GetState() string {
 func (x *CallState) Reset() {
 	*x = CallState{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[41]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[61]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2523,7 +3648,7 @@ func (x *CallState) String() string {
 func (*CallState) ProtoMessage() {}
 
 func (x *CallState) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[41]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[61]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2536,7 +3661,7 @@ func (x *CallState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallState.ProtoReflect.Descriptor instead.
 func (*CallState) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{41}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *CallState) GetCallId() string {
@@ -2584,7 +3709,7 @@ func (x *CallState) GetParticipants() []*CallParticipant {
 func (x *CallSignal) Reset() {
 	*x = CallSignal{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[42]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[62]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2597,7 +3722,7 @@ func (x *CallSignal) String() string {
 func (*CallSignal) ProtoMessage() {}
 
 func (x *CallSignal) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[42]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[62]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2610,7 +3735,7 @@ func (x *CallSignal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallSignal.ProtoReflect.Descriptor instead.
 func (*CallSignal) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{42}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *CallSignal) GetCallId() string {
@@ -2665,7 +3790,7 @@ func (x *CallSignal) GetPayload() string {
 func (x *PollCreate) Reset() {
 	*x = PollCreate{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[43]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[63]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2678,7 +3803,7 @@ func (x *PollCreate) String() string {
 func (*PollCreate) ProtoMessage() {}
 
 func (x *PollCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[43]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[63]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2691,7 +3816,7 @@ func (x *PollCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollCreate.ProtoReflect.Descriptor instead.
 func (*PollCreate) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{43}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *PollCreate) GetChatId() string {
@@ -2732,7 +3857,7 @@ func (x *PollCreate) GetAnonymous() bool {
 func (x *PollVote) Reset() {
 	*x = PollVote{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[44]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[64]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2745,7 +3870,7 @@ func (x *PollVote) String() string {
 func (*PollVote) ProtoMessage() {}
 
 func (x *PollVote) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[44]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[64]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2758,7 +3883,7 @@ func (x *PollVote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollVote.ProtoReflect.Descriptor instead.
 func (*PollVote) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{44}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *PollVote) GetPollId() string {
@@ -2778,7 +3903,7 @@ func (x *PollVote) GetOption() int32 {
 func (x *PollClose) Reset() {
 	*x = PollClose{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[45]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[65]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2791,7 +3916,7 @@ func (x *PollClose) String() string {
 func (*PollClose) ProtoMessage() {}
 
 func (x *PollClose) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[45]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[65]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2804,7 +3929,7 @@ func (x *PollClose) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollClose.ProtoReflect.Descriptor instead.
 func (*PollClose) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{45}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *PollClose) GetPollId() string {
@@ -2817,7 +3942,7 @@ func (x *PollClose) GetPollId() string {
 func (x *PollOption) Reset() {
 	*x = PollOption{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[46]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[66]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2830,7 +3955,7 @@ func (x *PollOption) String() string {
 func (*PollOption) ProtoMessage() {}
 
 func (x *PollOption) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[46]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[66]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2843,7 +3968,7 @@ func (x *PollOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollOption.ProtoReflect.Descriptor instead.
 func (*PollOption) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{46}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *PollOption) GetIndex() int32 {
@@ -2870,7 +3995,7 @@ func (x *PollOption) GetVotes() int32 {
 func (x *PollState) Reset() {
 	*x = PollState{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[47]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[67]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2883,7 +4008,7 @@ func (x *PollState) String() string {
 func (*PollState) ProtoMessage() {}
 
 func (x *PollState) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[47]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[67]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2896,7 +4021,7 @@ func (x *PollState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollState.ProtoReflect.Descriptor instead.
 func (*PollState) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{47}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *PollState) GetPollId() string {
@@ -2972,7 +4097,7 @@ func (x *PollState) GetMyVotes() []int32 {
 func (x *ContactAdd) Reset() {
 	*x = ContactAdd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[48]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[68]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2985,7 +4110,7 @@ func (x *ContactAdd) String() string {
 func (*ContactAdd) ProtoMessage() {}
 
 func (x *ContactAdd) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[48]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[68]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2998,7 +4123,7 @@ func (x *ContactAdd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactAdd.ProtoReflect.Descriptor instead.
 func (*ContactAdd) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{48}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ContactAdd) GetTarget() string {
@@ -3018,7 +4143,7 @@ func (x *ContactAdd) GetName() string {
 func (x *ContactRemove) Reset() {
 	*x = ContactRemove{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[49]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[69]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3031,7 +4156,7 @@ func (x *ContactRemove) String() string {
 func (*ContactRemove) ProtoMessage() {}
 
 func (x *ContactRemove) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[49]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[69]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3044,7 +4169,7 @@ func (x *ContactRemove) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactRemove.ProtoReflect.Descriptor instead.
 func (*ContactRemove) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{49}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ContactRemove) GetTarget() string {
@@ -3057,7 +4182,7 @@ func (x *ContactRemove) GetTarget() string {
 func (x *ContactSync) Reset() {
 	*x = ContactSync{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[50]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[70]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3070,7 +4195,7 @@ func (x *ContactSync) String() string {
 func (*ContactSync) ProtoMessage() {}
 
 func (x *ContactSync) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[50]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[70]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3083,7 +4208,7 @@ func (x *ContactSync) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactSync.ProtoReflect.Descriptor instead.
 func (*ContactSync) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{50}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *ContactSync) GetSince() int64 {
@@ -3096,7 +4221,7 @@ func (x *ContactSync) GetSince() int64 {
 func (x *Contact) Reset() {
 	*x = Contact{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[51]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[71]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3109,7 +4234,7 @@ func (x *Contact) String() string {
 func (*Contact) ProtoMessage() {}
 
 func (x *Contact) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[51]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[71]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3122,7 +4247,7 @@ func (x *Contact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Contact.ProtoReflect.Descriptor instead.
 func (*Contact) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{51}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *Contact) GetUserId() string {
@@ -3156,7 +4281,7 @@ func (x *Contact) GetUpdatedAt() int64 {
 func (x *ContactList) Reset() {
 	*x = ContactList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[52]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[72]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3169,7 +4294,7 @@ func (x *ContactList) String() string {
 func (*ContactList) ProtoMessage() {}
 
 func (x *ContactList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[52]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[72]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3182,7 +4307,7 @@ func (x *ContactList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactList.ProtoReflect.Descriptor instead.
 func (*ContactList) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{52}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ContactList) GetContacts() []*Contact {
@@ -3202,7 +4327,7 @@ func (x *ContactList) GetCursor() int64 {
 func (x *Block) Reset() {
 	*x = Block{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[53]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[73]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3215,7 +4340,7 @@ func (x *Block) String() string {
 func (*Block) ProtoMessage() {}
 
 func (x *Block) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[53]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[73]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3228,7 +4353,7 @@ func (x *Block) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Block.ProtoReflect.Descriptor instead.
 func (*Block) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{53}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *Block) GetTarget() string {
@@ -3248,7 +4373,7 @@ func (x *Block) GetBlocked() bool {
 func (x *ForwardOrigin) Reset() {
 	*x = ForwardOrigin{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[54]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[74]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3261,7 +4386,7 @@ func (x *ForwardOrigin) String() string {
 func (*ForwardOrigin) ProtoMessage() {}
 
 func (x *ForwardOrigin) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[54]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[74]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3274,7 +4399,7 @@ func (x *ForwardOrigin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ForwardOrigin.ProtoReflect.Descriptor instead.
 func (*ForwardOrigin) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{54}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ForwardOrigin) GetChatId() string {
@@ -3301,7 +4426,7 @@ func (x *ForwardOrigin) GetSenderId() string {
 func (x *Forward) Reset() {
 	*x = Forward{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[55]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[75]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3314,7 +4439,7 @@ func (x *Forward) String() string {
 func (*Forward) ProtoMessage() {}
 
 func (x *Forward) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[55]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[75]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3327,7 +4452,7 @@ func (x *Forward) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Forward.ProtoReflect.Descriptor instead.
 func (*Forward) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{55}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *Forward) GetFromChatId() string {
@@ -3361,7 +4486,7 @@ func (x *Forward) GetDedupKey() string {
 func (x *Schedule) Reset() {
 	*x = Schedule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[56]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[76]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3374,7 +4499,7 @@ func (x *Schedule) String() string {
 func (*Schedule) ProtoMessage() {}
 
 func (x *Schedule) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[56]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[76]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3387,7 +4512,7 @@ func (x *Schedule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Schedule.ProtoReflect.Descriptor instead.
 func (*Schedule) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{56}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *Schedule) GetChatId() string {
@@ -3442,7 +4567,7 @@ func (x *Schedule) GetSendAt() int64 {
 func (x *ScheduleList) Reset() {
 	*x = ScheduleList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[57]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[77]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3455,7 +4580,7 @@ func (x *ScheduleList) String() string {
 func (*ScheduleList) ProtoMessage() {}
 
 func (x *ScheduleList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[57]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[77]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3468,7 +4593,7 @@ func (x *ScheduleList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleList.ProtoReflect.Descriptor instead.
 func (*ScheduleList) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{57}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ScheduleList) GetChatId() string {
@@ -3481,7 +4606,7 @@ func (x *ScheduleList) GetChatId() string {
 func (x *ScheduleCancel) Reset() {
 	*x = ScheduleCancel{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[58]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[78]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3494,7 +4619,7 @@ func (x *ScheduleCancel) String() string {
 func (*ScheduleCancel) ProtoMessage() {}
 
 func (x *ScheduleCancel) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[58]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[78]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3507,7 +4632,7 @@ func (x *ScheduleCancel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleCancel.ProtoReflect.Descriptor instead.
 func (*ScheduleCancel) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{58}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *ScheduleCancel) GetId() string {
@@ -3520,7 +4645,7 @@ func (x *ScheduleCancel) GetId() string {
 func (x *ScheduledItem) Reset() {
 	*x = ScheduledItem{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[59]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[79]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3533,7 +4658,7 @@ func (x *ScheduledItem) String() string {
 func (*ScheduledItem) ProtoMessage() {}
 
 func (x *ScheduledItem) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[59]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[79]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3546,7 +4671,7 @@ func (x *ScheduledItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduledItem.ProtoReflect.Descriptor instead.
 func (*ScheduledItem) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{59}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *ScheduledItem) GetId() string {
@@ -3580,7 +4705,7 @@ func (x *ScheduledItem) GetSendAt() int64 {
 func (x *Scheduled) Reset() {
 	*x = Scheduled{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[60]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[80]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3593,7 +4718,7 @@ func (x *Scheduled) String() string {
 func (*Scheduled) ProtoMessage() {}
 
 func (x *Scheduled) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[60]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[80]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3606,7 +4731,7 @@ func (x *Scheduled) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Scheduled.ProtoReflect.Descriptor instead.
 func (*Scheduled) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{60}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *Scheduled) GetItems() []*ScheduledItem {
@@ -3619,7 +4744,7 @@ func (x *Scheduled) GetItems() []*ScheduledItem {
 func (x *Pin) Reset() {
 	*x = Pin{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[61]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[81]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3632,7 +4757,7 @@ func (x *Pin) String() string {
 func (*Pin) ProtoMessage() {}
 
 func (x *Pin) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[61]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[81]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3645,7 +4770,7 @@ func (x *Pin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pin.ProtoReflect.Descriptor instead.
 func (*Pin) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{61}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *Pin) GetMessageId() string {
@@ -3672,7 +4797,7 @@ func (x *Pin) GetPinnedAt() int64 {
 func (x *PinAction) Reset() {
 	*x = PinAction{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[62]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[82]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3685,7 +4810,7 @@ func (x *PinAction) String() string {
 func (*PinAction) ProtoMessage() {}
 
 func (x *PinAction) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[62]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[82]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3698,7 +4823,7 @@ func (x *PinAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PinAction.ProtoReflect.Descriptor instead.
 func (*PinAction) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{62}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *PinAction) GetChatId() string {
@@ -3718,7 +4843,7 @@ func (x *PinAction) GetMessageId() string {
 func (x *Pinned) Reset() {
 	*x = Pinned{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[63]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[83]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3731,7 +4856,7 @@ func (x *Pinned) String() string {
 func (*Pinned) ProtoMessage() {}
 
 func (x *Pinned) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[63]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[83]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3744,7 +4869,7 @@ func (x *Pinned) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pinned.ProtoReflect.Descriptor instead.
 func (*Pinned) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{63}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *Pinned) GetChatId() string {
@@ -3764,7 +4889,7 @@ func (x *Pinned) GetPins() []*Pin {
 func (x *Draft) Reset() {
 	*x = Draft{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[64]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[84]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3777,7 +4902,7 @@ func (x *Draft) String() string {
 func (*Draft) ProtoMessage() {}
 
 func (x *Draft) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[64]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[84]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3790,7 +4915,7 @@ func (x *Draft) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Draft.ProtoReflect.Descriptor instead.
 func (*Draft) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{64}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *Draft) GetChatId() string {
@@ -3817,7 +4942,7 @@ func (x *Draft) GetReplyTo() string {
 func (x *DraftSync) Reset() {
 	*x = DraftSync{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[65]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[85]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3830,7 +4955,7 @@ func (x *DraftSync) String() string {
 func (*DraftSync) ProtoMessage() {}
 
 func (x *DraftSync) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[65]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[85]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3843,7 +4968,7 @@ func (x *DraftSync) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftSync.ProtoReflect.Descriptor instead.
 func (*DraftSync) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{65}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *DraftSync) GetSince() int64 {
@@ -3856,7 +4981,7 @@ func (x *DraftSync) GetSince() int64 {
 func (x *DraftItem) Reset() {
 	*x = DraftItem{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[66]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[86]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3869,7 +4994,7 @@ func (x *DraftItem) String() string {
 func (*DraftItem) ProtoMessage() {}
 
 func (x *DraftItem) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[66]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[86]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3882,7 +5007,7 @@ func (x *DraftItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftItem.ProtoReflect.Descriptor instead.
 func (*DraftItem) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{66}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *DraftItem) GetChatId() string {
@@ -3916,7 +5041,7 @@ func (x *DraftItem) GetUpdatedAt() int64 {
 func (x *Drafts) Reset() {
 	*x = Drafts{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[67]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[87]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3929,7 +5054,7 @@ func (x *Drafts) String() string {
 func (*Drafts) ProtoMessage() {}
 
 func (x *Drafts) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[67]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[87]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3942,7 +5067,7 @@ func (x *Drafts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Drafts.ProtoReflect.Descriptor instead.
 func (*Drafts) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{67}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *Drafts) GetDrafts() []*DraftItem {
@@ -3962,7 +5087,7 @@ func (x *Drafts) GetCursor() int64 {
 func (x *SetUsername) Reset() {
 	*x = SetUsername{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[68]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[88]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3975,7 +5100,7 @@ func (x *SetUsername) String() string {
 func (*SetUsername) ProtoMessage() {}
 
 func (x *SetUsername) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[68]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[88]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3988,7 +5113,7 @@ func (x *SetUsername) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUsername.ProtoReflect.Descriptor instead.
 func (*SetUsername) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{68}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *SetUsername) GetChatId() string {
@@ -4008,7 +5133,7 @@ func (x *SetUsername) GetUsername() string {
 func (x *InviteCreate) Reset() {
 	*x = InviteCreate{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[69]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[89]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4021,7 +5146,7 @@ func (x *InviteCreate) String() string {
 func (*InviteCreate) ProtoMessage() {}
 
 func (x *InviteCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[69]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[89]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4034,7 +5159,7 @@ func (x *InviteCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteCreate.ProtoReflect.Descriptor instead.
 func (*InviteCreate) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{69}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *InviteCreate) GetChatId() string {
@@ -4061,7 +5186,7 @@ func (x *InviteCreate) GetMaxUses() int32 {
 func (x *InviteRevoke) Reset() {
 	*x = InviteRevoke{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[70]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[90]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4074,7 +5199,7 @@ func (x *InviteRevoke) String() string {
 func (*InviteRevoke) ProtoMessage() {}
 
 func (x *InviteRevoke) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[70]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[90]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4087,7 +5212,7 @@ func (x *InviteRevoke) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteRevoke.ProtoReflect.Descriptor instead.
 func (*InviteRevoke) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{70}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *InviteRevoke) GetChatId() string {
@@ -4107,7 +5232,7 @@ func (x *InviteRevoke) GetCode() string {
 func (x *InviteList) Reset() {
 	*x = InviteList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[71]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[91]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4120,7 +5245,7 @@ func (x *InviteList) String() string {
 func (*InviteList) ProtoMessage() {}
 
 func (x *InviteList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[71]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[91]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4133,7 +5258,7 @@ func (x *InviteList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteList.ProtoReflect.Descriptor instead.
 func (*InviteList) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{71}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *InviteList) GetChatId() string {
@@ -4146,7 +5271,7 @@ func (x *InviteList) GetChatId() string {
 func (x *Join) Reset() {
 	*x = Join{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[72]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[92]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4159,7 +5284,7 @@ func (x *Join) String() string {
 func (*Join) ProtoMessage() {}
 
 func (x *Join) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[72]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[92]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4172,7 +5297,7 @@ func (x *Join) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Join.ProtoReflect.Descriptor instead.
 func (*Join) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{72}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *Join) GetCode() string {
@@ -4192,7 +5317,7 @@ func (x *Join) GetHandle() string {
 func (x *SetRole) Reset() {
 	*x = SetRole{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[73]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[93]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4205,7 +5330,7 @@ func (x *SetRole) String() string {
 func (*SetRole) ProtoMessage() {}
 
 func (x *SetRole) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[73]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[93]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4218,7 +5343,7 @@ func (x *SetRole) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetRole.ProtoReflect.Descriptor instead.
 func (*SetRole) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{73}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *SetRole) GetChatId() string {
@@ -4245,7 +5370,7 @@ func (x *SetRole) GetRole() string {
 func (x *InviteLink) Reset() {
 	*x = InviteLink{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[74]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[94]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4258,7 +5383,7 @@ func (x *InviteLink) String() string {
 func (*InviteLink) ProtoMessage() {}
 
 func (x *InviteLink) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[74]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[94]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4271,7 +5396,7 @@ func (x *InviteLink) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InviteLink.ProtoReflect.Descriptor instead.
 func (*InviteLink) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{74}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *InviteLink) GetCode() string {
@@ -4312,7 +5437,7 @@ func (x *InviteLink) GetUses() int32 {
 func (x *Invites) Reset() {
 	*x = Invites{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[75]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[95]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4325,7 +5450,7 @@ func (x *Invites) String() string {
 func (*Invites) ProtoMessage() {}
 
 func (x *Invites) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[75]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[95]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4338,7 +5463,7 @@ func (x *Invites) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Invites.ProtoReflect.Descriptor instead.
 func (*Invites) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{75}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *Invites) GetLinks() []*InviteLink {
@@ -4355,10 +5480,16 @@ func (x *Invites) GetJoinedChat() string {
 	return ""
 }
 
+// FanoutShard is an INTERNAL bus payload, not an envelope body: one chunk of a
+// hot chat's recipients plus the message to deliver to them. It lives here so
+// everything crossing the bus is protobuf — the shard job used to be the one
+// exception, encoded as JSON, which meant the heaviest payload in the system
+// (a full message body per chunk) travelled in the least efficient encoding.
+
 func (x *FanoutShard) Reset() {
 	*x = FanoutShard{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[76]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[96]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4371,7 +5502,7 @@ func (x *FanoutShard) String() string {
 func (*FanoutShard) ProtoMessage() {}
 
 func (x *FanoutShard) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[76]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[96]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4384,7 +5515,7 @@ func (x *FanoutShard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FanoutShard.ProtoReflect.Descriptor instead.
 func (*FanoutShard) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{76}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *FanoutShard) GetBody() *NewMessage {
@@ -4404,7 +5535,7 @@ func (x *FanoutShard) GetMembers() []string {
 func (x *ChatCreate) Reset() {
 	*x = ChatCreate{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[77]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[97]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4417,7 +5548,7 @@ func (x *ChatCreate) String() string {
 func (*ChatCreate) ProtoMessage() {}
 
 func (x *ChatCreate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[77]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[97]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4430,7 +5561,7 @@ func (x *ChatCreate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatCreate.ProtoReflect.Descriptor instead.
 func (*ChatCreate) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{77}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ChatCreate) GetType() string {
@@ -4457,7 +5588,7 @@ func (x *ChatCreate) GetMembers() []string {
 func (x *ChatInfo) Reset() {
 	*x = ChatInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[78]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[98]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4470,7 +5601,7 @@ func (x *ChatInfo) String() string {
 func (*ChatInfo) ProtoMessage() {}
 
 func (x *ChatInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[78]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[98]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4483,7 +5614,7 @@ func (x *ChatInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatInfo.ProtoReflect.Descriptor instead.
 func (*ChatInfo) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{78}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *ChatInfo) GetChatId() string {
@@ -4517,7 +5648,7 @@ func (x *ChatInfo) GetOwnerId() string {
 func (x *PushToken) Reset() {
 	*x = PushToken{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[79]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[99]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4530,7 +5661,7 @@ func (x *PushToken) String() string {
 func (*PushToken) ProtoMessage() {}
 
 func (x *PushToken) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[79]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[99]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4543,7 +5674,7 @@ func (x *PushToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushToken.ProtoReflect.Descriptor instead.
 func (*PushToken) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{79}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *PushToken) GetToken() string {
@@ -4553,10 +5684,18 @@ func (x *PushToken) GetToken() string {
 	return ""
 }
 
+// ChatList asks for the chats the caller belongs to. It pages by keyset over
+// (last_activity_at, chat_id) — BOTH halves, because the list is ordered by activity
+// and a cursor naming only an id skips and repeats rows exactly when the account is
+// busy. `after`/`after_activity` are the previous page's last values; empty and 0 mean
+// from the start. A client with more chats than fit in one frame must be able to
+// resume where it stopped, and the id is the tiebreak that keeps the cursor stable
+// while the list is being read.
+
 func (x *ChatList) Reset() {
 	*x = ChatList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[80]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[100]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4569,7 +5708,7 @@ func (x *ChatList) String() string {
 func (*ChatList) ProtoMessage() {}
 
 func (x *ChatList) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[80]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[100]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4582,7 +5721,7 @@ func (x *ChatList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatList.ProtoReflect.Descriptor instead.
 func (*ChatList) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{80}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *ChatList) GetAfter() string {
@@ -4599,10 +5738,27 @@ func (x *ChatList) GetLimit() int32 {
 	return 0
 }
 
+func (x *ChatList) GetAfterActivity() int64 {
+	if x != nil {
+		return x.AfterActivity
+	}
+	return 0
+}
+
+func (x *ChatList) GetIncludeArchived() bool {
+	if x != nil {
+		return x.IncludeArchived
+	}
+	return false
+}
+
+// ChatSummary is one row of the chat list: enough to render an entry without a
+// follow-up round trip per chat.
+
 func (x *ChatSummary) Reset() {
 	*x = ChatSummary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[81]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[101]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4615,7 +5771,7 @@ func (x *ChatSummary) String() string {
 func (*ChatSummary) ProtoMessage() {}
 
 func (x *ChatSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[81]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[101]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4628,7 +5784,7 @@ func (x *ChatSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatSummary.ProtoReflect.Descriptor instead.
 func (*ChatSummary) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{81}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *ChatSummary) GetChatId() string {
@@ -4687,10 +5843,52 @@ func (x *ChatSummary) GetPeerId() string {
 	return ""
 }
 
+func (x *ChatSummary) GetLastMessage() *NewMessage {
+	if x != nil {
+		return x.LastMessage
+	}
+	return nil
+}
+
+func (x *ChatSummary) GetUnreadCount() int64 {
+	if x != nil {
+		return x.UnreadCount
+	}
+	return 0
+}
+
+func (x *ChatSummary) GetLastActivityAt() int64 {
+	if x != nil {
+		return x.LastActivityAt
+	}
+	return 0
+}
+
+func (x *ChatSummary) GetMutedUntil() int64 {
+	if x != nil {
+		return x.MutedUntil
+	}
+	return 0
+}
+
+func (x *ChatSummary) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *ChatSummary) GetArchived() bool {
+	if x != nil {
+		return x.Archived
+	}
+	return false
+}
+
 func (x *Chats) Reset() {
 	*x = Chats{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[82]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[102]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4703,7 +5901,7 @@ func (x *Chats) String() string {
 func (*Chats) ProtoMessage() {}
 
 func (x *Chats) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[82]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[102]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4716,7 +5914,7 @@ func (x *Chats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Chats.ProtoReflect.Descriptor instead.
 func (*Chats) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{82}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *Chats) GetChats() []*ChatSummary {
@@ -4740,10 +5938,148 @@ func (x *Chats) GetDone() bool {
 	return false
 }
 
+func (x *Chats) GetNextAfterActivity() int64 {
+	if x != nil {
+		return x.NextAfterActivity
+	}
+	return 0
+}
+
+// ChatFlags sets the caller's own settings for one chat. muted_until is a
+// unix-millis deadline (0 unmutes), not a flag: "mute for eight hours" is what
+// muting usually means and a boolean cannot say it.
+
+func (x *ChatFlags) Reset() {
+	*x = ChatFlags{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[103]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ChatFlags) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatFlags) ProtoMessage() {}
+
+func (x *ChatFlags) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[103]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatFlags.ProtoReflect.Descriptor instead.
+func (*ChatFlags) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{103}
+}
+
+func (x *ChatFlags) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *ChatFlags) GetMutedUntil() int64 {
+	if x != nil {
+		return x.MutedUntil
+	}
+	return 0
+}
+
+func (x *ChatFlags) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *ChatFlags) GetArchived() bool {
+	if x != nil {
+		return x.Archived
+	}
+	return false
+}
+
+// ChatFlagsSet echoes the flags now stored, so a client that raced two changes
+// converges on the server's state rather than on what it last sent.
+
+func (x *ChatFlagsSet) Reset() {
+	*x = ChatFlagsSet{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[104]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ChatFlagsSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChatFlagsSet) ProtoMessage() {}
+
+func (x *ChatFlagsSet) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[104]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChatFlagsSet.ProtoReflect.Descriptor instead.
+func (*ChatFlagsSet) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{104}
+}
+
+func (x *ChatFlagsSet) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *ChatFlagsSet) GetMutedUntil() int64 {
+	if x != nil {
+		return x.MutedUntil
+	}
+	return 0
+}
+
+func (x *ChatFlagsSet) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *ChatFlagsSet) GetArchived() bool {
+	if x != nil {
+		return x.Archived
+	}
+	return false
+}
+
+// ProfileGet reads a user's public profile. Target is a user id or "@username" —
+// which also makes it the handle→user lookup, so resolving a handle no longer
+// has to be smuggled through an unrelated read-only message.
+
 func (x *ProfileGet) Reset() {
 	*x = ProfileGet{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[83]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[105]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4756,7 +6092,7 @@ func (x *ProfileGet) String() string {
 func (*ProfileGet) ProtoMessage() {}
 
 func (x *ProfileGet) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[83]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[105]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4769,7 +6105,7 @@ func (x *ProfileGet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfileGet.ProtoReflect.Descriptor instead.
 func (*ProfileGet) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{83}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *ProfileGet) GetTarget() string {
@@ -4779,10 +6115,14 @@ func (x *ProfileGet) GetTarget() string {
 	return ""
 }
 
+// ProfileSet updates the CALLER's own profile. Empty fields mean "leave as is"
+// (proto3 cannot tell absent from empty), so clearing the avatar is an explicit
+// flag rather than an empty string.
+
 func (x *ProfileSet) Reset() {
 	*x = ProfileSet{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[84]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[106]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4795,7 +6135,7 @@ func (x *ProfileSet) String() string {
 func (*ProfileSet) ProtoMessage() {}
 
 func (x *ProfileSet) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[84]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[106]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4808,7 +6148,7 @@ func (x *ProfileSet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfileSet.ProtoReflect.Descriptor instead.
 func (*ProfileSet) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{84}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *ProfileSet) GetDisplayName() string {
@@ -4835,7 +6175,7 @@ func (x *ProfileSet) GetClearAvatar() bool {
 func (x *Profile) Reset() {
 	*x = Profile{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[85]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[107]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4848,7 +6188,7 @@ func (x *Profile) String() string {
 func (*Profile) ProtoMessage() {}
 
 func (x *Profile) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[85]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[107]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4861,7 +6201,7 @@ func (x *Profile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Profile.ProtoReflect.Descriptor instead.
 func (*Profile) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{85}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *Profile) GetUserId() string {
@@ -4892,10 +6232,18 @@ func (x *Profile) GetAvatarRef() string {
 	return ""
 }
 
+// AccountDelete erases the CALLER's account — the store-mandated counterpart to
+// registration (Apple 5.1.1(v), Google Play's account-deletion policy): an app
+// that lets a user create an account in-app must let them destroy it in-app.
+//
+// The password is re-checked even though the socket is already authenticated.
+// A session token lives on the device; someone holding an unlocked phone must
+// not be able to erase the account behind it with two taps.
+
 func (x *AccountDelete) Reset() {
 	*x = AccountDelete{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[86]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[108]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4908,7 +6256,7 @@ func (x *AccountDelete) String() string {
 func (*AccountDelete) ProtoMessage() {}
 
 func (x *AccountDelete) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[86]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[108]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4921,7 +6269,7 @@ func (x *AccountDelete) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountDelete.ProtoReflect.Descriptor instead.
 func (*AccountDelete) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{86}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *AccountDelete) GetPassword() string {
@@ -4938,10 +6286,13 @@ func (x *AccountDelete) GetReason() string {
 	return ""
 }
 
+// AccountDeleted confirms the erasure. Every session is revoked before it is
+// sent, so this is the last frame the connection will ever carry.
+
 func (x *AccountDeleted) Reset() {
 	*x = AccountDeleted{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_proto_SyncApp_v1_body_proto_msgTypes[87]
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[109]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4954,7 +6305,7 @@ func (x *AccountDeleted) String() string {
 func (*AccountDeleted) ProtoMessage() {}
 
 func (x *AccountDeleted) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_SyncApp_v1_body_proto_msgTypes[87]
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[109]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4967,7 +6318,7 @@ func (x *AccountDeleted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountDeleted.ProtoReflect.Descriptor instead.
 func (*AccountDeleted) Descriptor() ([]byte, []int) {
-	return file_proto_SyncApp_v1_body_proto_rawDescGZIP(), []int{87}
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *AccountDeleted) GetUserId() string {
@@ -4984,21 +6335,497 @@ func (x *AccountDeleted) GetDeletedAt() int64 {
 	return 0
 }
 
-func file_proto_SyncApp_v1_body_proto_rawDescGZIP() []byte {
-	file_proto_SyncApp_v1_body_proto_rawDescOnce.Do(func() {
-		file_proto_SyncApp_v1_body_proto_rawDescData = protoimpl.X.CompressGZIP(file_proto_SyncApp_v1_body_proto_rawDescData)
-	})
-	return file_proto_SyncApp_v1_body_proto_rawDescData
+func (x *SessionList) Reset() {
+	*x = SessionList{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[110]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
 }
 
-func init() { file_proto_SyncApp_v1_body_proto_init() }
+func (x *SessionList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
 
-func file_proto_SyncApp_v1_body_proto_init() {
-	if File_proto_SyncApp_v1_body_proto != nil {
+func (*SessionList) ProtoMessage() {}
+
+func (x *SessionList) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[110]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionList.ProtoReflect.Descriptor instead.
+func (*SessionList) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{110}
+}
+
+// SessionInfo describes one live session. It carries no token: the point is to
+// let a person recognise a device, not to hand another device its credentials.
+
+func (x *SessionInfo) Reset() {
+	*x = SessionInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[111]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SessionInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionInfo) ProtoMessage() {}
+
+func (x *SessionInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[111]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionInfo.ProtoReflect.Descriptor instead.
+func (*SessionInfo) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{111}
+}
+
+func (x *SessionInfo) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionInfo) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *SessionInfo) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
+func (x *SessionInfo) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *SessionInfo) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+func (x *SessionInfo) GetCurrent() bool {
+	if x != nil {
+		return x.Current
+	}
+	return false
+}
+
+func (x *Sessions) Reset() {
+	*x = Sessions{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[112]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Sessions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Sessions) ProtoMessage() {}
+
+func (x *Sessions) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[112]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Sessions.ProtoReflect.Descriptor instead.
+func (*Sessions) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{112}
+}
+
+func (x *Sessions) GetSessions() []*SessionInfo {
+	if x != nil {
+		return x.Sessions
+	}
+	return nil
+}
+
+// SessionRevoke kills one session. An empty session_id means "every session
+// except this one" — the "sign out everywhere else" a person reaches for after
+// losing a device, expressed without a second message type.
+
+func (x *SessionRevoke) Reset() {
+	*x = SessionRevoke{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[113]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SessionRevoke) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionRevoke) ProtoMessage() {}
+
+func (x *SessionRevoke) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[113]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionRevoke.ProtoReflect.Descriptor instead.
+func (*SessionRevoke) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{113}
+}
+
+func (x *SessionRevoke) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *SessionRevoke) GetAllIncludingCurrent() bool {
+	if x != nil {
+		return x.AllIncludingCurrent
+	}
+	return false
+}
+
+// SessionRevoked reports what the revoke actually did. The count matters: a
+// client that asked to sign out five devices and signed out one should say so.
+
+func (x *SessionRevoked) Reset() {
+	*x = SessionRevoked{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[114]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SessionRevoked) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SessionRevoked) ProtoMessage() {}
+
+func (x *SessionRevoked) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[114]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SessionRevoked.ProtoReflect.Descriptor instead.
+func (*SessionRevoked) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{114}
+}
+
+func (x *SessionRevoked) GetRevoked() int32 {
+	if x != nil {
+		return x.Revoked
+	}
+	return 0
+}
+
+func (x *SessionRevoked) GetSelf() bool {
+	if x != nil {
+		return x.Self
+	}
+	return false
+}
+
+// HistoryPage is one backfill page delivered as a single frame.
+//
+// HISTORY answers with up to a hundred messages, and it used to send each as its
+// own NEW frame: a hundred envelopes, a hundred protobuf bodies and a hundred
+// trips through the connection's single writer to answer one request. The page
+// carries the same messages in one frame.
+//
+// Sent only to peers that negotiated CAP_BATCHING in HELLO. A client that does
+// not understand this type still gets the per-message stream, which is why the
+// capability bit exists at all — it was declared and never used until now.
+
+func (x *HistoryPage) Reset() {
+	*x = HistoryPage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[115]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *HistoryPage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HistoryPage) ProtoMessage() {}
+
+func (x *HistoryPage) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[115]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HistoryPage.ProtoReflect.Descriptor instead.
+func (*HistoryPage) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{115}
+}
+
+func (x *HistoryPage) GetMessages() []*NewMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+func (x *HistoryPage) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *HistoryPage) GetNextBefore() uint64 {
+	if x != nil {
+		return x.NextBefore
+	}
+	return 0
+}
+
+func (x *HistoryPage) GetDone() bool {
+	if x != nil {
+		return x.Done
+	}
+	return false
+}
+
+// PrivacyGet asks for the CALLER's own settings. No target field: these are not
+// readable for anyone else, and a message that could name one would leak
+// precisely what it exists to protect.
+
+func (x *PrivacyGet) Reset() {
+	*x = PrivacyGet{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[116]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PrivacyGet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrivacyGet) ProtoMessage() {}
+
+func (x *PrivacyGet) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[116]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrivacyGet.ProtoReflect.Descriptor instead.
+func (*PrivacyGet) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{116}
+}
+
+// PrivacySet replaces the caller's settings. Every field is sent every time —
+// a partial update would make "nobody" indistinguishable from "unset".
+
+func (x *PrivacySet) Reset() {
+	*x = PrivacySet{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[117]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PrivacySet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrivacySet) ProtoMessage() {}
+
+func (x *PrivacySet) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[117]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrivacySet.ProtoReflect.Descriptor instead.
+func (*PrivacySet) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{117}
+}
+
+func (x *PrivacySet) GetLastSeen() string {
+	if x != nil {
+		return x.LastSeen
+	}
+	return ""
+}
+
+func (x *PrivacySet) GetAvatar() string {
+	if x != nil {
+		return x.Avatar
+	}
+	return ""
+}
+
+func (x *PrivacySet) GetGroups() string {
+	if x != nil {
+		return x.Groups
+	}
+	return ""
+}
+
+func (x *PrivacySet) GetPushPreview() bool {
+	if x != nil {
+		return x.PushPreview
+	}
+	return false
+}
+
+func (x *Privacy) Reset() {
+	*x = Privacy{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_proto_syncapp_v1_body_proto_msgTypes[118]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Privacy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Privacy) ProtoMessage() {}
+
+func (x *Privacy) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_syncapp_v1_body_proto_msgTypes[118]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Privacy.ProtoReflect.Descriptor instead.
+func (*Privacy) Descriptor() ([]byte, []int) {
+	return file_proto_syncapp_v1_body_proto_rawDescGZIP(), []int{118}
+}
+
+func (x *Privacy) GetLastSeen() string {
+	if x != nil {
+		return x.LastSeen
+	}
+	return ""
+}
+
+func (x *Privacy) GetAvatar() string {
+	if x != nil {
+		return x.Avatar
+	}
+	return ""
+}
+
+func (x *Privacy) GetGroups() string {
+	if x != nil {
+		return x.Groups
+	}
+	return ""
+}
+
+func (x *Privacy) GetPushPreview() bool {
+	if x != nil {
+		return x.PushPreview
+	}
+	return false
+}
+
+func file_proto_syncapp_v1_body_proto_rawDescGZIP() []byte {
+	file_proto_syncapp_v1_body_proto_rawDescOnce.Do(func() {
+		file_proto_syncapp_v1_body_proto_rawDescData = protoimpl.X.CompressGZIP(file_proto_syncapp_v1_body_proto_rawDescData)
+	})
+	return file_proto_syncapp_v1_body_proto_rawDescData
+}
+
+func init() { file_proto_syncapp_v1_body_proto_init() }
+func file_proto_syncapp_v1_body_proto_init() {
+	if File_proto_syncapp_v1_body_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_proto_SyncApp_v1_body_proto_msgTypes[0].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*Hello); i {
 			case 0:
 				return &v.state
@@ -5010,7 +6837,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[1].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*Welcome); i {
 			case 0:
 				return &v.state
@@ -5022,7 +6849,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[2].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[2].Exporter = func(v any, i int) any {
 			switch v := v.(*Auth); i {
 			case 0:
 				return &v.state
@@ -5034,7 +6861,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[3].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[3].Exporter = func(v any, i int) any {
 			switch v := v.(*AuthOK); i {
 			case 0:
 				return &v.state
@@ -5046,7 +6873,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[4].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[4].Exporter = func(v any, i int) any {
 			switch v := v.(*Send); i {
 			case 0:
 				return &v.state
@@ -5058,7 +6885,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[5].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[5].Exporter = func(v any, i int) any {
 			switch v := v.(*Attachment); i {
 			case 0:
 				return &v.state
@@ -5070,7 +6897,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[6].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[6].Exporter = func(v any, i int) any {
 			switch v := v.(*SendAck); i {
 			case 0:
 				return &v.state
@@ -5082,7 +6909,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[7].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[7].Exporter = func(v any, i int) any {
 			switch v := v.(*NewMessage); i {
 			case 0:
 				return &v.state
@@ -5094,7 +6921,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[8].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[8].Exporter = func(v any, i int) any {
 			switch v := v.(*Thread); i {
 			case 0:
 				return &v.state
@@ -5106,7 +6933,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[9].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[9].Exporter = func(v any, i int) any {
 			switch v := v.(*ThreadOK); i {
 			case 0:
 				return &v.state
@@ -5118,7 +6945,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[10].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[10].Exporter = func(v any, i int) any {
 			switch v := v.(*Read); i {
 			case 0:
 				return &v.state
@@ -5130,7 +6957,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[11].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[11].Exporter = func(v any, i int) any {
 			switch v := v.(*ReadUpdate); i {
 			case 0:
 				return &v.state
@@ -5142,7 +6969,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[12].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[12].Exporter = func(v any, i int) any {
 			switch v := v.(*Typing); i {
 			case 0:
 				return &v.state
@@ -5154,7 +6981,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[13].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[13].Exporter = func(v any, i int) any {
 			switch v := v.(*React); i {
 			case 0:
 				return &v.state
@@ -5166,7 +6993,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[14].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[14].Exporter = func(v any, i int) any {
 			switch v := v.(*ReactUpdate); i {
 			case 0:
 				return &v.state
@@ -5178,7 +7005,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[15].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[15].Exporter = func(v any, i int) any {
 			switch v := v.(*Presence); i {
 			case 0:
 				return &v.state
@@ -5190,7 +7017,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[16].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[16].Exporter = func(v any, i int) any {
 			switch v := v.(*Edit); i {
 			case 0:
 				return &v.state
@@ -5202,7 +7029,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[17].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[17].Exporter = func(v any, i int) any {
 			switch v := v.(*Delete); i {
 			case 0:
 				return &v.state
@@ -5214,7 +7041,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[18].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[18].Exporter = func(v any, i int) any {
 			switch v := v.(*History); i {
 			case 0:
 				return &v.state
@@ -5226,7 +7053,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[19].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[19].Exporter = func(v any, i int) any {
 			switch v := v.(*HistoryOK); i {
 			case 0:
 				return &v.state
@@ -5238,7 +7065,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[20].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[20].Exporter = func(v any, i int) any {
 			switch v := v.(*Resume); i {
 			case 0:
 				return &v.state
@@ -5250,7 +7077,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[21].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[21].Exporter = func(v any, i int) any {
 			switch v := v.(*ResumeOK); i {
 			case 0:
 				return &v.state
@@ -5262,7 +7089,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[22].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[22].Exporter = func(v any, i int) any {
 			switch v := v.(*Error); i {
 			case 0:
 				return &v.state
@@ -5274,7 +7101,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[23].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[23].Exporter = func(v any, i int) any {
 			switch v := v.(*MediaInit); i {
 			case 0:
 				return &v.state
@@ -5286,7 +7113,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[24].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[24].Exporter = func(v any, i int) any {
 			switch v := v.(*MediaTicket); i {
 			case 0:
 				return &v.state
@@ -5298,7 +7125,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[25].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[25].Exporter = func(v any, i int) any {
 			switch v := v.(*MediaFetch); i {
 			case 0:
 				return &v.state
@@ -5310,7 +7137,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[26].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[26].Exporter = func(v any, i int) any {
 			switch v := v.(*MediaURL); i {
 			case 0:
 				return &v.state
@@ -5322,7 +7149,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[27].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[27].Exporter = func(v any, i int) any {
 			switch v := v.(*Search); i {
 			case 0:
 				return &v.state
@@ -5334,7 +7161,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[28].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[28].Exporter = func(v any, i int) any {
 			switch v := v.(*SearchHit); i {
 			case 0:
 				return &v.state
@@ -5346,7 +7173,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[29].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[29].Exporter = func(v any, i int) any {
 			switch v := v.(*SearchResults); i {
 			case 0:
 				return &v.state
@@ -5358,7 +7185,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[30].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[30].Exporter = func(v any, i int) any {
 			switch v := v.(*KeyPublish); i {
 			case 0:
 				return &v.state
@@ -5370,7 +7197,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[31].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[31].Exporter = func(v any, i int) any {
 			switch v := v.(*KeyFetch); i {
 			case 0:
 				return &v.state
@@ -5382,7 +7209,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[32].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[32].Exporter = func(v any, i int) any {
 			switch v := v.(*KeyBundle); i {
 			case 0:
 				return &v.state
@@ -5394,7 +7221,19 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[33].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[33].Exporter = func(v any, i int) any {
+			switch v := v.(*KeyState); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[34].Exporter = func(v any, i int) any {
 			switch v := v.(*KeyBundles); i {
 			case 0:
 				return &v.state
@@ -5406,7 +7245,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[34].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[35].Exporter = func(v any, i int) any {
 			switch v := v.(*SecretMsg); i {
 			case 0:
 				return &v.state
@@ -5418,7 +7257,235 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[35].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[36].Exporter = func(v any, i int) any {
+			switch v := v.(*BillingPlans); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[37].Exporter = func(v any, i int) any {
+			switch v := v.(*BillingOffers); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[38].Exporter = func(v any, i int) any {
+			switch v := v.(*PlanOffer); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[39].Exporter = func(v any, i int) any {
+			switch v := v.(*BillingCheckout); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[40].Exporter = func(v any, i int) any {
+			switch v := v.(*BillingPayment); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[41].Exporter = func(v any, i int) any {
+			switch v := v.(*BillingStatus); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[42].Exporter = func(v any, i int) any {
+			switch v := v.(*BillingCancel); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[43].Exporter = func(v any, i int) any {
+			switch v := v.(*Subscription); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[44].Exporter = func(v any, i int) any {
+			switch v := v.(*PasswordChange); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[45].Exporter = func(v any, i int) any {
+			switch v := v.(*PasswordChanged); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[46].Exporter = func(v any, i int) any {
+			switch v := v.(*TOTPSetup); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[47].Exporter = func(v any, i int) any {
+			switch v := v.(*TOTPSetupInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[48].Exporter = func(v any, i int) any {
+			switch v := v.(*TOTPConfirm); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[49].Exporter = func(v any, i int) any {
+			switch v := v.(*TOTPDisable); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[50].Exporter = func(v any, i int) any {
+			switch v := v.(*TOTPState); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[51].Exporter = func(v any, i int) any {
+			switch v := v.(*SecretAck); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[52].Exporter = func(v any, i int) any {
+			switch v := v.(*SecretSync); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[53].Exporter = func(v any, i int) any {
+			switch v := v.(*SecretSynced); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[54].Exporter = func(v any, i int) any {
+			switch v := v.(*SecretAcked); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[55].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatExport); i {
 			case 0:
 				return &v.state
@@ -5430,7 +7497,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[36].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[56].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatMember); i {
 			case 0:
 				return &v.state
@@ -5442,7 +7509,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[37].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[57].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatExportResult); i {
 			case 0:
 				return &v.state
@@ -5454,7 +7521,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[38].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[58].Exporter = func(v any, i int) any {
 			switch v := v.(*CallInvite); i {
 			case 0:
 				return &v.state
@@ -5466,7 +7533,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[39].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[59].Exporter = func(v any, i int) any {
 			switch v := v.(*CallAction); i {
 			case 0:
 				return &v.state
@@ -5478,7 +7545,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[40].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[60].Exporter = func(v any, i int) any {
 			switch v := v.(*CallParticipant); i {
 			case 0:
 				return &v.state
@@ -5490,7 +7557,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[41].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[61].Exporter = func(v any, i int) any {
 			switch v := v.(*CallState); i {
 			case 0:
 				return &v.state
@@ -5502,7 +7569,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[42].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[62].Exporter = func(v any, i int) any {
 			switch v := v.(*CallSignal); i {
 			case 0:
 				return &v.state
@@ -5514,7 +7581,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[43].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[63].Exporter = func(v any, i int) any {
 			switch v := v.(*PollCreate); i {
 			case 0:
 				return &v.state
@@ -5526,7 +7593,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[44].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[64].Exporter = func(v any, i int) any {
 			switch v := v.(*PollVote); i {
 			case 0:
 				return &v.state
@@ -5538,7 +7605,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[45].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[65].Exporter = func(v any, i int) any {
 			switch v := v.(*PollClose); i {
 			case 0:
 				return &v.state
@@ -5550,7 +7617,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[46].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[66].Exporter = func(v any, i int) any {
 			switch v := v.(*PollOption); i {
 			case 0:
 				return &v.state
@@ -5562,7 +7629,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[47].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[67].Exporter = func(v any, i int) any {
 			switch v := v.(*PollState); i {
 			case 0:
 				return &v.state
@@ -5574,7 +7641,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[48].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[68].Exporter = func(v any, i int) any {
 			switch v := v.(*ContactAdd); i {
 			case 0:
 				return &v.state
@@ -5586,7 +7653,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[49].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[69].Exporter = func(v any, i int) any {
 			switch v := v.(*ContactRemove); i {
 			case 0:
 				return &v.state
@@ -5598,7 +7665,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[50].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[70].Exporter = func(v any, i int) any {
 			switch v := v.(*ContactSync); i {
 			case 0:
 				return &v.state
@@ -5610,7 +7677,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[51].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[71].Exporter = func(v any, i int) any {
 			switch v := v.(*Contact); i {
 			case 0:
 				return &v.state
@@ -5622,7 +7689,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[52].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[72].Exporter = func(v any, i int) any {
 			switch v := v.(*ContactList); i {
 			case 0:
 				return &v.state
@@ -5634,7 +7701,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[53].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[73].Exporter = func(v any, i int) any {
 			switch v := v.(*Block); i {
 			case 0:
 				return &v.state
@@ -5646,7 +7713,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[54].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[74].Exporter = func(v any, i int) any {
 			switch v := v.(*ForwardOrigin); i {
 			case 0:
 				return &v.state
@@ -5658,7 +7725,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[55].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[75].Exporter = func(v any, i int) any {
 			switch v := v.(*Forward); i {
 			case 0:
 				return &v.state
@@ -5670,7 +7737,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[56].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[76].Exporter = func(v any, i int) any {
 			switch v := v.(*Schedule); i {
 			case 0:
 				return &v.state
@@ -5682,7 +7749,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[57].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[77].Exporter = func(v any, i int) any {
 			switch v := v.(*ScheduleList); i {
 			case 0:
 				return &v.state
@@ -5694,7 +7761,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[58].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[78].Exporter = func(v any, i int) any {
 			switch v := v.(*ScheduleCancel); i {
 			case 0:
 				return &v.state
@@ -5706,7 +7773,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[59].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[79].Exporter = func(v any, i int) any {
 			switch v := v.(*ScheduledItem); i {
 			case 0:
 				return &v.state
@@ -5718,7 +7785,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[60].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[80].Exporter = func(v any, i int) any {
 			switch v := v.(*Scheduled); i {
 			case 0:
 				return &v.state
@@ -5730,7 +7797,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[61].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[81].Exporter = func(v any, i int) any {
 			switch v := v.(*Pin); i {
 			case 0:
 				return &v.state
@@ -5742,7 +7809,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[62].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[82].Exporter = func(v any, i int) any {
 			switch v := v.(*PinAction); i {
 			case 0:
 				return &v.state
@@ -5754,7 +7821,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[63].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[83].Exporter = func(v any, i int) any {
 			switch v := v.(*Pinned); i {
 			case 0:
 				return &v.state
@@ -5766,7 +7833,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[64].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[84].Exporter = func(v any, i int) any {
 			switch v := v.(*Draft); i {
 			case 0:
 				return &v.state
@@ -5778,7 +7845,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[65].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[85].Exporter = func(v any, i int) any {
 			switch v := v.(*DraftSync); i {
 			case 0:
 				return &v.state
@@ -5790,7 +7857,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[66].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[86].Exporter = func(v any, i int) any {
 			switch v := v.(*DraftItem); i {
 			case 0:
 				return &v.state
@@ -5802,7 +7869,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[67].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[87].Exporter = func(v any, i int) any {
 			switch v := v.(*Drafts); i {
 			case 0:
 				return &v.state
@@ -5814,7 +7881,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[68].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[88].Exporter = func(v any, i int) any {
 			switch v := v.(*SetUsername); i {
 			case 0:
 				return &v.state
@@ -5826,7 +7893,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[69].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[89].Exporter = func(v any, i int) any {
 			switch v := v.(*InviteCreate); i {
 			case 0:
 				return &v.state
@@ -5838,7 +7905,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[70].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[90].Exporter = func(v any, i int) any {
 			switch v := v.(*InviteRevoke); i {
 			case 0:
 				return &v.state
@@ -5850,7 +7917,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[71].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[91].Exporter = func(v any, i int) any {
 			switch v := v.(*InviteList); i {
 			case 0:
 				return &v.state
@@ -5862,7 +7929,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[72].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[92].Exporter = func(v any, i int) any {
 			switch v := v.(*Join); i {
 			case 0:
 				return &v.state
@@ -5874,7 +7941,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[73].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[93].Exporter = func(v any, i int) any {
 			switch v := v.(*SetRole); i {
 			case 0:
 				return &v.state
@@ -5886,7 +7953,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[74].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[94].Exporter = func(v any, i int) any {
 			switch v := v.(*InviteLink); i {
 			case 0:
 				return &v.state
@@ -5898,7 +7965,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[75].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[95].Exporter = func(v any, i int) any {
 			switch v := v.(*Invites); i {
 			case 0:
 				return &v.state
@@ -5910,7 +7977,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[76].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[96].Exporter = func(v any, i int) any {
 			switch v := v.(*FanoutShard); i {
 			case 0:
 				return &v.state
@@ -5922,7 +7989,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[77].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[97].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatCreate); i {
 			case 0:
 				return &v.state
@@ -5934,7 +8001,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[78].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[98].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatInfo); i {
 			case 0:
 				return &v.state
@@ -5946,7 +8013,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[79].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[99].Exporter = func(v any, i int) any {
 			switch v := v.(*PushToken); i {
 			case 0:
 				return &v.state
@@ -5958,7 +8025,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[80].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[100].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatList); i {
 			case 0:
 				return &v.state
@@ -5970,7 +8037,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[81].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[101].Exporter = func(v any, i int) any {
 			switch v := v.(*ChatSummary); i {
 			case 0:
 				return &v.state
@@ -5982,7 +8049,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[82].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[102].Exporter = func(v any, i int) any {
 			switch v := v.(*Chats); i {
 			case 0:
 				return &v.state
@@ -5994,7 +8061,31 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[83].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[103].Exporter = func(v any, i int) any {
+			switch v := v.(*ChatFlags); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[104].Exporter = func(v any, i int) any {
+			switch v := v.(*ChatFlagsSet); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[105].Exporter = func(v any, i int) any {
 			switch v := v.(*ProfileGet); i {
 			case 0:
 				return &v.state
@@ -6006,7 +8097,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[84].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[106].Exporter = func(v any, i int) any {
 			switch v := v.(*ProfileSet); i {
 			case 0:
 				return &v.state
@@ -6018,7 +8109,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[85].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[107].Exporter = func(v any, i int) any {
 			switch v := v.(*Profile); i {
 			case 0:
 				return &v.state
@@ -6030,7 +8121,7 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[86].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[108].Exporter = func(v any, i int) any {
 			switch v := v.(*AccountDelete); i {
 			case 0:
 				return &v.state
@@ -6042,8 +8133,116 @@ func file_proto_SyncApp_v1_body_proto_init() {
 				return nil
 			}
 		}
-		file_proto_SyncApp_v1_body_proto_msgTypes[87].Exporter = func(v any, i int) any {
+		file_proto_syncapp_v1_body_proto_msgTypes[109].Exporter = func(v any, i int) any {
 			switch v := v.(*AccountDeleted); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[110].Exporter = func(v any, i int) any {
+			switch v := v.(*SessionList); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[111].Exporter = func(v any, i int) any {
+			switch v := v.(*SessionInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[112].Exporter = func(v any, i int) any {
+			switch v := v.(*Sessions); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[113].Exporter = func(v any, i int) any {
+			switch v := v.(*SessionRevoke); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[114].Exporter = func(v any, i int) any {
+			switch v := v.(*SessionRevoked); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[115].Exporter = func(v any, i int) any {
+			switch v := v.(*HistoryPage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[116].Exporter = func(v any, i int) any {
+			switch v := v.(*PrivacyGet); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[117].Exporter = func(v any, i int) any {
+			switch v := v.(*PrivacySet); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_proto_syncapp_v1_body_proto_msgTypes[118].Exporter = func(v any, i int) any {
+			switch v := v.(*Privacy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -6059,18 +8258,18 @@ func file_proto_SyncApp_v1_body_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_proto_SyncApp_v1_body_proto_rawDesc,
+			RawDescriptor: file_proto_syncapp_v1_body_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   89,
+			NumMessages:   120,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_proto_SyncApp_v1_body_proto_goTypes,
-		DependencyIndexes: file_proto_SyncApp_v1_body_proto_depIdxs,
-		MessageInfos:      file_proto_SyncApp_v1_body_proto_msgTypes,
+		GoTypes:           file_proto_syncapp_v1_body_proto_goTypes,
+		DependencyIndexes: file_proto_syncapp_v1_body_proto_depIdxs,
+		MessageInfos:      file_proto_syncapp_v1_body_proto_msgTypes,
 	}.Build()
-	File_proto_SyncApp_v1_body_proto = out.File
-	file_proto_SyncApp_v1_body_proto_rawDesc = nil
-	file_proto_SyncApp_v1_body_proto_goTypes = nil
-	file_proto_SyncApp_v1_body_proto_depIdxs = nil
+	File_proto_syncapp_v1_body_proto = out.File
+	file_proto_syncapp_v1_body_proto_rawDesc = nil
+	file_proto_syncapp_v1_body_proto_goTypes = nil
+	file_proto_syncapp_v1_body_proto_depIdxs = nil
 }

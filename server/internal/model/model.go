@@ -3,14 +3,42 @@
 // to index. Timestamps are unix milliseconds.
 package model
 
-// ChatType distinguishes the three conversation kinds.
+// ChatType distinguishes the conversation kinds.
 type ChatType string
 
 const (
 	ChatDirect  ChatType = "direct"  // 1:1
 	ChatGroup   ChatType = "group"   // many-to-many, bounded membership
 	ChatChannel ChatType = "channel" // broadcast: few writers, huge read fanout
+	// ChatSecret is a 1:1 conversation whose CONTENT never reaches the server in
+	// readable form.
+	//
+	// It is a chat type rather than a side channel, and that is the whole change.
+	// End-to-end chats used to exist only as a relay with no chat row behind it, so
+	// they had no entry in the chat list, no history, no unread count and no
+	// settings — every client put them in a modal window beside the product, which
+	// is exactly how they were treated. Making it a type means the ordinary screens
+	// work and only the guarantees differ.
+	//
+	// What the row holds and does not hold: membership, title, flags, ordering, and
+	// the per-chat sequence — all the metadata a chat needs. NOT the messages. Those
+	// live in the secret queue as ciphertext until the peer device collects them,
+	// and nothing in the message log ever refers to this chat.
+	ChatSecret ChatType = "secret"
 )
+
+// IsSecret reports whether a chat carries end-to-end content.
+//
+// A method rather than comparisons scattered around, because several paths have to
+// refuse: server-side search cannot index what it cannot read, forwarding OUT of a
+// secret chat would launder ciphertext into a cloud chat, and history has nothing
+// to return. Each of those is a separate refusal and they must agree.
+func (t ChatType) IsSecret() bool { return t == ChatSecret }
+
+// Is1To1 reports whether the type is inherently two-party. Both direct and secret
+// chats are, and membership changes are refused for both for the same reason: a
+// third member has no session with anyone.
+func (t ChatType) Is1To1() bool { return t == ChatDirect || t == ChatSecret }
 
 // User is an account. PasswordHash is argon2id (never the raw password).
 // AvatarRef points into the media service (the blob never lives here), so an
@@ -23,6 +51,10 @@ type User struct {
 	AvatarRef    string `json:"avatar_ref,omitempty"`
 	PasswordHash string `json:"-"`
 	CreatedAt    int64  `json:"created_at"`
+	// Privacy gates what other accounts may see. Carried on the user rather than
+	// fetched separately because every path that needs it is already reading the
+	// row — presence fanout, a profile read, a group add.
+	Privacy Privacy `json:"privacy"`
 }
 
 // ChatSummary is a chat as it appears in a user's chat list: the chat itself
@@ -32,6 +64,44 @@ type ChatSummary struct {
 	Chat   *Chat      `json:"chat"`
 	MyRole MemberRole `json:"my_role,omitempty"`
 	PeerID string     `json:"peer_id,omitempty"`
+
+	// Everything below is what a chat list actually shows, and none of it used to
+	// be here. A client that wanted a preview, an unread badge or a sort order had
+	// to fetch history per chat to work it out — so the N+1 the server had just
+	// moved to the client and became N+1 over the network.
+	//
+	// LastMessage is the newest live message, or nil for an empty chat.
+	LastMessage *Message `json:"last_message,omitempty"`
+	// UnreadCount is how many messages sit above the caller's read cursor.
+	UnreadCount int64 `json:"unread_count,omitempty"`
+	// LastActivityAt is the sort key: the newest message's timestamp, falling back
+	// to the chat's creation time so a brand-new empty chat appears at the top
+	// rather than at the bottom.
+	LastActivityAt int64 `json:"last_activity_at,omitempty"`
+	// Flags are the caller's own per-chat settings.
+	Flags MemberFlags `json:"flags"`
+}
+
+// MemberFlags are one member's private settings for a chat.
+//
+// They live on the membership row, not the chat: muting, pinning and archiving are
+// each one person's opinion about a shared conversation. The `muted` column existed
+// from the first migration and nothing ever read it — there was no protocol message
+// to set it and the notification path never checked it, so muting a chat was
+// impossible while looking like a supported feature.
+type MemberFlags struct {
+	// MutedUntil is a unix-millis deadline; 0 means not muted. A deadline rather
+	// than a bool because "for eight hours" is what people want far more often
+	// than "forever", and a bool cannot express it — while a deadline expresses
+	// both (a very distant one is "forever").
+	MutedUntil int64 `json:"muted_until,omitempty"`
+	Pinned     bool  `json:"pinned,omitempty"`
+	Archived   bool  `json:"archived,omitempty"`
+}
+
+// MutedAt reports whether notifications are suppressed at time now (unix millis).
+func (f MemberFlags) MutedAt(now int64) bool {
+	return f.MutedUntil != 0 && f.MutedUntil > now
 }
 
 // Device is one client installation bound to a user. Each device has its own
@@ -56,6 +126,16 @@ type Session struct {
 	CreatedAt   int64  `json:"created_at"`
 	ExpiresAt   int64  `json:"expires_at"`
 	RevokedAt   int64  `json:"revoked_at,omitempty"`
+	// PrevResumeToken is the resume token this session most recently rotated away
+	// from, and it is kept on purpose.
+	//
+	// A resume token used to live unchanged for the session's whole TTL, so one
+	// captured token granted access for a fortnight and its use was
+	// UNDETECTABLE — the real client kept working alongside whoever took it.
+	// Remembering the consumed token turns that into a signal: a resume for a
+	// token that has already been spent means two parties hold the chain.
+	PrevResumeToken string `json:"-"`
+	ResumeRotatedAt int64  `json:"resume_rotated_at,omitempty"`
 }
 
 // Chat is a conversation. OwnerID is the creator (channel/group admin seed).
@@ -88,7 +168,14 @@ type ChatMember struct {
 	Role     MemberRole `json:"role"`
 	JoinedAt int64      `json:"joined_at"`
 	// Muted disables push for this member.
+	//
+	// Kept for the column it maps to; MutedUntil in Flags is what the notification
+	// path reads. A bool cannot express "for eight hours", which is what muting
+	// usually means.
 	Muted bool `json:"muted"`
+	// Flags are this member's private per-chat settings (mute deadline, pin,
+	// archive).
+	Flags MemberFlags `json:"flags"`
 }
 
 // Message is a persisted chat message. Seq is the per-chat ordering position
@@ -328,3 +415,66 @@ type InviteLink struct {
 	Uses      int32  `json:"uses"`
 	Revoked   bool   `json:"revoked,omitempty"`
 }
+
+// SecretEnvelope is one end-to-end ciphertext held for a device that was not
+// connected when it was relayed.
+//
+// It exists because SECRET_SEND used to be pure relay: the gateway asked the
+// router which nodes held the recipient, published to each, and DISCARDED the
+// return value. Zero nodes — the recipient offline — meant the ciphertext went
+// nowhere, no push was queued, and the sender was told nothing. A secret chat
+// between two people who are not online at the same moment delivered nothing at
+// all, which is the one mode the whole X3DH/ratchet/pinning stack exists for.
+//
+// Header and Ciphertext are the Double Ratchet wire bytes, opaque here and
+// unreadable by the server — exactly what it already relayed, now durable.
+// They are []byte rather than the base64 strings the wire body carries: this is
+// storage, and re-encoding bytes to text to put them in a BYTEA column would be
+// a third copy of the same bits for no reason.
+//
+// ExpiresAt is not optional. A queue of undelivered ciphertext addressed by
+// user+device is also a record of who messaged whom and when — metadata the
+// relay never persisted — so it has to be collected on a schedule rather than
+// kept until someone remembers to look.
+type SecretEnvelope struct {
+	ID           string `json:"id"`
+	ToUserID     string `json:"to_user_id"`
+	ToDeviceID   string `json:"to_device_id"`
+	FromUserID   string `json:"from_user_id"`
+	FromDeviceID string `json:"from_device_id"`
+	Header       []byte `json:"header"`
+	Ciphertext   []byte `json:"ciphertext"`
+	CreatedAt    int64  `json:"created_at"`
+	ExpiresAt    int64  `json:"expires_at"`
+}
+
+// TwoFactor is an account's second authentication factor.
+//
+// It exists because the first factor is interceptable and, until now, was the
+// only one: a leaked password meant a lost account with no way to intervene —
+// and no way to change the password either, since nothing could.
+//
+// SecretEnc is the TOTP shared secret ENCRYPTED at rest. Storing it in the clear
+// would make a database leak equivalent to a leak of everyone's second factor,
+// which is the one thing the factor is supposed to survive. It is not hashed
+// (the way a password is) because verification needs the secret itself to
+// recompute a code — that is the difference between a secret and a credential,
+// and it is why the key lives outside the database.
+//
+// ConfirmedAt is the enrolment gate. A secret exists from the moment setup
+// begins, but it is not ENFORCED until the user has proved they can produce a
+// code from it. Without that step a mis-scanned QR code locks the account out of
+// itself, which is the most common way 2FA rollouts go wrong.
+type TwoFactor struct {
+	UserID      string `json:"user_id"`
+	SecretEnc   string `json:"secret_enc"`
+	ConfirmedAt int64  `json:"confirmed_at,omitempty"`
+	// RecoveryHashes are argon2id hashes of one-time recovery codes. Hashed and
+	// not encrypted, because unlike the TOTP secret these are never needed back:
+	// verification compares a hash, so a leak of the table yields nothing usable.
+	RecoveryHashes []string `json:"recovery_hashes,omitempty"`
+	CreatedAt      int64    `json:"created_at"`
+}
+
+// Enabled reports whether this factor is enforced at login.
+func (t *TwoFactor) Enabled() bool { return t != nil && t.ConfirmedAt != 0 }

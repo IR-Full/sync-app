@@ -15,6 +15,7 @@ package sharded
 
 import (
 	"context"
+	"errors"
 	"hash/fnv"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
@@ -87,6 +88,7 @@ func (s *MessageStore) ExpireMessages(ctx context.Context, now int64, limit int)
 		per = 1
 	}
 	var out []*model.Message
+	var errs []error
 	for _, sh := range s.shards {
 		ex, ok := sh.(store.Expirer)
 		if !ok {
@@ -94,17 +96,50 @@ func (s *MessageStore) ExpireMessages(ctx context.Context, now int64, limit int)
 		}
 		got, err := ex.ExpireMessages(ctx, now, per)
 		if err != nil {
-			return out, err // return what was already reaped; the caller retries
+			// Record and keep going. Returning here would make one unreachable shard
+			// stop the reap of every shard ordered after it — on every tick, for as
+			// long as it stays down — so messages whose deadline has passed would keep
+			// accumulating on shards that are perfectly healthy. Self-destruct that a
+			// neighbour's outage can suspend is not self-destruct.
+			errs = append(errs, err)
+			continue
 		}
 		out = append(out, got...)
+	}
+	return out, errors.Join(errs...)
+}
+
+// MediaRefChats unions the answer across shards: a forward can land the same
+// blob in a chat that hashes to a different shard than the original.
+func (s *MessageStore) MediaRefChats(ctx context.Context, ref string, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 32
+	}
+	seen := make(map[string]bool)
+	var out []string
+	for _, sh := range s.shards {
+		mr, ok := sh.(store.MediaChatResolver)
+		if !ok {
+			continue
+		}
+		chats, err := mr.MediaRefChats(ctx, ref, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range chats {
+			if seen[c] {
+				continue
+			}
+			seen[c] = true
+			out = append(out, c)
+			if len(out) == limit {
+				return out, nil
+			}
+		}
 	}
 	return out, nil
 }
 
-// MediaRefExists asks every shard, because a blob may be referenced from any
-// chat — including a forward that landed on a different shard than the original.
-// It stops at the first yes: the question is "is this still reachable", and one
-// reference is enough to keep the bytes.
 func (s *MessageStore) MediaRefExists(ctx context.Context, ref string) (bool, error) {
 	for _, sh := range s.shards {
 		mr, ok := sh.(store.MediaReferencer)

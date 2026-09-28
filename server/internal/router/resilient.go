@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -49,9 +50,46 @@ func (r *resilientRouter) NodesFor(ctx context.Context, userID string) ([]string
 	return r.local.NodesFor(ctx, userID)
 }
 
+// NodesForMany mirrors NodesFor for a batch: shared view first, local fallback.
+//
+// The fallback is all-or-nothing on purpose. A partial answer stitched from both
+// views would report some recipients offline because Redis was unreachable and
+// others online because they happen to be here — and the caller turns "offline"
+// into a push notification, so a half-answer sends duplicate pushes to people
+// who received the message.
+func (r *resilientRouter) NodesForMany(ctx context.Context, userIDs []string) (map[string][]string, error) {
+	if r.br.Allow() {
+		nodes, err := r.primary.NodesForMany(ctx, userIDs)
+		if err == nil {
+			r.br.Success()
+			return nodes, nil
+		}
+		r.br.Failure()
+		r.log.Warn("router degraded to local (shared batch lookup failed)", "err", err)
+	}
+	return r.local.NodesForMany(ctx, userIDs)
+}
+
+// NodesForDevice mirrors NodesFor: shared view first, local fallback on failure.
+// The fallback is this node's own connections, which is exactly the set that
+// still matters when the shared registry is unreachable — a device connected
+// here is reachable here regardless of what Redis can tell us.
+func (r *resilientRouter) NodesForDevice(ctx context.Context, userID, deviceID string) ([]string, error) {
+	if r.br.Allow() {
+		nodes, err := r.primary.NodesForDevice(ctx, userID, deviceID)
+		if err == nil {
+			r.br.Success()
+			return nodes, nil
+		}
+		r.br.Failure()
+		r.log.Warn("router degraded to local (shared device lookup failed)", "err", err)
+	}
+	return r.local.NodesForDevice(ctx, userID, deviceID)
+}
+
 func (r *resilientRouter) viaBreaker(fn func() error, op string) error {
 	err := r.br.Do(fn)
-	if err != nil && err != breaker.ErrOpen {
+	if err != nil && !errors.Is(err, breaker.ErrOpen) {
 		r.log.Warn("router shared write failed (degraded)", "op", op, "err", err)
 	}
 	return nil // writes are best-effort; local already succeeded

@@ -57,6 +57,24 @@
             </intent-filter>
         </service>
 
+        <!--
+          WorkManager is configured in code (SyncAppApplication implements
+          Configuration.Provider) so its workers can be constructed by Hilt. The
+          default initializer has to be removed, or it would initialize WorkManager
+          with the stock factory before the app ever sets ours, and every
+          @HiltWorker would fail to instantiate at run time.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification" />

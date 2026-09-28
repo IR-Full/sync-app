@@ -1,12 +1,13 @@
-package com.synapse.messenger.data.sync
+package com.syncapp.messenger.data.sync
 
 import android.util.Log
 import androidx.room.withTransaction
-import com.synapse.messenger.database.SynapseDatabase
-import com.synapse.messenger.network.SynapseGateway
-import com.synapse.messenger.network.protocol.MsgType
-import com.synapse.messenger.network.protocol.Profile
-import com.synapse.messenger.network.protocol.ProfileGet
+import com.syncapp.messenger.database.SyncAppDatabase
+import com.syncapp.messenger.network.GatewayRequests
+import com.syncapp.messenger.network.request
+import com.syncapp.messenger.network.protocol.MsgType
+import com.syncapp.messenger.network.protocol.Profile
+import com.syncapp.messenger.network.protocol.ProfileGet
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,8 +25,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class ProfileFetcher @Inject constructor(
-    private val gateway: SynapseGateway,
-    private val database: SynapseDatabase,
+    private val gateway: GatewayRequests,
+    private val database: SyncAppDatabase,
 ) {
     private val users get() = database.userDao()
     private val chats get() = database.chatDao()

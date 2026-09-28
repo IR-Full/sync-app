@@ -33,10 +33,12 @@ object Cap {
      * against a shared raw dictionary we have no copy of, so a zstd frame would
      * be undecodable here.
      *
-     * SECRET_CHAT is omitted because this client implements no Double Ratchet;
-     * claiming it would invite ciphertext we cannot decrypt.
+     * SECRET_CHAT is advertised: this client now implements X3DH and the Double
+     * Ratchet (`com.syncapp.messenger.crypto`), verified against the server's own
+     * vectors. The bit used to be omitted for the honest reason that claiming it
+     * would invite ciphertext nothing here could decrypt.
      */
-    const val CLIENT_CAPS = COMPRESSION or RESUME or TYPING_SIGNALS
+    const val CLIENT_CAPS = COMPRESSION or RESUME or TYPING_SIGNALS or SECRET_CHAT
 
     fun has(caps: Int, cap: Int): Boolean = (caps and cap) != 0
 }

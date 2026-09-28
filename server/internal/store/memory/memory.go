@@ -7,6 +7,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
@@ -40,12 +41,21 @@ func New() *Store {
 		drafts:      map[string]map[string]*model.Draft{},
 		invites:     map[string]*model.InviteLink{},
 		outboxSent:  map[string]bool{},
+		secretQ:     map[string][]*model.SecretEnvelope{},
+
+		prevResumeIndex: map[string]string{},
+		twoFactor:       map[string]*model.TwoFactor{},
+
+		subscriptions: map[string]*model.Subscription{},
+		payments:      map[string]*model.Payment{},
+		paymentIdem:   map[string]string{},
+		paymentRefs:   map[string]string{},
 	}
 }
 
 // Stores returns a store.Stores bundle backed by this instance.
 func (s *Store) Stores() store.Stores {
-	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s}
+	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s, SecretQ: s, TwoFactor: s, Billing: s}
 }
 
 // --- UserStore ---
@@ -85,6 +95,18 @@ func (s *Store) GetUserByUsername(_ context.Context, username string) (*model.Us
 	return &cp, nil
 }
 
+// UpdatePrivacy writes a user's visibility settings.
+func (s *Store) UpdatePrivacy(_ context.Context, userID string, p model.Privacy) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u, ok := s.users[userID]
+	if !ok {
+		return store.ErrNotFound
+	}
+	u.Privacy = p.Normalize()
+	return nil
+}
+
 func (s *Store) UpdateProfile(_ context.Context, userID, displayName, avatarRef string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -94,6 +116,102 @@ func (s *Store) UpdateProfile(_ context.Context, userID, displayName, avatarRef 
 	}
 	u.DisplayName = displayName
 	u.AvatarRef = avatarRef
+	return nil
+}
+
+// DeleteAccount mirrors the Postgres semantics: everything owned by the
+// account is removed, messages the account sent are anonymised in place
+// rather than dropped, and any forward provenance pointing at it is scrubbed
+// so a forwarded copy can't re-identify a deleted sender.
+func (s *Store) DeleteAccount(_ context.Context, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	u, ok := s.users[userID]
+	if !ok {
+		return store.ErrNotFound
+	}
+	delete(s.usersByName, u.Username)
+	delete(s.users, userID)
+
+	for id, d := range s.devices {
+		if d.UserID == userID {
+			delete(s.devices, id)
+		}
+	}
+	for id, sess := range s.sessions {
+		if sess.UserID == userID {
+			delete(s.tokenIndex, sess.Token)
+			delete(s.resumeIndex, sess.ResumeToken)
+			delete(s.sessions, id)
+		}
+	}
+	// Both directions: entries this account made, and entries other people
+	// made ABOUT it (including blocks, which must not outlive their subject).
+	delete(s.contacts, userID)
+	for owner, byUser := range s.contacts {
+		delete(byUser, userID)
+		if len(byUser) == 0 {
+			delete(s.contacts, owner)
+		}
+	}
+	delete(s.drafts, userID)
+	for schedID, sched := range s.scheduled {
+		if sched.SenderID == userID {
+			delete(s.scheduled, schedID)
+		}
+	}
+	for code, inv := range s.invites {
+		if inv.CreatedBy == userID {
+			delete(s.invites, code)
+		}
+	}
+	for _, byUser := range s.reads {
+		delete(byUser, userID)
+	}
+	for _, byUser := range s.reactions {
+		delete(byUser, userID)
+	}
+	for _, byUser := range s.pollVotes {
+		delete(byUser, userID)
+	}
+	for chatID, byMsg := range s.pins {
+		for msgID, p := range byMsg {
+			if p.PinnedBy == userID {
+				delete(byMsg, msgID)
+			}
+		}
+		if len(byMsg) == 0 {
+			delete(s.pins, chatID)
+		}
+	}
+	for _, byUser := range s.callParts {
+		delete(byUser, userID)
+	}
+	for chatID, byUser := range s.members {
+		delete(byUser, userID)
+		if len(byUser) == 0 {
+			delete(s.members, chatID)
+		}
+	}
+
+	now := nowMs()
+	for _, msgs := range s.messages {
+		for _, m := range msgs {
+			if m.SenderID == userID {
+				m.SenderID = ""
+				m.Text = ""
+				m.MediaRef = ""
+				m.Attachment = nil
+				m.Deleted = true
+				m.EditedAt = now
+			}
+			if m.Forward != nil && m.Forward.SenderID == userID {
+				m.Forward.SenderID = ""
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -201,6 +319,25 @@ func (s *Store) RevokeSession(_ context.Context, id string, at int64) error {
 	return nil
 }
 
+// TouchSession extends a live session's expiry. A revoked or expired session is
+// left alone: reviving one would turn "log out" into "log out until the device
+// reconnects", which is not a logout.
+func (s *Store) TouchSession(_ context.Context, id string, expiresAt int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.sessions[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	if sess.RevokedAt != 0 || (sess.ExpiresAt != 0 && sess.ExpiresAt <= nowMs()) {
+		return nil
+	}
+	if expiresAt > sess.ExpiresAt {
+		sess.ExpiresAt = expiresAt
+	}
+	return nil
+}
+
 func (s *Store) ListSessions(_ context.Context, userID string) ([]*model.Session, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -235,8 +372,21 @@ func (s *Store) GetChat(_ context.Context, id string) (*model.Chat, error) {
 	return &cp, nil
 }
 
-func (s *Store) GetOrCreateDirect(_ context.Context, userA, userB, newID string) (*model.Chat, error) {
-	key := directKey(userA, userB)
+func (s *Store) GetOrCreateDirect(ctx context.Context, userA, userB, newID string) (*model.Chat, error) {
+	return s.GetOrCreatePair(ctx, model.ChatDirect, userA, userB, newID)
+}
+
+// GetOrCreatePair is the canonical-pair lookup for any two-party chat type.
+//
+// The type is folded into the key rather than filtered on afterwards, because a
+// direct chat and a secret chat with the same person are DIFFERENT conversations
+// that must both be reachable: filtering makes one unfindable, and keying on the
+// pair alone makes the second collide with the first.
+func (s *Store) GetOrCreatePair(_ context.Context, typ model.ChatType, userA, userB, newID string) (*model.Chat, error) {
+	if typ == "" {
+		typ = model.ChatDirect
+	}
+	key := pairKey(typ, userA, userB)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if id, ok := s.directIndex[key]; ok {
@@ -244,7 +394,7 @@ func (s *Store) GetOrCreateDirect(_ context.Context, userA, userB, newID string)
 		return &cp, nil
 	}
 	now := nowMs()
-	c := &model.Chat{ID: newID, Type: model.ChatDirect, OwnerID: userA, CreatedAt: now}
+	c := &model.Chat{ID: newID, Type: typ, OwnerID: userA, CreatedAt: now}
 	s.chats[newID] = c
 	s.directIndex[key] = newID
 	// Seed both members.
@@ -560,6 +710,60 @@ func (s *Store) MarkSent(_ context.Context, ids []string) error {
 	return nil
 }
 
+// AvatarRefExists reports whether a blob is somebody's profile picture
+// (AvatarRefFinder).
+func (s *Store) AvatarRefExists(_ context.Context, ref string) (bool, error) {
+	if ref == "" {
+		return false, nil
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, u := range s.users {
+		if u.AvatarRef == ref {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// MediaRefChats reports the chats a blob is reachable from (MediaChatResolver).
+// Deduplicated: a chat carrying the same ref twice is still one chat.
+func (s *Store) MediaRefChats(_ context.Context, ref string, limit int) ([]string, error) {
+	if ref == "" {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 32
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	seen := make(map[string]bool)
+	out := make([]string, 0, limit)
+	for chatID, msgs := range s.messages {
+		if seen[chatID] {
+			continue
+		}
+		for _, m := range msgs {
+			if m.Deleted {
+				continue
+			}
+			hit := m.MediaRef == ref ||
+				(m.Attachment != nil && (m.Attachment.MediaRef == ref || m.Attachment.ThumbRef == ref))
+			if !hit {
+				continue
+			}
+			seen[chatID] = true
+			out = append(out, chatID)
+			break
+		}
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
 // MediaRefExists mirrors the Postgres capability: is this blob still reachable
 // from a live message (its own ref, or an attachment's)?
 func (s *Store) MediaRefExists(_ context.Context, ref string) (bool, error) {
@@ -821,6 +1025,15 @@ func (s *Store) ClosePoll(_ context.Context, id string) error {
 func (s *Store) Vote(_ context.Context, v *model.PollVote, multiChoice bool) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Re-checked under the same lock as the write, so a concurrent ClosePoll
+	// cannot slip between the caller's check and this one.
+	p, ok := s.polls[v.PollID]
+	if !ok {
+		return false, store.ErrNotFound
+	}
+	if p.Closed {
+		return false, store.ErrPollClosed
+	}
 	if s.pollVotes[v.PollID] == nil {
 		s.pollVotes[v.PollID] = map[string]map[int32]bool{}
 	}
@@ -1237,5 +1450,358 @@ func (s *Store) SetMemberRole(_ context.Context, chatID, userID string, role mod
 		return store.ErrNotFound
 	}
 	mem.Role = role
+	return nil
+}
+
+// --- SecretQueueStore ---
+
+// secretKey addresses the queue. A secret message is encrypted to ONE device's
+// ratchet session, so the queue is per (user, device) and not per user.
+func secretKey(userID, deviceID string) string { return userID + "|" + deviceID }
+
+func (s *Store) EnqueueSecret(_ context.Context, e *model.SecretEnvelope, maxPerDevice int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := secretKey(e.ToUserID, e.ToDeviceID)
+	cp := *e
+	cp.Header = append([]byte(nil), e.Header...)
+	cp.Ciphertext = append([]byte(nil), e.Ciphertext...)
+	q := append(s.secretQ[k], &cp)
+	// Drop from the FRONT once over the cap: the oldest undelivered ciphertext is
+	// the one whose ratchet session is least likely to still exist on either side.
+	if maxPerDevice > 0 && len(q) > maxPerDevice {
+		q = append([]*model.SecretEnvelope(nil), q[len(q)-maxPerDevice:]...)
+	}
+	s.secretQ[k] = q
+	return nil
+}
+
+func (s *Store) PendingSecrets(_ context.Context, toUserID, toDeviceID, afterID string, limit int) ([]*model.SecretEnvelope, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if limit <= 0 {
+		limit = 100
+	}
+	out := make([]*model.SecretEnvelope, 0, limit)
+	seen := afterID == ""
+	for _, e := range s.secretQ[secretKey(toUserID, toDeviceID)] {
+		if !seen {
+			// The cursor is the id of the last envelope the client took, so the
+			// entry that MATCHES it is the boundary, not a result.
+			if e.ID == afterID {
+				seen = true
+			}
+			continue
+		}
+		cp := *e
+		out = append(out, &cp)
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) AckSecrets(_ context.Context, toUserID, toDeviceID string, ids []string) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	drop := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		drop[id] = true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Scoped by owner: only this device's queue is touched, so an id belonging to
+	// someone else's queue matches nothing no matter who names it.
+	k := secretKey(toUserID, toDeviceID)
+	q := s.secretQ[k]
+	kept := q[:0]
+	n := 0
+	for _, e := range q {
+		if drop[e.ID] {
+			n++
+			continue
+		}
+		kept = append(kept, e)
+	}
+	if len(kept) == 0 {
+		delete(s.secretQ, k)
+	} else {
+		s.secretQ[k] = kept
+	}
+	return n, nil
+}
+
+func (s *Store) PurgeExpiredSecrets(_ context.Context, now int64, limit int) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if limit <= 0 {
+		limit = 1000
+	}
+	n := 0
+	for k, q := range s.secretQ {
+		kept := q[:0]
+		for _, e := range q {
+			if e.ExpiresAt != 0 && e.ExpiresAt <= now && n < limit {
+				n++
+				continue
+			}
+			kept = append(kept, e)
+		}
+		if len(kept) == 0 {
+			delete(s.secretQ, k)
+		} else {
+			s.secretQ[k] = kept
+		}
+	}
+	return n, nil
+}
+
+// --- ChatSummaryReader / MemberFlagStore ---
+
+// UserChatSummaries mirrors the Postgres one-query page: activity order, last
+// message, unread count, the caller's flags.
+//
+// It sorts the whole membership and then cuts, which is what the SQL version asks
+// the database to do with an index. That is acceptable here and not there: this
+// backend holds a development-sized dataset in one process, while the production
+// one has to page a real list without reading it whole. The behaviour must match
+// exactly either way, which is what the conformance suite is for.
+func (s *Store) UserChatSummaries(_ context.Context, userID string, afterActivity int64, afterChatID string, limit int, includeArchived bool) ([]model.ChatSummary, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var rows []model.ChatSummary
+	for chatID, members := range s.members {
+		me, ok := members[userID]
+		if !ok {
+			continue
+		}
+		if me.Flags.Archived && !includeArchived {
+			continue
+		}
+		c, ok := s.chats[chatID]
+		if !ok {
+			continue // a chat that vanished under the membership is skipped, not fatal
+		}
+		cp := *c
+		sum := model.ChatSummary{Chat: &cp, MyRole: me.Role, Flags: me.Flags}
+
+		// Newest LIVE message. Deleted rows are tombstones: they keep their seq so
+		// ordering stays gap-free, but a chat list must not preview one.
+		msgs := s.messages[chatID]
+		for i := len(msgs) - 1; i >= 0; i-- {
+			if msgs[i].Deleted {
+				continue
+			}
+			lm := *msgs[i]
+			sum.LastMessage = &lm
+			break
+		}
+		sum.LastActivityAt = cp.CreatedAt
+		if sum.LastMessage != nil {
+			sum.LastActivityAt = sum.LastMessage.CreatedAt
+			read := uint64(0)
+			if rs := s.reads[chatID]; rs != nil {
+				if st := rs[userID]; st != nil {
+					read = st.UpToSeq
+				}
+			}
+			if read > sum.LastMessage.Seq {
+				// A cursor ahead of the newest live message is not a negative unread
+				// count; it is a cursor set against a message that has since been
+				// deleted.
+				read = sum.LastMessage.Seq
+			}
+			sum.UnreadCount = int64(sum.LastMessage.Seq - read)
+		}
+		// Both direct and SECRET chats are two-party and have no title, so the row
+		// cannot be named without the peer. Is1To1 rather than a comparison against
+		// ChatDirect: the secret type was added later, and a type check written as
+		// equality is exactly the kind that silently omits it.
+		if cp.Type.Is1To1() {
+			for uid := range members {
+				if uid != userID {
+					sum.PeerID = uid
+					break
+				}
+			}
+		}
+		rows = append(rows, sum)
+	}
+
+	// Activity descending, chat id descending as the tiebreak — the same total
+	// order the keyset cursor walks, so a page boundary cannot repeat or skip.
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].LastActivityAt != rows[j].LastActivityAt {
+			return rows[i].LastActivityAt > rows[j].LastActivityAt
+		}
+		return !lessChatID(rows[i].Chat.ID, rows[j].Chat.ID)
+	})
+
+	out := make([]model.ChatSummary, 0, limit)
+	for _, r := range rows {
+		if afterActivity != 0 || afterChatID != "" {
+			// Strictly after the cursor in the same total order as the sort above.
+			if r.LastActivityAt > afterActivity {
+				continue
+			}
+			if r.LastActivityAt == afterActivity && !lessChatID(r.Chat.ID, afterChatID) {
+				continue
+			}
+		}
+		out = append(out, r)
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
+// lessChatID compares ids numerically where both are numeric, so "9" sorts below
+// "10" the way the Postgres BIGINT column does. Falls back to lexicographic for
+// non-numeric ids, which only tests use.
+func lessChatID(a, b string) bool {
+	na, ea := strconv.ParseInt(a, 10, 64)
+	nb, eb := strconv.ParseInt(b, 10, 64)
+	if ea == nil && eb == nil {
+		return na < nb
+	}
+	return a < b
+}
+
+func (s *Store) SetMemberFlags(_ context.Context, chatID, userID string, f model.MemberFlags) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	members := s.members[chatID]
+	if members == nil {
+		return store.ErrNotFound
+	}
+	m, ok := members[userID]
+	if !ok {
+		return store.ErrNotFound
+	}
+	cp := *m
+	cp.Flags = f
+	cp.Muted = f.MutedUntil != 0 // keep the legacy column consistent
+	members[userID] = &cp
+	return nil
+}
+
+func (s *Store) GetMemberFlags(_ context.Context, chatID, userID string) (model.MemberFlags, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if members := s.members[chatID]; members != nil {
+		if m, ok := members[userID]; ok {
+			return m.Flags, nil
+		}
+	}
+	return model.MemberFlags{}, store.ErrNotFound
+}
+
+// --- Resume-token rotation ---
+
+func (s *Store) RotateResumeToken(_ context.Context, sessionID, oldHash, newHash string, at int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.sessions[sessionID]
+	if !ok {
+		return store.ErrNotFound
+	}
+	// Compare-and-swap. Two resumes racing on the same token must not both
+	// succeed: the loser sees a token that has already moved on, which is
+	// indistinguishable from a replay — and is correctly treated as one.
+	if sess.ResumeToken != oldHash {
+		return store.ErrNotFound
+	}
+	delete(s.resumeIndex, oldHash)
+	// The consumed token is REMEMBERED, not forgotten. That is what turns a stolen
+	// token from an invisible second reader into a detectable one.
+	s.prevResumeIndex[oldHash] = sessionID
+	sess.PrevResumeToken = oldHash
+	sess.ResumeToken = newHash
+	sess.ResumeRotatedAt = at
+	s.resumeIndex[newHash] = sessionID
+	return nil
+}
+
+func (s *Store) GetSessionByConsumedResumeToken(_ context.Context, resume string) (*model.Session, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	id, ok := s.prevResumeIndex[resume]
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+	sess, ok := s.sessions[id]
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+	cp := *sess
+	return &cp, nil
+}
+
+// --- TwoFactorStore ---
+
+func (s *Store) PutTwoFactor(_ context.Context, tf *model.TwoFactor) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cp := *tf
+	cp.RecoveryHashes = append([]string(nil), tf.RecoveryHashes...)
+	s.twoFactor[tf.UserID] = &cp
+	return nil
+}
+
+func (s *Store) GetTwoFactor(_ context.Context, userID string) (*model.TwoFactor, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	tf, ok := s.twoFactor[userID]
+	if !ok {
+		return nil, store.ErrNotFound
+	}
+	cp := *tf
+	cp.RecoveryHashes = append([]string(nil), tf.RecoveryHashes...)
+	return &cp, nil
+}
+
+func (s *Store) DeleteTwoFactor(_ context.Context, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.twoFactor, userID)
+	return nil
+}
+
+// ConsumeRecoveryCode removes one hash under the lock, so two concurrent logins
+// cannot both spend the same single-use code.
+func (s *Store) ConsumeRecoveryCode(_ context.Context, userID, hash string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tf, ok := s.twoFactor[userID]
+	if !ok {
+		return false, nil
+	}
+	for i, h := range tf.RecoveryHashes {
+		if h != hash {
+			continue
+		}
+		tf.RecoveryHashes = append(tf.RecoveryHashes[:i], tf.RecoveryHashes[i+1:]...)
+		return true, nil
+	}
+	return false, nil
+}
+
+// --- PasswordStore ---
+
+func (s *Store) SetPasswordHash(_ context.Context, userID, hash string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u, ok := s.users[userID]
+	if !ok {
+		return store.ErrNotFound
+	}
+	u.PasswordHash = hash
 	return nil
 }

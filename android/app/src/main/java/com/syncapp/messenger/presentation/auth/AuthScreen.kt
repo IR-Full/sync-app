@@ -120,6 +120,33 @@ fun AuthScreen(viewModel: AuthViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            // Appears only after the server has asked for it.
+            //
+            // Not shown up front, because a field that is usually irrelevant trains people
+            // to ignore it — and because the client has no way to know whether this
+            // account has a second factor without asking, which would make the login form
+            // an oracle for which accounts are protected.
+            if (state.needsSecondFactor) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = state.totpCode,
+                    onValueChange = viewModel::onTotpCodeChange,
+                    label = { Text(stringResource(R.string.security_code)) },
+                    supportingText = { Text(stringResource(R.string.auth_two_factor_hint)) },
+                    singleLine = true,
+                    enabled = !state.submitting,
+                    keyboardOptions = KeyboardOptions(
+                        // NumberPassword rather than Number: a RECOVERY code goes in this
+                        // same field and is not digits, so the keyboard must not be
+                        // numeric-only.
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { viewModel.submit() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             val validation = state.validation
             val error = state.error
             if (validation != null || error != null) {

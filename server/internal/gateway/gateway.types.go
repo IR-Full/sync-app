@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"log/slog"
+	"net"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/SyncApp-chat/SyncApp/internal/router"
 	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 	"github.com/gorilla/websocket"
 )
@@ -35,14 +37,34 @@ type Services struct {
 	Pins     PinService      // pinned messages + drafts (optional)
 	Invites  InviteService   // public handles, invite links, admin rights (optional)
 	Users    store.UserStore // for @username → user resolution
-	Hub      *delivery.Hub
-	KeyDir   keydir.Directory // E2E prekey directory (optional)
-	Media    MediaService     // media upload/download tickets (optional)
-	Search   SearchService    // full-text search (optional)
-	Audit    audit.Sink       // audit log (optional)
-	Bus      eventbus.Bus     // event bus (for cross-node delivery)
-	Router   router.Router    // user→node routing registry
-	Replay   replay.Buffer    // per-session resume replay buffer (optional)
+	// MediaChats answers which chats a blob is reachable from, so a download can
+	// be gated on membership rather than on possession of the ref alone. Optional:
+	// without it the media service keeps its previous behaviour (signed,
+	// unguessable ref and nothing more).
+	MediaChats store.MediaChatResolver
+	Hub        *delivery.Hub
+	KeyDir     keydir.Directory // E2E prekey directory (optional)
+	// SecretQ holds end-to-end ciphertext for devices that were offline when it
+	// was relayed. Optional, and its absence is a real degradation rather than a
+	// missing extra: without it SECRET_SEND falls back to pure relay, which
+	// discards the message when the recipient has no live connection. The
+	// handler says so in the SECRET_ACK it returns instead of letting the sender
+	// believe otherwise.
+	SecretQ store.SecretQueueStore
+	// IDs mints queue ids. Only the secret queue needs one here — every other id
+	// the gateway hands out was minted by the service that owns the row. Nil is
+	// tolerated the same way SecretQ is: no generator, no queue.
+	IDs   *id.Generator
+	Media MediaService // media upload/download tickets (optional)
+	// Billing owns subscriptions and entitlements. Optional: without it every
+	// account is on the free tier, which is a coherent deployment rather than a
+	// broken one.
+	Billing BillingService
+	Search  SearchService // full-text search (optional)
+	Audit   audit.Sink    // audit log (optional)
+	Bus     eventbus.Bus  // event bus (for cross-node delivery)
+	Router  router.Router // user→node routing registry
+	Replay  replay.Buffer // per-session resume replay buffer (optional)
 	// UserLimits caps EXPENSIVE per-user actions (media tickets, search, export,
 	// invite links, chat creation) across all of a user's connections — and, with
 	// a Redis-backed implementation, across nodes. The per-connection flood bucket
@@ -54,15 +76,34 @@ type Services struct {
 
 // Config tunes connection behavior.
 type Config struct {
-	NodeID           string // this gateway's node id (for cross-node routing)
-	ServerVersion    string
+	NodeID        string // this gateway's node id (for cross-node routing)
+	ServerVersion string
+	// TOTPIssuer is the name an authenticator app shows next to the account.
+	//
+	// Configurable because it is branding, and wrong branding is how a user ends up
+	// with three entries called "Unknown" and no idea which is which. Defaults to
+	// the product name in DefaultConfig.
+	TOTPIssuer       string
 	Heartbeat        time.Duration // interval between server pings
 	IdleTimeout      time.Duration // close if no client traffic for this long
 	HandshakeTimeout time.Duration // max time to complete HELLO + AUTH
 	WriteTimeout     time.Duration // max time a single frame write may block
 	MaxInflight      int           // outbound queue depth (backpressure window)
-	SendRate         float64       // allowed state-changing msgs/sec per connection
-	SendBurst        float64       // burst capacity for the above
+	// TrustedProxies lists the hops allowed to speak for a client via
+	// X-Forwarded-For, as CIDRs or bare addresses. Empty (the default) means the
+	// header is ignored entirely and the peer address is used — which is the safe
+	// default, because an unvalidated forwarded address is a way to get an
+	// unlimited per-IP budget and to attribute traffic to someone else.
+	TrustedProxies []string
+	SendRate       float64 // allowed state-changing msgs/sec per connection
+	// ReadRate/ReadBurst meter the READ side. Reads used to cost nothing at all,
+	// which made HISTORY the cheapest amplifier in the protocol: one small frame
+	// draws a database page and up to a hundred full message frames back. The
+	// budget is deliberately looser than the write one — scrolling a chat is
+	// normal behaviour — but it is not unlimited.
+	ReadRate  float64
+	ReadBurst float64
+	SendBurst float64 // burst capacity for the above
 	// Typing indicators are cheap to send and expensive to deliver: one frame in
 	// becomes one delivery per chat member, through the bus, on every node. They
 	// are exempt from the send bucket (they are not state-changing), so they get
@@ -111,6 +152,9 @@ type Gateway struct {
 	loginLimiter *ratelimit.Limiter
 	// userLimits caps expensive per-user actions across connections (see Services).
 	userLimits ratelimit.Shared
+	// trustedProxies is Config.TrustedProxies parsed once at construction. Parsing
+	// per connection would put a CIDR parse on the accept path.
+	trustedProxies []*net.IPNet
 	// newChatLimiter throttles how fast one user may start NEW direct chats,
 	// capping mass-DM spam without affecting messaging in existing chats.
 	newChatLimiter *ratelimit.Limiter

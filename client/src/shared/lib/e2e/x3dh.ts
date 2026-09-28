@@ -45,11 +45,16 @@ export function x3dhInitiator(
   keys: { identity: KeyPair; ephemeral: KeyPair },
   bundle: PreKeyBundle,
 ): { sharedSecret: Uint8Array; ephemeralPublicKey: Uint8Array } {
-  // Verify before trusting anything else in the bundle.
-  if (bundle.signingKey.length > 0 || bundle.signedPreKeySig.length > 0) {
-    if (!verifyPreKey(bundle.signingKey, bundle.signedPreKey, bundle.signedPreKeySig)) {
-      throw new BadPreKeySignatureError()
-    }
+  // Verify before trusting anything else in the bundle — unconditionally.
+  //
+  // This check used to run only when the bundle carried a signature, which
+  // handed the attacker the switch: a hostile directory never had to forge
+  // anything, it simply left `signingKey` and `signedPreKeySig` empty and the
+  // handshake continued against a prekey nobody had vouched for. An unsigned
+  // bundle and a substituted one are indistinguishable from here, so both are
+  // rejected. Mirrors `X3DHInitiator` in `server/pkg/e2e/x3dh.go`.
+  if (!verifyPreKey(bundle.signingKey, bundle.signedPreKey, bundle.signedPreKeySig)) {
+    throw new BadPreKeySignatureError()
   }
 
   // DH1 = DH(IK_A, SPK_B); DH2 = DH(EK_A, IK_B); DH3 = DH(EK_A, SPK_B)

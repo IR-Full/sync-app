@@ -14,19 +14,38 @@ public final class MessageRepositoryImpl: MessageRepository, @unchecked Sendable
     private let store: LocalStore
     private let sync: SyncEngine
     private let pageSize: Int32
+    private let windows = HistoryWindows()
+    /// Present only in builds with the E2E module.
+    private let secret: SecretChatService?
 
-    public init(client: SyncAppClient, store: LocalStore, sync: SyncEngine, pageSize: Int32 = 50) {
+    public init(
+        client: SyncAppClient,
+        store: LocalStore,
+        sync: SyncEngine,
+        secret: SecretChatService? = nil,
+        pageSize: Int32 = 50
+    ) {
         self.client = client
         self.store = store
         self.sync = sync
+        self.secret = secret
         self.pageSize = pageSize
     }
 
+    /// A stream of the messages the UI should currently show for a chat.
+    ///
+    /// The read is bounded by a per-chat window rather than a constant, and that
+    /// is what makes paging visible: `loadOlder` writes older messages into the
+    /// cache, but with a fixed `LIMIT` the query kept returning the same newest
+    /// rows, so scrolling up past the first page showed nothing however much
+    /// history had been fetched. The window grows with each page and is re-read
+    /// here on every change.
     public func observeMessages(chatID: String) -> AsyncStream<[Message]> {
         AsyncStream { continuation in
             let task = Task {
                 for await _ in await store.changes(.messages(chatID: chatID)) {
-                    let messages = (try? await store.messages(chatID: chatID)) ?? []
+                    let limit = await windows.limit(chatID: chatID, pageSize: Int(pageSize))
+                    let messages = (try? await store.messages(chatID: chatID, limit: limit)) ?? []
                     continuation.yield(messages)
                 }
                 continuation.finish()
@@ -61,6 +80,11 @@ public final class MessageRepositoryImpl: MessageRepository, @unchecked Sendable
             try await client.history(chatID: chatID, beforeSeq: cursor, limit: pageSize)
         }
         await sync.ingest(messages: page.messages)
+        // Widen the read window and wake the observers. Ingest only notifies when
+        // it actually wrote something, and the window has to grow even then —
+        // otherwise the rows it just stored stay outside the query's LIMIT.
+        await windows.grow(chatID: chatID, by: Int(pageSize), pageSize: Int(pageSize))
+        await store.notify([.messages(chatID: chatID)])
         return !page.page.done
     }
 
@@ -83,6 +107,37 @@ public final class MessageRepositoryImpl: MessageRepository, @unchecked Sendable
             dedupKey: dedupKey
         )
         try await store.upsertMessages([optimistic])
+
+        // A secret chat does not go through the outbox, and that is not an oversight.
+        //
+        // The outbox replays a message by resending the SAME bytes, which is exactly
+        // what a ratchet cannot survive: every message consumes a chain key, so a
+        // replay is either a duplicate the peer rejects or a re-encryption the outbox
+        // has no way to perform. Ciphertext is also not something to leave sitting in
+        // a queue on disk. So the send is attempted now, and a failure is reported as
+        // a failed row the user can retry — which re-encrypts from the current state.
+        if let secret, let chat = try? await store.chat(id: chatID), chat.kind.isEndToEnd {
+            guard let peerUserID = chat.peerUserID else {
+                try await store.setMessageState(id: dedupKey, state: .failed, chatID: chatID)
+                throw AppError.invalidInput("this secret chat has no peer resolved yet")
+            }
+            do {
+                let outcome = try await secret.send(
+                    chatID: chatID,
+                    peerUserID: peerUserID,
+                    text: text,
+                    localMessageID: dedupKey
+                )
+                if outcome.isTotalFailure { throw AppError.offline }
+                try await store.setMessageState(id: dedupKey, state: .sent, chatID: chatID)
+            } catch let error as SecretChatError where error == .peerHasNoDevices {
+                throw AppError.invalidInput("the recipient has no device set up for secret chats")
+            } catch {
+                throw ErrorMapping.map(error)
+            }
+            return
+        }
+
         try await store.enqueue(LocalStore.OutboxEntry(
             dedupKey: dedupKey, chatID: chatID, text: text,
             replyTo: replyTo, createdAt: now, attachment: attachment

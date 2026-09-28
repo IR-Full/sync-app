@@ -11,6 +11,7 @@ public struct ViewFactory {
     public let search: any SearchRepository
     public let media: any MediaRepository
     public let auth: any AuthRepository
+    public let security: any AccountSecurityRepository
 
     public init(
         chats: any ChatRepository,
@@ -18,7 +19,8 @@ public struct ViewFactory {
         contacts: any ContactRepository,
         search: any SearchRepository,
         media: any MediaRepository,
-        auth: any AuthRepository
+        auth: any AuthRepository,
+        security: any AccountSecurityRepository
     ) {
         self.chats = chats
         self.messages = messages
@@ -26,6 +28,7 @@ public struct ViewFactory {
         self.search = search
         self.media = media
         self.auth = auth
+        self.security = security
     }
 }
 
@@ -34,6 +37,7 @@ public struct ViewFactory {
 /// signed in" is answered.
 public struct RootView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.scenePhase) private var scenePhase
     private let factory: ViewFactory
 
     public init(factory: ViewFactory) {
@@ -54,6 +58,14 @@ public struct RootView: View {
         .preferredColorScheme(app.settings.theme.colorScheme)
         .animation(.default, value: app.phase)
         .task { await app.start() }
+        // Coming back to the foreground is the moment a user expects to be online.
+        // The client redials on its own with backoff, so this only covers what
+        // backoff cannot: a connect that failed at launch, and a resume where the
+        // next scheduled attempt is still minutes out.
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            Task { await app.didEnterForeground() }
+        }
         .alert(
             l("common.error"),
             isPresented: Binding(

@@ -28,7 +28,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class MessageIngestor @Inject constructor(
-    private val db: syncappDatabase,
+    private val db: SyncAppDatabase,
     private val sessionHolder: SessionHolder,
 ) {
     private val chats get() = db.chatDao()

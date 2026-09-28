@@ -252,4 +252,21 @@ private actor SpyChatRepository: ChatRepository {
     func join(code: String?, handle: String?) async throws -> String { "888" }
     func setMuted(chatID: String, muted: Bool) async {}
     func hideLocally(chatID: String) async {}
+
+    nonisolated func observeArchivedChats() -> AsyncStream<[ChatSummary]> {
+        AsyncStream { $0.finish() }
+    }
+
+    private(set) var secretPeers: [String] = []
+
+    func createSecretChat(peer: String) async throws -> Chat {
+        secretPeers.append(peer)
+        return Chat(id: "999", kind: .secret, title: "", peerUserID: peer)
+    }
+
+    private(set) var flagWrites: [(chatID: String, mutedUntil: Date?, pinned: Bool, archived: Bool)] = []
+
+    func setFlags(chatID: String, mutedUntil: Date?, pinned: Bool, archived: Bool) async {
+        flagWrites.append((chatID, mutedUntil, pinned, archived))
+    }
 }

@@ -4,7 +4,7 @@ import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 import com.syncapp.messenger.BuildConfig
 import com.syncapp.messenger.datastore.SettingsStore
-import com.syncapp.messenger.network.syncappGateway
+import com.syncapp.messenger.network.SyncAppGateway
 import com.syncapp.messenger.network.protocol.MsgType
 import com.syncapp.messenger.network.protocol.PushToken
 import javax.inject.Inject
@@ -28,7 +28,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  */
 @Singleton
 class PushTokenRegistrar @Inject constructor(
-    private val gateway: syncappGateway,
+    private val gateway: SyncAppGateway,
     private val settingsStore: SettingsStore,
 ) {
     suspend fun sync() {

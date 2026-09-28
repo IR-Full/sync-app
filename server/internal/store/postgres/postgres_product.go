@@ -278,6 +278,22 @@ func (s *Store) Vote(ctx context.Context, v *model.PollVote, multiChoice bool) (
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
 
+	// Lock the poll row for the life of this transaction and re-read `closed`
+	// inside it. The caller checked it too, but a concurrent ClosePoll could land
+	// between that read and this write — and a vote counted into a closed poll is
+	// a tally that changes after everyone was told it was final.
+	var closed bool
+	if err := tx.QueryRow(ctx,
+		`SELECT closed FROM polls WHERE id=$1 FOR UPDATE`, atoi(v.PollID)).Scan(&closed); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, store.ErrNotFound
+		}
+		return false, err
+	}
+	if closed {
+		return false, store.ErrPollClosed
+	}
+
 	if multiChoice {
 		tag, err := tx.Exec(ctx,
 			`DELETE FROM poll_votes WHERE poll_id=$1 AND user_id=$2 AND option_index=$3`,
@@ -444,12 +460,57 @@ func fwdSender(m *model.Message) int64 {
 
 // --- self-destruct reaper ---
 
-// ExpireMessages tombstones every message whose self-destruct deadline has
-// passed and returns them, so the caller can tell clients to drop the content.
-// Tombstoning (not deleting) keeps the chat's seq gap-free.
-// MediaRefExists reports whether a live message still points at a blob, through
-// either the plain media_ref or a typed attachment. Deleted rows do not count:
-// their content is already gone, and their refs are cleared on the way out.
+// AvatarRefExists reports whether a blob is somebody's profile picture
+// (AvatarRefFinder).
+func (s *Store) AvatarRefExists(ctx context.Context, ref string) (bool, error) {
+	if ref == "" {
+		return false, nil
+	}
+	var one int
+	err := s.reader().QueryRow(ctx,
+		`SELECT 1 FROM users WHERE avatar_ref = $1 LIMIT 1`, ref).Scan(&one)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// MediaRefChats reports the chats a blob is reachable from (MediaChatResolver).
+//
+// DISTINCT because a forward chain can put the same ref in one chat many times,
+// and the caller only needs the set. LIMIT because a widely forwarded blob does
+// not need every row to answer one membership question.
+func (s *Store) MediaRefChats(ctx context.Context, ref string, limit int) ([]string, error) {
+	if ref == "" {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 32
+	}
+	rows, err := s.reader().Query(ctx,
+		`SELECT DISTINCT chat_id FROM messages
+		 WHERE deleted = FALSE
+		   AND (media_ref = $1 OR attachment->>'media_ref' = $1 OR attachment->>'thumb_ref' = $1)
+		 LIMIT $2`, ref, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []string
+	for rows.Next() {
+		var chatID string
+		if err := rows.Scan(&chatID); err != nil {
+			return nil, err
+		}
+		out = append(out, chatID)
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) MediaRefExists(ctx context.Context, ref string) (bool, error) {
 	if ref == "" {
 		return false, nil
@@ -533,8 +594,6 @@ func (s *Store) ListScheduled(ctx context.Context, senderID, chatID string) ([]*
 	return scanScheduled(rows)
 }
 
-// ClaimDueScheduled atomically claims messages whose time has come. SKIP LOCKED
-// means several dispatchers can run concurrently without sending anything twice.
 // PurgeSentScheduled drops fired rows past their retention window. A pending
 // send becomes a real message the moment it fires, so keeping the pending row
 // afterwards stores the same content twice.
@@ -809,6 +868,391 @@ func (s *Store) SetMemberRole(ctx context.Context, chatID, userID string, role m
 		return err
 	}
 	if tag.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+// --- SecretQueueStore ---
+
+// EnqueueSecret stores one undelivered E2E envelope and trims the device's queue
+// to maxPerDevice in the same round trip.
+//
+// The trim is part of the insert rather than a separate sweep because the cap is
+// a safety property, not housekeeping: the device id is client-asserted, so
+// anyone can address envelopes at any (user, device) pair that exists, and a
+// queue that is only trimmed on a timer is unbounded between ticks. Deleting
+// from the FRONT is deliberate — the oldest undelivered ciphertext is the one
+// whose ratchet session is least likely to still exist on either side.
+func (s *Store) EnqueueSecret(ctx context.Context, e *model.SecretEnvelope, maxPerDevice int) error {
+	if _, err := s.pool.Exec(ctx,
+		`INSERT INTO secret_queue
+		   (id, to_user_id, to_device_id, from_user_id, from_device_id, header, ciphertext, created_at, expires_at)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+		atoi(e.ID), atoi(e.ToUserID), e.ToDeviceID, atoi(e.FromUserID), e.FromDeviceID,
+		e.Header, e.Ciphertext, e.CreatedAt, e.ExpiresAt); err != nil {
+		return wrap(err)
+	}
+	if maxPerDevice <= 0 {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx,
+		`DELETE FROM secret_queue WHERE id IN (
+		   SELECT id FROM secret_queue
+		   WHERE to_user_id=$1 AND to_device_id=$2
+		   ORDER BY id DESC OFFSET $3
+		 )`, atoi(e.ToUserID), e.ToDeviceID, maxPerDevice)
+	return wrap(err)
+}
+
+// PendingSecrets walks a device's queue oldest-first by keyset.
+//
+// Oldest first, and not for tidiness: ratchet messages decrypt in order far more
+// cheaply than out of it. Handing the newest one over first would make the
+// receiver derive and retain a skipped message key for every envelope behind it,
+// which is the work the skipped-key cap exists to bound.
+func (s *Store) PendingSecrets(ctx context.Context, toUserID, toDeviceID, afterID string, limit int) ([]*model.SecretEnvelope, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.reader().Query(ctx,
+		`SELECT id, to_user_id, to_device_id, from_user_id, from_device_id,
+		        header, ciphertext, created_at, expires_at
+		 FROM secret_queue
+		 WHERE to_user_id=$1 AND to_device_id=$2 AND id > $3
+		 ORDER BY id LIMIT $4`,
+		atoi(toUserID), toDeviceID, atoi(afterID), limit)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	defer rows.Close()
+	var out []*model.SecretEnvelope
+	for rows.Next() {
+		var (
+			id, toUID, fromUID int64
+			e                  model.SecretEnvelope
+		)
+		if err := rows.Scan(&id, &toUID, &e.ToDeviceID, &fromUID, &e.FromDeviceID,
+			&e.Header, &e.Ciphertext, &e.CreatedAt, &e.ExpiresAt); err != nil {
+			return nil, err
+		}
+		e.ID, e.ToUserID, e.FromUserID = itoa(id), itoa(toUID), itoa(fromUID)
+		out = append(out, &e)
+	}
+	return out, rows.Err()
+}
+
+// AckSecrets drops envelopes a device confirmed it has stored.
+//
+// The (to_user_id, to_device_id) predicate is the authorization, not a filter:
+// an envelope id travels to the client in the delivery, so a delete scoped only
+// by id would let any authenticated account discard another account's
+// undelivered mail by naming ids it had seen — or guessed, since they are
+// snowflakes.
+func (s *Store) AckSecrets(ctx context.Context, toUserID, toDeviceID string, ids []string) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	nums := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		nums = append(nums, atoi(id))
+	}
+	tag, err := s.pool.Exec(ctx,
+		`DELETE FROM secret_queue WHERE to_user_id=$1 AND to_device_id=$2 AND id = ANY($3)`,
+		atoi(toUserID), toDeviceID, nums)
+	if err != nil {
+		return 0, wrap(err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+// PurgeExpiredSecrets collects envelopes nobody came back for.
+//
+// This runs whether or not the queue is under pressure. The rows are metadata
+// about who messaged whom and when — which the stateless relay never wrote down
+// — so keeping them past the point where the recipient could still use them
+// trades a delivery guarantee nobody gains for a record of a conversation.
+func (s *Store) PurgeExpiredSecrets(ctx context.Context, now int64, limit int) (int, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
+	tag, err := s.pool.Exec(ctx,
+		`DELETE FROM secret_queue WHERE id IN (
+		   SELECT id FROM secret_queue WHERE expires_at <= $1 ORDER BY expires_at LIMIT $2
+		 )`, now, limit)
+	if err != nil {
+		return 0, wrap(err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+// --- ChatSummaryReader / MemberFlagStore ---
+
+/*
+UserChatSummaries builds a page of the chat list in ONE query.
+
+What it replaces, in chat.Service.UserChats: read every chat id the user belongs
+to, sort them in Go, then per surviving row issue GetChat, GetMember and — for a
+direct chat — ListMembers to find the peer. A 50-row page cost up to 150 round
+trips, and because the sort happened after a full read, every page re-read the
+entire membership: paging to the end of a 2000-chat list was quadratic.
+
+It also fixes what the old page CONTAINED. There was no last message, no unread
+count and no mute state, so a client had to call HISTORY per chat to draw its
+list — the server's N+1 moved to the client and became N+1 over the network. And
+the order was by chat id, which is creation order; a chat list is ordered by
+activity, and that is not a presentation detail but what the list IS.
+
+The LATERAL is why this is an optional capability rather than part of ChatStore:
+it reads `messages`, which a sharded deployment does not co-locate with the chat
+metadata. Where they are co-located (the single-Postgres default) this is one
+query; where they are not, the capability is simply absent and the caller keeps
+its row-at-a-time path.
+*/
+func (s *Store) UserChatSummaries(ctx context.Context, userID string, afterActivity int64, afterChatID string, limit int, includeArchived bool) ([]model.ChatSummary, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.reader().Query(ctx,
+		`WITH mine AS (
+		   SELECT m.chat_id, m.role, m.muted_until, m.pinned, m.archived
+		   FROM chat_members m
+		   WHERE m.user_id = $1 AND ($5 OR NOT m.archived)
+		 )
+		 SELECT c.id, c.type, c.title, c.owner_id, c.created_at, c.last_seq, c.username,
+		        mine.role, mine.muted_until, mine.pinned, mine.archived,
+		        lm.id, lm.sender_id, lm.seq, lm.text, lm.media_ref, lm.created_at,
+		        COALESCE(lm.seq, 0) - LEAST(COALESCE(rs.up_to_seq, 0), COALESCE(lm.seq, 0)) AS unread,
+		        peer.user_id,
+		        COALESCE(lm.created_at, c.created_at) AS activity_at
+		 FROM mine
+		 JOIN chats c ON c.id = mine.chat_id
+		 LEFT JOIN read_state rs ON rs.chat_id = c.id AND rs.user_id = $1
+		 LEFT JOIN LATERAL (
+		   SELECT id, sender_id, seq, text, media_ref, created_at
+		   FROM messages
+		   WHERE chat_id = c.id AND NOT deleted
+		   ORDER BY seq DESC LIMIT 1
+		 ) lm ON TRUE
+		 LEFT JOIN LATERAL (
+		   SELECT user_id FROM chat_members
+		   WHERE chat_id = c.id AND user_id <> $1 LIMIT 1
+		 ) peer ON c.type IN ('direct', 'secret')
+		 WHERE ($2 = 0 AND $3 = 0)
+		    OR (COALESCE(lm.created_at, c.created_at), c.id) < ($2, $3)
+		 ORDER BY activity_at DESC, c.id DESC
+		 LIMIT $4`,
+		atoi(userID), afterActivity, atoi(afterChatID), limit, includeArchived)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	defer rows.Close()
+
+	var out []model.ChatSummary
+	for rows.Next() {
+		var (
+			id, ownerID, createdAt, lastSeq int64
+			typ, title, username, role      string
+			mutedUntil                      int64
+			pinned, archived                bool
+			// The last message is absent for an empty chat, so every column of it
+			// is nullable and scanned into a pointer.
+			lmID, lmSender, lmSeq, lmCreated *int64
+			lmText, lmMedia                  *string
+			unread                           int64
+			peerID                           *int64
+			activityAt                       int64
+		)
+		if err := rows.Scan(&id, &typ, &title, &ownerID, &createdAt, &lastSeq, &username,
+			&role, &mutedUntil, &pinned, &archived,
+			&lmID, &lmSender, &lmSeq, &lmText, &lmMedia, &lmCreated,
+			&unread, &peerID, &activityAt); err != nil {
+			return nil, err
+		}
+		sum := model.ChatSummary{
+			Chat: &model.Chat{
+				ID: itoa(id), Type: model.ChatType(typ), Title: title,
+				OwnerID: itoa(ownerID), CreatedAt: createdAt,
+				LastSeq: uint64(lastSeq), Username: username,
+			},
+			MyRole:         model.MemberRole(role),
+			UnreadCount:    unread,
+			LastActivityAt: activityAt,
+			Flags: model.MemberFlags{
+				MutedUntil: mutedUntil, Pinned: pinned, Archived: archived,
+			},
+		}
+		if peerID != nil {
+			sum.PeerID = itoa(*peerID)
+		}
+		if lmID != nil {
+			sum.LastMessage = &model.Message{
+				ID: itoa(*lmID), ChatID: sum.Chat.ID, SenderID: itoa(deref(lmSender)),
+				Seq: uint64(deref(lmSeq)), Text: derefStr(lmText), MediaRef: derefStr(lmMedia),
+				CreatedAt: deref(lmCreated),
+			}
+		}
+		out = append(out, sum)
+	}
+	return out, rows.Err()
+}
+
+func deref(p *int64) int64 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func derefStr(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+// SetMemberFlags writes one member's private per-chat settings.
+//
+// The (chat_id, user_id) predicate is the authorization: flags are the member's
+// own opinion about their own list, so there is no shape of this call that touches
+// somebody else's row. It also means a non-member's write affects nothing rather
+// than creating a membership.
+func (s *Store) SetMemberFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE chat_members
+		 SET muted_until=$3, pinned=$4, archived=$5, muted=($3 <> 0)
+		 WHERE chat_id=$1 AND user_id=$2`,
+		atoi(chatID), atoi(userID), f.MutedUntil, f.Pinned, f.Archived)
+	if err != nil {
+		return wrap(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) GetMemberFlags(ctx context.Context, chatID, userID string) (model.MemberFlags, error) {
+	var f model.MemberFlags
+	err := s.reader().QueryRow(ctx,
+		`SELECT muted_until, pinned, archived FROM chat_members WHERE chat_id=$1 AND user_id=$2`,
+		atoi(chatID), atoi(userID)).Scan(&f.MutedUntil, &f.Pinned, &f.Archived)
+	if err != nil {
+		return model.MemberFlags{}, wrap(err)
+	}
+	return f, nil
+}
+
+// --- TwoFactorStore ---
+
+// PutTwoFactor writes an enrolment and its recovery codes in ONE transaction.
+//
+// One transaction because the two halves are useless apart: an enrolment without
+// recovery codes locks a user out the moment they lose their phone, and codes
+// without an enrolment are a set of credentials for a factor that does not exist.
+// A partial write is the worst of both.
+func (s *Store) PutTwoFactor(ctx context.Context, tf *model.TwoFactor) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return wrap(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO user_two_factor (user_id, secret_enc, confirmed_at, created_at)
+		 VALUES ($1,$2,$3,$4)
+		 ON CONFLICT (user_id) DO UPDATE
+		   SET secret_enc=EXCLUDED.secret_enc, confirmed_at=EXCLUDED.confirmed_at`,
+		atoi(tf.UserID), tf.SecretEnc, tf.ConfirmedAt, tf.CreatedAt); err != nil {
+		return wrap(err)
+	}
+	// Recovery codes are REPLACED wholesale, never merged. They are issued as a
+	// set, and a client that re-enrols must not end up able to use codes from a
+	// previous secret.
+	if _, err := tx.Exec(ctx, `DELETE FROM user_recovery_codes WHERE user_id=$1`, atoi(tf.UserID)); err != nil {
+		return wrap(err)
+	}
+	for _, h := range tf.RecoveryHashes {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO user_recovery_codes (user_id, code_hash) VALUES ($1,$2)
+			 ON CONFLICT DO NOTHING`, atoi(tf.UserID), h); err != nil {
+			return wrap(err)
+		}
+	}
+	return wrap(tx.Commit(ctx))
+}
+
+func (s *Store) GetTwoFactor(ctx context.Context, userID string) (*model.TwoFactor, error) {
+	var tf model.TwoFactor
+	err := s.reader().QueryRow(ctx,
+		`SELECT secret_enc, confirmed_at, created_at FROM user_two_factor WHERE user_id=$1`,
+		atoi(userID)).Scan(&tf.SecretEnc, &tf.ConfirmedAt, &tf.CreatedAt)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	tf.UserID = userID
+
+	rows, err := s.reader().Query(ctx,
+		`SELECT code_hash FROM user_recovery_codes WHERE user_id=$1`, atoi(userID))
+	if err != nil {
+		return nil, wrap(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var h string
+		if err := rows.Scan(&h); err != nil {
+			return nil, err
+		}
+		tf.RecoveryHashes = append(tf.RecoveryHashes, h)
+	}
+	return &tf, rows.Err()
+}
+
+func (s *Store) DeleteTwoFactor(ctx context.Context, userID string) error {
+	// The codes go with it. ON DELETE CASCADE covers the user row disappearing,
+	// but disabling the factor is not deleting the account, so this is explicit.
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return wrap(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `DELETE FROM user_recovery_codes WHERE user_id=$1`, atoi(userID)); err != nil {
+		return wrap(err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM user_two_factor WHERE user_id=$1`, atoi(userID)); err != nil {
+		return wrap(err)
+	}
+	return wrap(tx.Commit(ctx))
+}
+
+// ConsumeRecoveryCode spends one code, atomically.
+//
+// A single DELETE, because a recovery code is single-use and check-then-write
+// would let two concurrent logins both spend the same one — exactly the race an
+// attacker replaying an observed code would want. RowsAffected is the answer.
+func (s *Store) ConsumeRecoveryCode(ctx context.Context, userID, hash string) (bool, error) {
+	ct, err := s.pool.Exec(ctx,
+		`DELETE FROM user_recovery_codes WHERE user_id=$1 AND code_hash=$2`,
+		atoi(userID), hash)
+	if err != nil {
+		return false, wrap(err)
+	}
+	return ct.RowsAffected() > 0, nil
+}
+
+// --- PasswordStore ---
+
+// SetPasswordHash replaces an account's password hash.
+//
+// Until this existed a password could not be changed at all, which made a leaked
+// one permanent: revoking every session does not stop whoever knows the password
+// from signing in again a minute later.
+func (s *Store) SetPasswordHash(ctx context.Context, userID, hash string) error {
+	ct, err := s.pool.Exec(ctx, `UPDATE users SET password_hash=$2 WHERE id=$1`, atoi(userID), hash)
+	if err != nil {
+		return wrap(err)
+	}
+	if ct.RowsAffected() == 0 {
 		return store.ErrNotFound
 	}
 	return nil

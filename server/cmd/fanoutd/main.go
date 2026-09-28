@@ -28,7 +28,7 @@ func main() {
 	}
 	defer b.Close()
 
-	chatConn, err := platform.Dial(platform.Env("SyncApp_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
+	chatConn, err := platform.Dial(platform.Env("SYNCAPP_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
 	if err != nil {
 		b.Log.Error("dial chatd", "err", err)
 		os.Exit(1)
@@ -40,5 +40,5 @@ func main() {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
-	platform.RunWorker(ctx, platform.Env("SyncApp_FANOUTD_METRICS", ":9106"), b.Log)
+	platform.RunWorker(ctx, platform.Env("SYNCAPP_FANOUTD_METRICS", ":9106"), b.Log)
 }

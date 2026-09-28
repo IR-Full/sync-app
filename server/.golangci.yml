@@ -1,0 +1,58 @@
+# Static analysis beyond `go vet`.
+#
+# The repository already runs vet (correctness), gosec (security) and
+# govulncheck (CVEs) in CI. What none of them catch is the ordinary kind of bug
+# that looks fine in review: an error assigned and never checked, a loop that
+# shadows the variable it means to capture, a `defer` in a loop body. That is
+# what this adds.
+#
+# The linter set is deliberately small. A long list produces a long baseline of
+# findings, which produces a `//nolint` culture, which produces a linter nobody
+# reads — worse than not running one.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    # The four vet-adjacent ones that find real defects rather than style.
+    - errcheck      # an unchecked error is the most common real bug in Go
+    - govet
+    - ineffassign   # a value computed and thrown away is usually a missing use
+    - staticcheck   # subsumes gosimple and stylecheck in v2
+    - unused        # dead code, which in this repo has repeatedly meant "wired to nothing"
+    # Correctness around concurrency and resources, which this codebase is full of.
+    - bodyclose
+    - rowserrcheck
+    - errorlint     # errors.Is/As rather than == , which the sentinel-heavy store depends on
+
+  settings:
+    errcheck:
+      # Deliberately-discarded errors are written `_ =` throughout this codebase,
+      # and each one carries a comment explaining why. Honour that convention
+      # rather than demanding a second syntax for the same intent.
+      check-blank: false
+    staticcheck:
+      checks:
+        - all
+        # ST1000: package comments. Most packages here have one; the generated
+        # and split *.types.go / *.constants.go files by construction cannot.
+        - -ST1000
+        # QF1001: De Morgan's law. A refactoring suggestion, not a defect — and
+        # `!(a && b)` often reads closer to the rule being expressed than the
+        # expanded form does. Left to the author.
+        - -QF1001
+
+  exclusions:
+    rules:
+      # Generated code is not ours to lint: it is regenerated wholesale by
+      # `make proto`, so a finding here can only be fixed by editing the
+      # generator or ignoring it.
+      - path: (internal/wirepb|internal/rpc/pb)/
+        linters: [errcheck, staticcheck, unused, ineffassign, errorlint]
+      # Tests legitimately ignore errors from setup they have already asserted
+      # on, and a t.Fatal after every helper call obscures what is being tested.
+      - path: _test\.go
+        linters: [errcheck, bodyclose]

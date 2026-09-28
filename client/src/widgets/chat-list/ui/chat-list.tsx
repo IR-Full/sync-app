@@ -5,12 +5,20 @@ import { useParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 
-import { ChatListItem, selectOrderedChats, useChatStore, useTypingStore } from '@/entities/chat'
+import {
+  ChatListItem,
+  selectArchivedChats,
+  selectOrderedChats,
+  useChatStore,
+  useTypingStore,
+} from '@/entities/chat'
 import { useSessionStore } from '@/entities/session'
 import { labelForUser, useUserDirectory } from '@/entities/user'
+import { ChatFlagsMenu } from '@/features/chat-flags'
 import { useContacts } from '@/features/contacts'
 import { NewChatDialog } from '@/features/create-chat'
 import { useTranslate } from '@/shared/i18n'
+import { cn } from '@/shared/lib/cn'
 import { Avatar, Button, EmptyState, TextField } from '@/shared/ui'
 
 /**
@@ -29,6 +37,10 @@ export function ChatList() {
   // selectOrderedChats sorts into a NEW array on every call; without a shallow
   // compare that is a fresh snapshot each render and useSyncExternalStore loops.
   const chats = useChatStore(useShallow(selectOrderedChats))
+  // The archive is a SEPARATE list, not a filter over the one above — `selectOrderedChats`
+  // already excludes archived rows, which is the point of archiving. Both are read
+  // unconditionally so the count on the tab is right before the tab is opened.
+  const archived = useChatStore(useShallow(selectArchivedChats))
   const selfId = useSessionStore((state) => state.session?.userId ?? '')
   const directory = useUserDirectory((state) => state.users)
   const typing = useTypingStore((state) => state.typing)
@@ -36,6 +48,7 @@ export function ChatList() {
 
   const [filter, setFilter] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   const senderLabel = useMemo(
     () => (userId: string) => labelForUser(directory[userId], userId),
@@ -54,24 +67,32 @@ export function ChatList() {
     [typing, selfId],
   )
 
+  const source = showArchived ? archived : chats
+
   const visible = useMemo(() => {
     const query = filter.trim().toLowerCase()
-    if (!query) return chats
-    return chats.filter((chat) => chat.title.toLowerCase().includes(query))
-  }, [chats, filter])
+    if (!query) return source
+    return source.filter((chat) => chat.title.toLowerCase().includes(query))
+  }, [source, filter])
 
   // Contacts we have no chat with yet — the practical entry point for a new
-  // direct conversation.
+  // direct conversation. Not offered while the archive is open: the archive is where
+  // somebody goes to find an old conversation, not to start one.
   const startable = useMemo(() => {
-    if (!contacts) return []
-    const known = new Set(chats.map((chat) => chat.peerUserId).filter(Boolean))
+    if (!contacts || showArchived) return []
+    // Archived chats count as "known" too. A contact whose chat is merely filed away
+    // is not a contact to start a new conversation with, and offering them creates a
+    // second row for the same person.
+    const known = new Set(
+      [...chats, ...archived].map((chat) => chat.peerUserId).filter(Boolean),
+    )
     return contacts.filter((contact) => !contact.blocked && !known.has(contact.userId))
-  }, [contacts, chats])
+  }, [contacts, chats, archived, showArchived])
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex justify-between gap-2 px-3 pt-3 pb-2">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <TextField
             placeholder={t('chats.search')}
             value={filter}
@@ -98,13 +119,52 @@ export function ChatList() {
         </Button>
       </div>
 
+      {/*
+        The archive entry appears only when there is something in it. A permanent
+        "Archived (0)" row is a control that does nothing, and hiding it is what makes
+        archiving feel like tidying rather than like another place to check.
+      */}
+      {(archived.length > 0 || showArchived) && (
+        <button
+          type="button"
+          onClick={() => {
+            setShowArchived((previous) => !previous)
+            // The filter belongs to the list being shown; carrying it across would
+            // open the archive already narrowed by a query typed against the other one.
+            setFilter('')
+          }}
+          className={cn(
+            'text-ink-muted hover:bg-surface-hover mx-2 mb-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium transition-colors',
+            showArchived && 'text-ink',
+          )}
+        >
+          <svg viewBox="0 0 16 16" className="size-3.5 shrink-0" fill="currentColor">
+            {showArchived ? (
+              <path d="M9.7 3.3L5 8l4.7 4.7 1-1L7 8l3.7-3.7-1-1z" />
+            ) : (
+              <path d="M2 3h12v2.5H2V3zm1 3.5h10V13H3V6.5zM6 8.5h4V10H6V8.5z" />
+            )}
+          </svg>
+          {showArchived
+            ? t('chats.archived.hide')
+            : t('chats.archived.show', { count: archived.length })}
+        </button>
+      )}
+
       <nav className="flex-1 overflow-y-auto px-2 pb-3" aria-label={t('chats.title')}>
         {visible.length === 0 && startable.length === 0 ? (
           <EmptyState
-            title={filter ? t('chats.noMatches') : t('chats.empty')}
-            description={filter ? undefined : t('chats.emptyHint')}
+            title={
+              filter
+                ? t('chats.noMatches')
+                : showArchived
+                  ? t('chats.archived.empty')
+                  : t('chats.empty')
+            }
+            description={filter || showArchived ? undefined : t('chats.emptyHint')}
             action={
-              !filter && (
+              !filter &&
+              !showArchived && (
                 <Button size="small" onClick={() => setDialogOpen(true)}>
                   {t('chats.new')}
                 </Button>
@@ -121,6 +181,7 @@ export function ChatList() {
                 selfId={selfId}
                 senderLabel={senderLabel}
                 typingUserIds={typingFor(chat.id)}
+                actions={<ChatFlagsMenu chat={chat} />}
               />
             ))}
 

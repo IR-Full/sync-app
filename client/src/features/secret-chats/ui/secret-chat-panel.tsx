@@ -9,7 +9,8 @@ import { cn } from '@/shared/lib/cn'
 import { formatTime } from '@/shared/lib/format'
 import { Button, EmptyState, ErrorNote, Modal, TextField } from '@/shared/ui'
 
-import { useSecretChat } from '../model/use-secret-chats'
+import { IdentityChangedError, useSecretChat } from '../model/use-secret-chats'
+import { SafetyPanel } from './safety-panel'
 
 /**
  * An end-to-end encrypted side channel with one peer.
@@ -38,6 +39,7 @@ export function SecretChatPanel({
   const [text, setText] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
 
   async function submit() {
     const value = text.trim()
@@ -48,6 +50,14 @@ export function SecretChatPanel({
       await send(value)
       setText('')
     } catch (caught) {
+      if (caught instanceof IdentityChangedError) {
+        // The send was refused because a device's identity moved. Say so and open
+        // the panel that can resolve it — leaving the user with a bare error and
+        // no way forward would make pinning look like a malfunction.
+        setError(t('secret.identityChanged'))
+        setVerifying(true)
+        return
+      }
       setError(
         caught instanceof Error && caught.message === 'no-devices'
           ? t('secret.noDevices')
@@ -62,7 +72,12 @@ export function SecretChatPanel({
 
   return (
     <Modal open={open} onClose={onClose} title={t('secret.title', { name: peerLabel })}>
-      <p className="text-ink-faint mb-3 text-xs">{t('secret.explainer')}</p>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-ink-faint text-xs">{t('secret.explainer')}</p>
+        <Button size="small" variant="ghost" onClick={() => setVerifying(true)}>
+          {t('secret.verify')}
+        </Button>
+      </div>
 
       <div className="border-line mb-3 max-h-80 min-h-32 overflow-y-auto rounded-xl border p-2">
         {messages.length === 0 ? (
@@ -111,6 +126,13 @@ export function SecretChatPanel({
           {t('chat.send')}
         </Button>
       </div>
+
+      <SafetyPanel
+        peerUserId={peerUserId}
+        peerLabel={peerLabel}
+        open={verifying}
+        onClose={() => setVerifying(false)}
+      />
     </Modal>
   )
 }

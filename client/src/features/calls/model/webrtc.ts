@@ -30,7 +30,24 @@ interface Peer {
   polite: boolean
   makingOffer: boolean
   ignoreOffer: boolean
+  /** How many times ICE has been restarted for this peer. */
+  iceRestarts: number
 }
+
+/**
+ * How many ICE restarts to attempt before giving up on a peer.
+ *
+ * A restart can genuinely rescue a connection that lost its path — a network
+ * handover, a NAT rebinding. What it cannot rescue is a peer pair that has no
+ * traversable path at all, which is the ordinary outcome of symmetric NAT with
+ * no TURN server (see `iceServers` in shared/config/env: the default is a public
+ * STUN, and the gateway is explicitly not a relay). In that case `failed` is
+ * terminal, and retrying it forever costs battery and data to learn nothing.
+ */
+const MAX_ICE_RESTARTS = 3
+
+/** Backoff between restarts, so three attempts are not three in one second. */
+const ICE_RESTART_DELAY_MS = 2_000
 
 export interface CallSessionOptions {
   selfUserId: string
@@ -103,6 +120,7 @@ export class CallSession {
       polite: this.selfKey > key,
       makingOffer: false,
       ignoreOffer: false,
+      iceRestarts: 0,
     }
     this.peers.set(key, peer)
 
@@ -143,11 +161,29 @@ export class CallSession {
     }
 
     connection.onconnectionstatechange = () => {
-      if (connection.connectionState === 'failed') {
-        // A failed transport can sometimes be salvaged by restarting ICE rather
-        // than rebuilding the whole peer.
-        connection.restartIce()
+      if (connection.connectionState !== 'failed') return
+      if (this.closed) return
+
+      // A failed transport can sometimes be salvaged by restarting ICE rather
+      // than rebuilding the whole peer — but only sometimes, and the bounded
+      // retry is what separates "recovering from a handover" from "hammering a
+      // path that does not exist".
+      if (peer.iceRestarts >= MAX_ICE_RESTARTS) {
+        this.options.onError(
+          `Could not establish a connection to this participant after ${MAX_ICE_RESTARTS} attempts`,
+        )
+        this.closePeer(key)
+        return
       }
+
+      peer.iceRestarts += 1
+      const attempt = peer.iceRestarts
+      setTimeout(() => {
+        // The peer may have left, or the call ended, during the wait.
+        if (this.closed || this.peers.get(key) !== peer) return
+        if (connection.connectionState !== 'failed') return
+        connection.restartIce()
+      }, ICE_RESTART_DELAY_MS * attempt)
     }
   }
 

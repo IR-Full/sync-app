@@ -97,3 +97,21 @@ class JoinChatUseCase @Inject constructor(
         return chatRepository.join(trimmed)
     }
 }
+
+/**
+ * Creates a secret chat with one other account.
+ *
+ * Its own use case rather than a flag on [CreateGroupChatUseCase], because the validation
+ * is the opposite shape: a group needs a title and may have any number of members, while
+ * this needs exactly one member and no title at all. Folding them together would mean a
+ * function whose required arguments depend on a boolean.
+ */
+class CreateSecretChatUseCase @Inject constructor(private val repository: ChatRepository) {
+    suspend operator fun invoke(peer: String): Outcome<Chat> {
+        val handle = peer.trim().removePrefix("@")
+        if (handle.isEmpty()) {
+            return Outcome.Failure(AppError.Unexpected("no peer given"))
+        }
+        return repository.createSecretChat(handle)
+    }
+}

@@ -24,6 +24,7 @@ import com.syncapp.messenger.domain.repository.MediaRepository
 import com.syncapp.messenger.domain.repository.MessageRepository
 import com.syncapp.messenger.network.ConnectionState
 import com.syncapp.messenger.network.SyncAppGateway
+import com.syncapp.messenger.network.request
 import com.syncapp.messenger.network.protocol.MsgType
 import com.syncapp.messenger.network.protocol.ProtocolException
 import com.syncapp.messenger.network.protocol.Read
@@ -33,6 +34,7 @@ import com.syncapp.messenger.network.protocol.Typing
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -41,8 +43,8 @@ import kotlinx.coroutines.sync.withLock
 
 @Singleton
 class MessageRepositoryImpl @Inject constructor(
-    private val gateway: syncappGateway,
-    private val database: syncappDatabase,
+    private val gateway: SyncAppGateway,
+    private val database: SyncAppDatabase,
     private val history: HistoryFetcher,
     private val ingestor: MessageIngestor,
     private val typingTracker: TypingTracker,
@@ -256,6 +258,12 @@ class MessageRepositoryImpl @Inject constructor(
                         messages.updateStatus(localId, MessageStatuses.FAILED)
                         outbox.remove(entry.dedupKey)
                     }
+                } catch (e: CancellationException) {
+                    // Not a send failure: the scope that owns this flush is going away.
+                    // Swallowing it here would record a bogus failure AND break
+                    // structured concurrency, leaving the caller waiting on a
+                    // coroutine that quietly declined to stop.
+                    throw e
                 } catch (e: Exception) {
                     // Transport failure: the socket is gone or the request timed out.
                     // The entry stays queued; the reconnect will flush it.

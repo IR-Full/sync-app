@@ -17,7 +17,7 @@ import (
 //     hold at once, so one host cannot occupy a large share of the node.
 //
 // Both default off (limit <= 0) so single-process dev and the test suite are
-// unaffected; production sets them via SyncApp_MAX_CONNS_PER_IP / _ACCEPT_RATE.
+// unaffected; production sets them via SYNCAPP_MAX_CONNS_PER_IP / _ACCEPT_RATE.
 type ipGuard struct {
 	rate       *ratelimit.Limiter // nil = no accept-rate limit
 	maxPerIP   int                // <= 0 = no concurrent cap

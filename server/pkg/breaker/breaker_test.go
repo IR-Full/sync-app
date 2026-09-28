@@ -23,7 +23,7 @@ func TestBreakerOpensAndRecovers(t *testing.T) {
 	}
 	// Open rejects without calling fn.
 	called := false
-	if err := b.Do(func() error { called = true; return nil }); err != ErrOpen || called {
+	if err := b.Do(func() error { called = true; return nil }); !errors.Is(err, ErrOpen) || called {
 		t.Fatalf("open should reject: err=%v called=%v", err, called)
 	}
 	// After cooldown, half-open lets one probe through; success closes it.

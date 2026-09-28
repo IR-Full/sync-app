@@ -14,14 +14,30 @@ func pbUser(u *model.User) *pb.User {
 	if u == nil {
 		return nil
 	}
-	return &pb.User{Id: u.ID, Username: u.Username, DisplayName: u.DisplayName, AvatarRef: u.AvatarRef, CreatedAt: u.CreatedAt}
+	return &pb.User{
+		Id: u.ID, Username: u.Username, DisplayName: u.DisplayName,
+		AvatarRef: u.AvatarRef, CreatedAt: u.CreatedAt,
+		PrivacyLastSeen:    string(u.Privacy.LastSeen),
+		PrivacyAvatar:      string(u.Privacy.Avatar),
+		PrivacyGroups:      string(u.Privacy.Groups),
+		PrivacyPushPreview: u.Privacy.PushPreview,
+	}
 }
 
 func modelUser(u *pb.User) *model.User {
 	if u == nil {
 		return nil
 	}
-	return &model.User{ID: u.Id, Username: u.Username, DisplayName: u.DisplayName, AvatarRef: u.AvatarRef, CreatedAt: u.CreatedAt}
+	return &model.User{
+		ID: u.Id, Username: u.Username, DisplayName: u.DisplayName,
+		AvatarRef: u.AvatarRef, CreatedAt: u.CreatedAt,
+		Privacy: model.Privacy{
+			LastSeen:    model.Visibility(u.PrivacyLastSeen),
+			Avatar:      model.Visibility(u.PrivacyAvatar),
+			Groups:      model.Visibility(u.PrivacyGroups),
+			PushPreview: u.PrivacyPushPreview,
+		},
+	}
 }
 
 func pbSession(s *model.Session) *pb.Session {
@@ -31,6 +47,7 @@ func pbSession(s *model.Session) *pb.Session {
 	return &pb.Session{
 		Id: s.ID, UserId: s.UserID, DeviceId: s.DeviceID, Token: s.Token,
 		ResumeToken: s.ResumeToken, CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, RevokedAt: s.RevokedAt,
+		PrevResumeToken: s.PrevResumeToken, ResumeRotatedAt: s.ResumeRotatedAt,
 	}
 }
 
@@ -41,6 +58,7 @@ func modelSession(s *pb.Session) *model.Session {
 	return &model.Session{
 		ID: s.Id, UserID: s.UserId, DeviceID: s.DeviceId, Token: s.Token,
 		ResumeToken: s.ResumeToken, CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, RevokedAt: s.RevokedAt,
+		PrevResumeToken: s.PrevResumeToken, ResumeRotatedAt: s.ResumeRotatedAt,
 	}
 }
 
@@ -59,25 +77,50 @@ func modelChat(c *pb.Chat) *model.Chat {
 }
 
 func pbChatSummary(s model.ChatSummary) *pb.ChatSummary {
-	return &pb.ChatSummary{Chat: pbChat(s.Chat), MyRole: string(s.MyRole), PeerId: s.PeerID}
+	out := &pb.ChatSummary{
+		Chat: pbChat(s.Chat), MyRole: string(s.MyRole), PeerId: s.PeerID,
+		UnreadCount: s.UnreadCount, LastActivityAt: s.LastActivityAt,
+		MutedUntil: s.Flags.MutedUntil, Pinned: s.Flags.Pinned, Archived: s.Flags.Archived,
+	}
+	if s.LastMessage != nil {
+		out.LastMessage = pbMessage(s.LastMessage)
+	}
+	return out
 }
 
 func modelChatSummary(s *pb.ChatSummary) model.ChatSummary {
-	return model.ChatSummary{Chat: modelChat(s.Chat), MyRole: model.MemberRole(s.MyRole), PeerID: s.PeerId}
+	out := model.ChatSummary{
+		Chat: modelChat(s.Chat), MyRole: model.MemberRole(s.MyRole), PeerID: s.PeerId,
+		UnreadCount: s.UnreadCount, LastActivityAt: s.LastActivityAt,
+		Flags: model.MemberFlags{
+			MutedUntil: s.MutedUntil, Pinned: s.Pinned, Archived: s.Archived,
+		},
+	}
+	if s.LastMessage != nil {
+		out.LastMessage = modelMessage(s.LastMessage)
+	}
+	return out
 }
 
 func pbMember(m *model.ChatMember) *pb.ChatMember {
 	if m == nil {
 		return nil
 	}
-	return &pb.ChatMember{ChatId: m.ChatID, UserId: m.UserID, Role: string(m.Role), JoinedAt: m.JoinedAt, Muted: m.Muted}
+	return &pb.ChatMember{
+		ChatId: m.ChatID, UserId: m.UserID, Role: string(m.Role), JoinedAt: m.JoinedAt,
+		Muted: m.Muted, MutedUntil: m.Flags.MutedUntil, Pinned: m.Flags.Pinned, Archived: m.Flags.Archived,
+	}
 }
 
 func modelMember(m *pb.ChatMember) *model.ChatMember {
 	if m == nil {
 		return nil
 	}
-	return &model.ChatMember{ChatID: m.ChatId, UserID: m.UserId, Role: model.MemberRole(m.Role), JoinedAt: m.JoinedAt, Muted: m.Muted}
+	return &model.ChatMember{
+		ChatID: m.ChatId, UserID: m.UserId, Role: model.MemberRole(m.Role), JoinedAt: m.JoinedAt,
+		Muted: m.Muted,
+		Flags: model.MemberFlags{MutedUntil: m.MutedUntil, Pinned: m.Pinned, Archived: m.Archived},
+	}
 }
 
 // pbMessage / modelMessage carry the WHOLE message. A field dropped here is

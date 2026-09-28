@@ -12,6 +12,34 @@ import { Button, ErrorNote } from '@/shared/ui'
 import { useCallActions } from '../model/use-calls'
 import { VideoTile } from './video-tile'
 
+/**
+ * Turns a stored call-error code into something readable.
+ *
+ * The store holds a code, not a sentence — `describeMediaError` produces
+ * `permission-denied`, `no-device` and friends. Two of the three places that
+ * rendered it printed the code straight out, so a user could be shown
+ * "permission-denied" or a raw browser exception message. One mapping, used
+ * everywhere, is what keeps that from drifting apart again.
+ */
+function useCallErrorText(): (code: string | null) => string | null {
+  const t = useTranslate()
+  return (code) => {
+    if (!code) return null
+    switch (code) {
+      case 'permission-denied':
+        return t('call.noPermission')
+      case 'no-device':
+        return t('call.noDevice')
+      case 'connection-lost':
+        return t('call.connectionLost')
+      default:
+        // Anything else is a browser message we cannot localise; say the one
+        // thing that is certainly true rather than leaking the exception text.
+        return t('call.failed')
+    }
+  }
+}
+
 function RoundButton({
   onClick,
   label,
@@ -63,7 +91,9 @@ export function CallOverlay() {
   const remoteStreams = useCallStore((state) => state.remoteStreams)
   const micMuted = useCallStore((state) => state.micMuted)
   const cameraOff = useCallStore((state) => state.cameraOff)
-  const error = useCallStore((state) => state.error)
+  const errorCode = useCallStore((state) => state.error)
+  const callErrorText = useCallErrorText()
+  const error = callErrorText(errorCode)
   const setMicMuted = useCallStore((state) => state.setMicMuted)
   const setCameraOff = useCallStore((state) => state.setCameraOff)
 
@@ -92,13 +122,7 @@ export function CallOverlay() {
         className="border-line bg-surface-raised fixed inset-x-0 top-4 z-50 mx-auto w-[min(24rem,calc(100vw-2rem))] rounded-2xl border p-3 shadow-xl"
       >
         <div className="flex items-start gap-3">
-          <p className="text-danger min-w-0 flex-1 text-sm">
-            {error === 'permission-denied'
-              ? t('call.noPermission')
-              : error === 'no-device'
-                ? t('call.noDevice')
-                : t('call.failed')}
-          </p>
+          <p className="text-danger min-w-0 flex-1 text-sm">{error}</p>
           <button
             type="button"
             onClick={() => useCallStore.getState().setError(null)}

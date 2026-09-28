@@ -93,13 +93,29 @@ public struct AuthBody: ProtoMessage, Sendable, Equatable {
     /// Honoured on registration only. Afterwards `PROFILE_SET` is the single
     /// writer of the name, so a stale client cannot revert one changed elsewhere.
     public var displayName = ""
+    /// The second factor, sent on the RETRY after the server answered
+    /// `twoFactorRequired`.
+    ///
+    /// A client cannot know in advance whether an account enforces one — asking would
+    /// make the protocol an oracle for which accounts are protected — so the flow is
+    /// credentials, then "a code is needed", then both. A RECOVERY code is accepted
+    /// here too: the user who lost their phone is looking at the same prompt, and
+    /// making them find a different screen is how a recovery path goes unused.
+    public var totpCode = ""
 
     public init(token: String) { self.token = token }
-    public init(username: String, password: String, register: Bool, displayName: String = "") {
+    public init(
+        username: String,
+        password: String,
+        register: Bool,
+        displayName: String = "",
+        totpCode: String = ""
+    ) {
         self.username = username
         self.password = password
         self.register = register
         self.displayName = displayName
+        self.totpCode = totpCode
     }
     public init() {}
 
@@ -109,6 +125,7 @@ public struct AuthBody: ProtoMessage, Sendable, Equatable {
         w.string(3, password)
         w.bool(4, register)
         w.string(5, displayName)
+        w.string(6, totpCode)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -120,6 +137,7 @@ public struct AuthBody: ProtoMessage, Sendable, Equatable {
             case 3: password = try r.string()
             case 4: register = try r.bool()
             case 5: displayName = try r.string()
+            case 6: totpCode = try r.string()
             default: try r.skip(f)
             }
         }
@@ -203,12 +221,24 @@ public struct ResumeBody: ProtoMessage, Sendable, Equatable {
 public struct ResumeOKBody: ProtoMessage, Sendable, Equatable {
     public var sessionID = ""
     public var fromSeq: UInt64 = 0
+    /// The token to use NEXT time, because resuming CONSUMES the one just sent.
+    ///
+    /// Keeping the old one is not a missed optimisation — it ends the session. The
+    /// server remembers the consumed token precisely so that presenting it again is
+    /// detectable, and treats that as theft: two parties holding one token, with no
+    /// way to tell which is the owner, so it kills the chain. A client that stored the
+    /// spent token therefore works for exactly one reconnect and then logs itself out.
+    ///
+    /// Empty from an older gateway that does not rotate, in which case the existing
+    /// token is still current.
+    public var resumeToken = ""
 
     public init() {}
 
     public func encode(to w: inout ProtoWriter) {
         w.string(1, sessionID)
         w.uint64(2, fromSeq)
+        w.string(3, resumeToken)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -217,6 +247,7 @@ public struct ResumeOKBody: ProtoMessage, Sendable, Equatable {
             switch f.number {
             case 1: sessionID = try r.string()
             case 2: fromSeq = try r.uint64()
+            case 3: resumeToken = try r.string()
             default: try r.skip(f)
             }
         }

@@ -228,7 +228,7 @@ not talk to FCM**. It POSTs
  "body": "...", "chat_id": "...", "message_id": "..."}
 ```
 
-to `SyncApp_PUSH_ENDPOINT` with `Authorization: Bearer $SyncApp_PUSH_KEY`. A
+to `SYNCAPP_PUSH_ENDPOINT` with `Authorization: Bearer $SYNCAPP_PUSH_KEY`. A
 deployment therefore needs a small relay that forwards those keys to FCM **as a data
 message** (data-only, so this client decides whether to show anything — notifications
 off, or a chat already open).
@@ -238,7 +238,7 @@ To enable:
 1. Put `app/google-services.json` in place. The Google Services plugin is applied
    only when that file exists, so the project builds without it and
    `BuildConfig.PUSH_ENABLED` reflects the truth.
-2. Run the relay and set `SyncApp_PUSH_ENDPOINT` / `SyncApp_PUSH_KEY` on the server.
+2. Run the relay and set `SYNCAPP_PUSH_ENDPOINT` / `SYNCAPP_PUSH_KEY` on the server.
 
 The client registers its token with `PUSH_TOKEN` on every successful connect and on
 FCM rotation, and clears it (empty token) on logout or when notifications are turned
@@ -263,7 +263,7 @@ the server that has to agree:
 
 ```bash
 cd ../server && go run ./cmd/server            # terminal 1
-SyncApp_TEST_WS=ws://localhost:8080/ws ./gradlew testDevelopmentDebugUnitTest   # terminal 2
+SYNCAPP_TEST_WS=ws://localhost:8080/ws ./gradlew testDevelopmentDebugUnitTest   # terminal 2
 ```
 
 `GatewayInteropTest` then drives a live handshake: HELLO/WELCOME capability
@@ -285,21 +285,70 @@ convention for infra-dependent tests.
 
 ---
 
-## Not implemented
+## Protocol coverage
 
-The protocol supports these; they are out of this client's scope, and none of them
-are stubbed or faked:
+`protocol/MsgType.kt` carries **every** message type the gateway dispatches, and
+`protocol/Bodies.kt` a class for every body that reaches a client. Two tests hold
+that against the source rather than a copy of it: `MsgTypeParityTest` reads
+`server/pkg/wire/constants.go`, `BodySchemaParityTest` reads
+`server/proto/syncapp/v1/body.proto` and compares every field NUMBER in both
+directions. Both skip rather than fail when the server tree is absent, so this
+module still builds alone.
 
-- **E2E secret chats** (X3DH + Double Ratchet). `CapSecretChat` is deliberately not
-  advertised — claiming it would invite ciphertext this client cannot decrypt.
-- **Calls** (`CALL_*` signaling; media is peer-to-peer and never touches the server).
-- Reactions, threads, polls, pins, cross-device drafts, forwarding, scheduled sends,
+The reason for the mechanical check: nothing about drift here fails loudly. The
+protocol's own extensibility rule is that an unknown type is skipped in silence,
+and protobuf puts only field numbers on the wire — swap two and the encoder, the
+decoder and a round-trip test are all perfectly happy while a `Pinned` arrives
+with the chat id in the pin list.
+
+**Listed is not the same as driven.** These types decode and can be logged, but
+no screen sends or renders them:
+
+- **Calls** (`CALL_*`). Signalling without the WebRTC half would ring for nothing.
+- **Polls** (`POLL_*`): no composer and no result view.
+- Reactions, threads, pins, cross-device drafts, forwarding, scheduled sends,
   self-destruct composition (received TTL messages *are* honoured and purged),
-  message edit/delete, full-text search, invite-link management (joining by code or
-  handle *is* implemented), roles, chat export, contacts management beyond the sync
-  that supplies private labels.
+  full-text search, invite-link management (joining by code or handle *is*
+  implemented), roles, chat export, contacts management beyond the sync that
+  supplies private labels.
 - **QUIC** and raw TCP transports.
 
-Session tokens live in a DataStore file in app-private storage, excluded from backup
-and device transfer (`xml/backup_rules.xml`). Hardware-backed encryption at rest
-would be the next step for a production build.
+Driven end to end, beyond the messaging core: **active sessions**
+(`SESSION_LIST`/`SESSION_REVOKE`, with a screen that ends another device's
+session), **account deletion** (`ACCOUNT_DELETE`, password re-checked by the
+server), and **privacy settings** (`PRIVACY_GET`/`PRIVACY_SET` for last seen,
+avatar and group invitations). Logout now revokes the session on the server
+before dropping the token — without that half it was a local gesture, and a
+phone that was lost rather than logged out kept access until the session
+expired.
+
+## Secret chats
+
+X3DH and the Double Ratchet, ported from `server/pkg/e2e` into
+`com.syncapp.messenger.crypto` and checked against the server's own test vectors.
+`Cap.SECRET_CHAT` is advertised because the code behind it exists.
+
+`Ratchet.decrypt` stages its state on a copy and adopts it only after the frame
+authenticates, so a forged `SECRET_SEND` cannot destroy a live session — the same
+defect, and the same fix, as the Go and TypeScript ports.
+
+Identity keys, ratchet sessions and pinned peer identities live in a DataStore
+file encrypted under a non-extractable AndroidKeyStore key. The transcript does
+not: secret messages are held in memory for the lifetime of the process and are
+gone on logout, because there is no cross-device history to reconcile them with
+and writing them down would imply one.
+
+`SafetySheet` shows the safety number per peer device. A changed identity
+REFUSES the send rather than re-keying silently — a reinstall and an attack are
+indistinguishable from here, so the choice belongs to a human.
+
+## At rest
+
+Session tokens live in a DataStore file in app-private storage, encrypted under a
+non-extractable AndroidKeyStore key (`TokenCipher`). The Room database is
+encrypted with SQLCipher under a 32-byte passphrase wrapped by a second keystore
+key (`DatabaseKey`); an installation that predates this converts its plaintext
+database in place via `sqlcipher_export` rather than dropping it, because the
+outbox lives there. Both are excluded from backup and device transfer
+(`xml/backup_rules.xml`), which is also what keeps a restore from landing a
+database on a device whose keystore never held its key.

@@ -8,9 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"strconv"
 
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/jackc/pgx/v5"
@@ -42,7 +42,7 @@ func Connect(ctx context.Context, dsn string) (*Store, error) {
 	// the just-sent case, so a client never depends on the replica for its own
 	// latest write). If the replica is unreachable at boot we fail closed on it and
 	// fall back to the primary rather than refuse to start.
-	if rdsn := os.Getenv("SyncApp_PG_REPLICA_DSN"); rdsn != "" {
+	if rdsn := envcfg.Get("SYNCAPP_PG_REPLICA_DSN"); rdsn != "" {
 		if rp, err := connectPool(ctx, rdsn); err != nil {
 			// Non-fatal: log-less fallback to primary keeps the node serving.
 			s.readPool = nil
@@ -52,8 +52,8 @@ func Connect(ctx context.Context, dsn string) (*Store, error) {
 	}
 	// Group-commit batcher: coalesces concurrent message writes into shared
 	// transactions so many messages amortize one commit fsync (the measured
-	// single-node write bottleneck). Disable with SyncApp_WRITE_BATCH=off.
-	if os.Getenv("SyncApp_WRITE_BATCH") != "off" {
+	// single-node write bottleneck). Disable with SYNCAPP_WRITE_BATCH=off.
+	if envcfg.Get("SYNCAPP_WRITE_BATCH") != "off" {
 		s.batcher = newBatcher(s)
 	}
 	return s, nil
@@ -93,7 +93,7 @@ func (s *Store) Close() {
 
 // Stores returns a store.Stores bundle backed by this instance.
 func (s *Store) Stores() store.Stores {
-	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s}
+	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s, SecretQ: s, TwoFactor: s, Billing: s}
 }
 
 // atoi/itoa convert between the model's string ids and BIGINT columns.
@@ -198,8 +198,11 @@ func (s *Store) scanUser(ctx context.Context, where string, arg any) (*model.Use
 		id int64
 	)
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, display_name, avatar_ref, password_hash, created_at FROM users `+where, arg).
-		Scan(&id, &u.Username, &u.DisplayName, &u.AvatarRef, &u.PasswordHash, &u.CreatedAt)
+		`SELECT id, username, display_name, avatar_ref, password_hash, created_at,
+		        privacy_last_seen, privacy_avatar, privacy_groups, privacy_push_preview
+		   FROM users `+where, arg).
+		Scan(&id, &u.Username, &u.DisplayName, &u.AvatarRef, &u.PasswordHash, &u.CreatedAt,
+			&u.Privacy.LastSeen, &u.Privacy.Avatar, &u.Privacy.Groups, &u.Privacy.PushPreview)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, store.ErrNotFound
 	}
@@ -207,7 +210,26 @@ func (s *Store) scanUser(ctx context.Context, where string, arg any) (*model.Use
 		return nil, err
 	}
 	u.ID = itoa(id)
+	// A row written before these columns existed, or by something else, reads as
+	// the historical behaviour rather than as an error nobody can act on.
+	u.Privacy = u.Privacy.Normalize()
 	return &u, nil
+}
+
+// UpdatePrivacy writes a user's visibility settings.
+func (s *Store) UpdatePrivacy(ctx context.Context, userID string, p model.Privacy) error {
+	p = p.Normalize()
+	ct, err := s.pool.Exec(ctx,
+		`UPDATE users SET privacy_last_seen=$2, privacy_avatar=$3, privacy_groups=$4,
+		     privacy_push_preview=$5 WHERE id=$1`,
+		atoi(userID), string(p.LastSeen), string(p.Avatar), string(p.Groups), p.PushPreview)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 // UpsertDevice registers or refreshes a device. A device id is asserted by the
@@ -317,12 +339,14 @@ func (s *Store) scanSession(ctx context.Context, where string, arg any) (*model.
 	var (
 		sess         model.Session
 		id, uid, did int64
-		resume       *string
+		resume, prev *string
 	)
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, user_id, device_id, token, resume_token, created_at, expires_at, revoked_at
+		`SELECT id, user_id, device_id, token, resume_token, created_at, expires_at, revoked_at,
+		        prev_resume_token, resume_rotated_at
 		 FROM sessions `+where, arg).
-		Scan(&id, &uid, &did, &sess.Token, &resume, &sess.CreatedAt, &sess.ExpiresAt, &sess.RevokedAt)
+		Scan(&id, &uid, &did, &sess.Token, &resume, &sess.CreatedAt, &sess.ExpiresAt, &sess.RevokedAt,
+			&prev, &sess.ResumeRotatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, store.ErrNotFound
 	}
@@ -333,7 +357,40 @@ func (s *Store) scanSession(ctx context.Context, where string, arg any) (*model.
 	if resume != nil {
 		sess.ResumeToken = *resume
 	}
+	if prev != nil {
+		sess.PrevResumeToken = *prev
+	}
 	return &sess, nil
+}
+
+// RotateResumeToken swaps the token, keeping the one it replaced.
+//
+// The `resume_token=$3` predicate is a compare-and-swap, and it is the whole
+// safety property: two resumes racing on one token must not both succeed and hand
+// out two live chains. The loser affects no rows and is told ErrNotFound, which is
+// indistinguishable from a replay — and is correctly treated as one.
+func (s *Store) RotateResumeToken(ctx context.Context, sessionID, oldHash, newHash string, at int64) error {
+	ct, err := s.pool.Exec(ctx,
+		`UPDATE sessions
+		 SET prev_resume_token = resume_token, resume_token = $2, resume_rotated_at = $4
+		 WHERE id = $1 AND resume_token = $3`,
+		atoi(sessionID), newHash, oldHash, at)
+	if err != nil {
+		return wrap(err)
+	}
+	if ct.RowsAffected() == 0 {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+// GetSessionByConsumedResumeToken finds the session a token USED to belong to.
+//
+// A hit means a resume arrived for a token that has already been spent, so two
+// parties hold the chain — which is the theft signal the rotation exists to
+// produce. ErrNotFound is the ordinary case of a token that was never valid.
+func (s *Store) GetSessionByConsumedResumeToken(ctx context.Context, resume string) (*model.Session, error) {
+	return s.scanSession(ctx, `WHERE prev_resume_token=$1`, resume)
 }
 
 func (s *Store) RevokeSession(ctx context.Context, id string, at int64) error {
@@ -345,6 +402,24 @@ func (s *Store) RevokeSession(ctx context.Context, id string, at int64) error {
 		return store.ErrNotFound
 	}
 	return nil
+}
+
+// TouchSession extends a live session's expiry.
+//
+// The liveness conditions live in the WHERE clause rather than in a read
+// followed by a write: two connections of the same account can touch the same
+// session concurrently, and a check-then-update would let one of them revive a
+// session the other just revoked. `expires_at < $2` also makes the statement
+// idempotent and keeps it from writing when nothing would change.
+//
+// A row that does not match is not an error — it means the session is revoked,
+// expired, or already fresh enough, all of which are fine.
+func (s *Store) TouchSession(ctx context.Context, id string, expiresAt int64) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE sessions SET expires_at=$2
+		 WHERE id=$1 AND revoked_at=0 AND expires_at > $3 AND expires_at < $2`,
+		atoi(id), expiresAt, nowMs())
+	return err
 }
 
 func (s *Store) ListSessions(ctx context.Context, userID string) ([]*model.Session, error) {
@@ -403,12 +478,25 @@ func (s *Store) GetChat(ctx context.Context, id string) (*model.Chat, error) {
 }
 
 func (s *Store) GetOrCreateDirect(ctx context.Context, userA, userB, newID string) (*model.Chat, error) {
-	key := directKey(userA, userB)
+	return s.GetOrCreatePair(ctx, model.ChatDirect, userA, userB, newID)
+}
+
+// GetOrCreatePair is the canonical-pair lookup for any two-party chat type.
+//
+// The type is folded into the pair key rather than filtered on afterwards, because
+// a direct chat and a secret chat with the same person are DIFFERENT
+// conversations that must both be reachable. Filtering would make one of them
+// unfindable, and keying only on the pair would make the second one collide with
+// the first.
+func (s *Store) GetOrCreatePair(ctx context.Context, typ model.ChatType, userA, userB, newID string) (*model.Chat, error) {
+	key := pairKey(typ, userA, userB)
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	// Rollback after a successful Commit is a no-op that returns
+	// ErrTxClosed; there is nothing to do with it either way.
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var chatID int64
 	err = tx.QueryRow(ctx, `SELECT chat_id FROM direct_index WHERE pair_key=$1`, key).Scan(&chatID)
@@ -422,8 +510,8 @@ func (s *Store) GetOrCreateDirect(ctx context.Context, userA, userB, newID strin
 
 	now := nowMs()
 	if _, err = tx.Exec(ctx,
-		`INSERT INTO chats (id, type, title, owner_id, created_at, last_seq) VALUES ($1,'direct','',$2,$3,0)`,
-		atoi(newID), atoi(userA), now); err != nil {
+		`INSERT INTO chats (id, type, title, owner_id, created_at, last_seq) VALUES ($1,$4,'',$2,$3,0)`,
+		atoi(newID), atoi(userA), now, string(typ)); err != nil {
 		return nil, err
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO direct_index (pair_key, chat_id) VALUES ($1,$2)`, key, atoi(newID)); err != nil {
@@ -659,7 +747,9 @@ func (s *Store) insertOne(ctx context.Context, m *model.Message, dedupKey string
 	if err != nil {
 		return nil, false, err
 	}
-	defer tx.Rollback(ctx)
+	// Rollback after a successful Commit is a no-op that returns
+	// ErrTxClosed; there is nothing to do with it either way.
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var seq int64
 	// Self-contained seq allocation (chat_seq upsert) so this works on a message
@@ -704,6 +794,18 @@ func (s *Store) insertOne(ctx context.Context, m *model.Message, dedupKey string
 	return &cp, false, nil
 }
 
+// traceColumn renders an outbox record's trace context for the `trace` column.
+// Shared with the batched write path (batch.go), which staged outbox rows without
+// it — so a trace followed send→outbox→fanout only while group commit was off,
+// i.e. everywhere except the configuration production actually runs.
+func traceColumn(rec *store.OutboxRecord) string {
+	if len(rec.Trace) == 0 {
+		return ""
+	}
+	b, _ := json.Marshal(rec.Trace)
+	return string(b)
+}
+
 // stageOutboxTx writes the outbox event inside the caller's transaction.
 func stageOutboxTx(ctx context.Context, tx pgx.Tx, mkOb store.MakeOutbox, m *model.Message) error {
 	if mkOb == nil {
@@ -713,19 +815,14 @@ func stageOutboxTx(ctx context.Context, tx pgx.Tx, mkOb store.MakeOutbox, m *mod
 	if rec == nil {
 		return nil
 	}
-	var traceJSON string
-	if len(rec.Trace) > 0 {
-		b, _ := json.Marshal(rec.Trace)
-		traceJSON = string(b)
-	}
 	if _, err := tx.Exec(ctx,
 		`INSERT INTO outbox (id, subject, key, payload, created_at, trace) VALUES ($1,$2,$3,$4,$5,$6)`,
-		atoi(rec.ID), rec.Subject, rec.Key, rec.Data, nowMs(), traceJSON); err != nil {
+		atoi(rec.ID), rec.Subject, rec.Key, rec.Data, nowMs(), traceColumn(rec)); err != nil {
 		return err
 	}
 	// Wake the relay immediately on commit (LISTEN/NOTIFY) instead of waiting for
 	// the next poll tick.
-	_, err := tx.Exec(ctx, `NOTIFY SyncApp_outbox`)
+	_, err := tx.Exec(ctx, `NOTIFY SYNCAPP_outbox`)
 	return err
 }
 
@@ -737,7 +834,7 @@ func (s *Store) Listen(ctx context.Context) (<-chan struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := conn.Exec(ctx, "LISTEN SyncApp_outbox"); err != nil {
+	if _, err := conn.Exec(ctx, "LISTEN SYNCAPP_outbox"); err != nil {
 		conn.Release()
 		return nil, err
 	}
@@ -830,7 +927,9 @@ func (s *Store) mutateMessage(ctx context.Context, mkOb store.MakeOutbox, sql st
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	// Rollback after a successful Commit is a no-op that returns
+	// ErrTxClosed; there is nothing to do with it either way.
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	m, err := scanMsg(tx.QueryRow(ctx, sql, args...))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -890,7 +989,6 @@ func (s *Store) Poll(ctx context.Context, limit int) ([]store.OutboxRecord, erro
 	return out, rows.Err()
 }
 
-// MarkSent stamps records as delivered.
 // PurgeSent deletes published rows in bounded chunks. The subselect keeps each
 // statement short — an unbounded DELETE on a table this hot would hold locks long
 // enough to be felt on the write path it exists to serve.

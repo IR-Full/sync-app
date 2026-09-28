@@ -26,6 +26,11 @@ const (
 	SubjTyping         = "chat.typing"
 	SubjPresence       = "user.presence"
 	SubjNotifyPush     = "notify.push" // consumed by the notification worker
+	// SubjSubscription carries a subscription change, so every connected device of
+	// the account learns its new entitlements without polling. A client still
+	// showing a tier the server has stopped honouring offers features that are
+	// refused, which reads as the app breaking rather than as a plan lapsing.
+	SubjSubscription = "billing.subscription"
 )
 
 // Event is one published record. Data is the payload; Key is used for partition

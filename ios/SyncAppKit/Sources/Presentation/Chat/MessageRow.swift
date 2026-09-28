@@ -1,3 +1,4 @@
+import ImageIO
 import QuickLook
 import SwiftUI
 import SyncAppDomain
@@ -195,12 +196,40 @@ private struct AttachmentView: View {
         .task(id: localURL) { await decodeImageIfNeeded() }
     }
 
+    /// Decodes the attachment at roughly the size it is drawn.
+    ///
+    /// `UIImage(data:)` decodes at full resolution, so a chat with a few photos
+    /// from a modern camera holds tens of megabytes of bitmap to fill a 240×300
+    /// frame — enough to stutter while scrolling and to get the app killed in the
+    /// background. ImageIO's thumbnail path decodes once, at the size asked for,
+    /// and never materializes the full bitmap.
     private func decodeImageIfNeeded() async {
         guard attachment.kind == .image, let localURL, image == nil else { return }
+        let pixels = Self.maxImagePixels
         let decoded = await Task.detached(priority: .userInitiated) {
-            (try? Data(contentsOf: localURL)).flatMap(UIImage.init(data:))
+            Self.downsampledImage(at: localURL, maxPixelSize: pixels)
         }.value
         image = decoded
+    }
+
+    /// Longest edge, in pixels, for a decoded attachment. Sized for the display
+    /// frame at 3× so it stays sharp on every current screen.
+    private static let maxImagePixels = 900
+
+    private static func downsampledImage(at url: URL, maxPixelSize: Int) -> UIImage? {
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions) else { return nil }
+        let options = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            // Honour EXIF orientation, or a portrait photo renders sideways.
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+        ] as [CFString: Any] as CFDictionary
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else {
+            // Not a format ImageIO can thumbnail; fall back rather than show nothing.
+            return (try? Data(contentsOf: url)).flatMap(UIImage.init(data:))
+        }
+        return UIImage(cgImage: thumbnail)
     }
 
     /// `quickLookPreview` wants a binding; the sheet state and the URL are the

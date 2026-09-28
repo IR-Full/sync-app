@@ -25,6 +25,20 @@ public enum AppError: Error, Equatable, Sendable {
     case invalidInput(String)
     /// The server build has this feature switched off.
     case unsupported
+    /// The feature exists and this account's tier does not include it.
+    ///
+    /// Distinct from `forbidden` because the two lead somewhere different: forbidden is
+    /// final, this one has an answer, and a screen that conflates them shows a dead end
+    /// where an upgrade prompt belongs.
+    case premiumRequired
+    /// Credentials were right and a second factor is needed.
+    ///
+    /// Not a failure: the login screen adds a six-digit field and keeps what the user
+    /// already typed. Reporting it as `badCredentials` would tell them their password
+    /// is wrong when it is not.
+    case twoFactorRequired
+    /// A two-factor or recovery code did not verify.
+    case twoFactorInvalid
     /// Nothing reached the server.
     case offline
     /// An upload or download failed after the ticket was issued.
@@ -55,6 +69,9 @@ extension AppError: LocalizedError {
         case .rateLimited: return "rate limited"
         case .invalidInput(let detail): return detail
         case .unsupported: return "unsupported"
+        case .premiumRequired: return "premium required"
+        case .twoFactorRequired: return "two-factor code required"
+        case .twoFactorInvalid: return "invalid two-factor code"
         case .offline: return "offline"
         case .mediaFailed(let detail): return detail
         case .mediaTooLarge: return "file too large"

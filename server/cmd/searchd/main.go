@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
 	"github.com/SyncApp-chat/SyncApp/internal/search"
@@ -29,7 +30,7 @@ func main() {
 	defer b.Close()
 
 	var backend search.Backend
-	if dsn := os.Getenv("SyncApp_PG_DSN"); dsn != "" {
+	if dsn := envcfg.Get("SYNCAPP_PG_DSN"); dsn != "" {
 		backend, err = search.NewPostgresBackend(ctx, dsn)
 		if err != nil {
 			b.Log.Error("search backend", "err", err)
@@ -41,7 +42,7 @@ func main() {
 		b.Log.Info("search: in-memory")
 	}
 
-	chatConn, err := platform.Dial(platform.Env("SyncApp_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
+	chatConn, err := platform.Dial(platform.Env("SYNCAPP_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
 	if err != nil {
 		b.Log.Error("dial chatd", "err", err)
 		os.Exit(1)
@@ -53,5 +54,5 @@ func main() {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
-	platform.RunWorker(ctx, platform.Env("SyncApp_SEARCHD_METRICS", ":9109"), b.Log)
+	platform.RunWorker(ctx, platform.Env("SYNCAPP_SEARCHD_METRICS", ":9109"), b.Log)
 }

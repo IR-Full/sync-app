@@ -12,12 +12,17 @@ import (
 // which Bob needs to derive the same SK.
 func X3DHInitiator(a InitiatorKeys, bundle PreKeyBundle) (sk []byte, ephemeralPub []byte, err error) {
 	// Verify the signed prekey really came from the advertised identity before
-	// trusting any of the bundle. This is the MITM defense against a hostile
-	// key directory.
-	if len(bundle.SigningKey) > 0 || len(bundle.SignedPreKeySig) > 0 {
-		if !VerifyPreKey(bundle.SigningKey, bundle.SignedPreKey, bundle.SignedPreKeySig) {
-			return nil, nil, ErrBadPreKeySignature
-		}
+	// trusting any of the bundle. This is the MITM defense against a hostile key
+	// directory, and it is UNCONDITIONAL.
+	//
+	// It used to run only when the bundle carried a signature, which made the
+	// whole defense opt-in for the attacker: a hostile directory did not need to
+	// forge anything, it just omitted SigningKey and SignedPreKeySig and X3DH
+	// proceeded against a prekey nobody had vouched for. A missing signature is
+	// not a bundle from an older client to be tolerated — it is the exact shape
+	// of the attack, and the two are indistinguishable from here.
+	if !VerifyPreKey(bundle.SigningKey, bundle.SignedPreKey, bundle.SignedPreKeySig) {
+		return nil, nil, ErrBadPreKeySignature
 	}
 	ikB, err := PublicKeyFromBytes(bundle.IdentityKey)
 	if err != nil {

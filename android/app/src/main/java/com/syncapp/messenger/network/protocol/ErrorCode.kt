@@ -21,11 +21,48 @@ object ErrorCode {
     const val SESSION_REVOKED = 2002
     const val DEVICE_UNKNOWN = 2003
 
+    /**
+     * The password was right and a second factor is needed.
+     *
+     * In the AUTH band because it only ever arrives BEFORE a session exists, which is
+     * exactly what [isAuth] means: "re-authenticate". A login screen shows a six-digit
+     * field rather than reporting a bad password.
+     */
+    const val TWO_FACTOR_REQUIRED = 2004
+
+    /**
+     * A resume token that had already been rotated away was presented again, so two
+     * parties held it and the session has been ended.
+     *
+     * Distinct from [RESUME_EXPIRED]: expiry is routine and recoverable with the bearer
+     * token, while this means somebody else had the token — and it IS in the auth band,
+     * because the session really is gone.
+     */
+    const val RESUME_REPLAYED = 2005
+
     // 3xxx — authorization / business: do not retry as-is
     const val FORBIDDEN = 3000
     const val NOT_FOUND = 3001
     const val CONFLICT = 3002
     const val BAD_ARG = 3003
+
+    /**
+     * A two-factor code did not verify.
+     *
+     * The BUSINESS band and not auth, deliberately: this also arrives on an
+     * AUTHENTICATED connection — confirming an enrolment, disabling the factor — where
+     * [isAuth] would discard the session and sign somebody out for mistyping six digits.
+     */
+    const val TWO_FACTOR_INVALID = 3004
+
+    /**
+     * The feature exists and this account's tier does not include it.
+     *
+     * Its own code rather than [FORBIDDEN], because the two lead somewhere different:
+     * forbidden is final, this one has an answer — show the upgrade screen. Business band
+     * for the same reason as above: it arrives on a live session.
+     */
+    const val PREMIUM_REQUIRED = 3005
 
     // 4xxx — throttling: retry after backoff, honour retryAfterMs
     const val RATE_LIMITED = 4000

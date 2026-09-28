@@ -6,24 +6,35 @@ import SyncAppNetwork
 ///
 /// The bearer token and the resume token go to the keychain, never to
 /// `UserDefaults`: they authenticate as the user, and a plist in the app
-/// container is not a place to keep that. The account record (ids, the username
-/// the person typed) is not a credential and lives in the cache.
+/// container is not a place to keep that. The account record travels with them —
+/// it is not a credential, but keeping identity and tokens in one store means a
+/// logout cannot clear one and leave the other behind.
 public final class AuthRepositoryImpl: AuthRepository, @unchecked Sendable {
     private let client: SyncAppClient
     private let store: LocalStore
     private let sync: SyncEngine
     private let keychain: KeychainStore
+    /// Present only in builds with the E2E module. Logout has to reach it, because the
+    /// secret-chat identity lives outside the cache that `wipe()` clears.
+    private let secret: SecretChatService?
 
     private enum Key {
         static let session = "session"
         static let account = "account"
     }
 
-    public init(client: SyncAppClient, store: LocalStore, sync: SyncEngine, keychain: KeychainStore) {
+    public init(
+        client: SyncAppClient,
+        store: LocalStore,
+        sync: SyncEngine,
+        keychain: KeychainStore,
+        secret: SecretChatService? = nil
+    ) {
         self.client = client
         self.store = store
         self.sync = sync
         self.keychain = keychain
+        self.secret = secret
     }
 
     public func currentAccount() async -> Account? {
@@ -90,6 +101,10 @@ public final class AuthRepositoryImpl: AuthRepository, @unchecked Sendable {
         await sync.stop()
         try? keychain.remove(key: Key.session)
         try? keychain.remove(key: Key.account)
+        // The secret-chat identity is per ACCOUNT, so it goes as well. Leaving it would
+        // have the next account publish this one's identity key — and the old peers
+        // would see their pin still matching, which is the one thing a pin must not do.
+        await secret?.forgetIdentity()
         // The cache goes too. A messenger that shows the previous user's chats
         // after a logout has leaked them, whatever the login screen says.
         try? await store.wipe()

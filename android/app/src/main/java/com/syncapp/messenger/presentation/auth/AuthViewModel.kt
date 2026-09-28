@@ -24,8 +24,22 @@ data class AuthUiState(
     val submitting: Boolean = false,
     val validation: CredentialProblem? = null,
     val error: AppError? = null,
+    /**
+     * True once the server has said the credentials are right and a code is needed.
+     *
+     * A separate flag rather than an error, and the username and password are KEPT: the
+     * second attempt has to send all three, and a form that cleared itself would make a
+     * successful first step look like a failure.
+     */
+    val needsSecondFactor: Boolean = false,
+    val totpCode: String = "",
 ) {
-    val canSubmit: Boolean get() = !submitting && username.isNotBlank() && password.isNotBlank()
+    val canSubmit: Boolean get() = !submitting &&
+        username.isNotBlank() &&
+        password.isNotBlank() &&
+        // Once the server has asked, an empty code cannot succeed — so the button is
+        // disabled rather than spending an attempt against the account's rate limit.
+        (!needsSecondFactor || totpCode.isNotBlank())
 }
 
 @HiltViewModel
@@ -45,6 +59,10 @@ class AuthViewModel @Inject constructor(
         it.copy(password = value, validation = null, error = null)
     }
 
+    fun onTotpCodeChange(value: String) = _state.update {
+        it.copy(totpCode = value, error = null)
+    }
+
     /**
      * Login and registration are separate submissions rather than one adaptive
      * button: the gateway treats them as distinct intents and will not create an
@@ -52,7 +70,16 @@ class AuthViewModel @Inject constructor(
      * protocol refuses to do.
      */
     fun onModeChange(mode: AuthMode) = _state.update {
-        it.copy(mode = mode, validation = null, error = null)
+        // The second-factor step belongs to one login attempt: switching to registration
+        // and back must not leave the code field demanding input for an account nobody
+        // is signing into any more.
+        it.copy(
+            mode = mode,
+            validation = null,
+            error = null,
+            needsSecondFactor = false,
+            totpCode = "",
+        )
     }
 
     fun submit() {
@@ -61,7 +88,7 @@ class AuthViewModel @Inject constructor(
         _state.update { it.copy(submitting = true, validation = null, error = null) }
         viewModelScope.launch {
             val result = when (current.mode) {
-                AuthMode.LOGIN -> login(current.username, current.password)
+                AuthMode.LOGIN -> login(current.username, current.password, current.totpCode)
                 AuthMode.REGISTER -> register(current.username, current.password)
             }
             when (result) {
@@ -71,8 +98,17 @@ class AuthViewModel @Inject constructor(
                 is AuthResult.Success -> _state.update { it.copy(submitting = false) }
                 is AuthResult.Invalid ->
                     _state.update { it.copy(submitting = false, validation = result.problem) }
+                // Not an error. The form grows a field and keeps what was typed.
+                AuthResult.NeedsSecondFactor -> _state.update {
+                    it.copy(submitting = false, needsSecondFactor = true, error = null)
+                }
                 is AuthResult.Failed ->
-                    _state.update { it.copy(submitting = false, error = result.error) }
+                    // The code is cleared and the prompt STAYS: a wrong code is worth
+                    // another try, and dropping back to the password form would look like
+                    // the password had been rejected.
+                    _state.update {
+                        it.copy(submitting = false, error = result.error, totpCode = "")
+                    }
             }
         }
     }

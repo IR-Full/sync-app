@@ -15,7 +15,11 @@ const deliveredQueueDepth = 4096
 // DefaultConfig returns sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		ServerVersion:    "SyncApp/0.1",
+		ServerVersion: "SyncApp/0.1",
+		// The name an authenticator app shows next to the account. A default rather
+		// than a required setting, because an empty issuer produces an entry called
+		// nothing, and a user with three of those cannot tell them apart.
+		TOTPIssuer:       "SyncApp",
 		Heartbeat:        20 * time.Second,
 		IdleTimeout:      60 * time.Second,
 		HandshakeTimeout: 10 * time.Second,
@@ -23,12 +27,19 @@ func DefaultConfig() Config {
 		MaxInflight:      256,
 		SendRate:         20,
 		SendBurst:        40,
-		TypingRate:       2,
-		TypingBurst:      5,
-		TypingChatRate:   0.5,
-		TypingChatBurst:  2,
-		SignalRate:       20,
-		SignalBurst:      60,
-		AcceptLoops:      4,
+		// Reads are cheaper per request than writes but amplify far more, so the
+		// sustained rate is generous and the burst is what actually bounds a
+		// scroll: opening a chat fires a handful of pages back to back, then goes
+		// quiet. 60/120 lets a client page through six thousand messages a minute
+		// and still refuses a loop.
+		ReadRate:        60,
+		ReadBurst:       120,
+		TypingRate:      2,
+		TypingBurst:     5,
+		TypingChatRate:  0.5,
+		TypingChatBurst: 2,
+		SignalRate:      20,
+		SignalBurst:     60,
+		AcceptLoops:     4,
 	}
 }

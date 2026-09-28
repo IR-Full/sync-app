@@ -32,16 +32,22 @@ struct ProfileView: View {
     private var account: Account { app.account ?? placeholder }
     private let placeholder: Account
     private let media: any MediaRepository
+    private let security: any AccountSecurityRepository
 
-    init(account: Account, media: any MediaRepository) {
+    @State private var isPresentingSecurity = false
+    @State private var isPresentingPremium = false
+
+    init(account: Account, media: any MediaRepository, security: any AccountSecurityRepository) {
         self.placeholder = account
         self.media = media
+        self.security = security
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 identitySection
+                accountSection
                 appearanceSection
                 notificationsSection
                 connectionSection
@@ -53,6 +59,25 @@ struct ProfileView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(l("common.done")) { dismiss() }
                 }
+            }
+            .sheet(isPresented: $isPresentingSecurity) {
+                SecurityView(security: security)
+            }
+            .sheet(isPresented: $isPresentingPremium) {
+                PremiumView(security: security)
+            }
+        }
+    }
+
+    /// The two screens that did not exist: there was no way to change a password and no
+    /// way to see or buy a tier.
+    private var accountSection: some View {
+        Section {
+            Button { isPresentingSecurity = true } label: {
+                Label(l("security.title"), systemImage: "lock.shield")
+            }
+            Button { isPresentingPremium = true } label: {
+                Label(l("premium.title"), systemImage: "star")
             }
         }
     }

@@ -27,10 +27,10 @@ import com.syncapp.messenger.database.entity.UserEntity
         DeliveryReceiptEntity::class,
         UserEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
-abstract class syncappDatabase : RoomDatabase() {
+abstract class SyncAppDatabase : RoomDatabase() {
     abstract fun chatDao(): ChatDao
     abstract fun messageDao(): MessageDao
     abstract fun outboxDao(): OutboxDao
@@ -54,6 +54,34 @@ abstract class syncappDatabase : RoomDatabase() {
          * its own table: a message can be delivered and never read, so folding the
          * two into one column would make the earlier fact unrepresentable.
          */
+        /**
+         * Per-member chat flags come back, and the ordering key with them.
+         *
+         * `muted` was dropped in migration 2 because nothing could set it. It returns as
+         * `mutedUntil`, a deadline, now that CHAT_FLAGS exists — and alongside the two
+         * other settings the server keeps per member, plus the activity timestamp the
+         * chat list is actually ordered by.
+         *
+         * `ALTER TABLE ADD COLUMN` rather than a table rebuild: these are additions with
+         * defaults, and a rebuild is the operation that can fail on a user's phone.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE chats ADD COLUMN mutedUntil INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("ALTER TABLE chats ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("ALTER TABLE chats ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL(
+                    "ALTER TABLE chats ADD COLUMN lastActivityAt INTEGER NOT NULL DEFAULT 0",
+                )
+                // Seed it from what the rows already hold, so the first list render after
+                // an upgrade is ordered rather than arbitrary — the next chat-list
+                // enumeration replaces these with the server's own values.
+                connection.execSQL(
+                    "UPDATE chats SET lastActivityAt = MAX(lastMessageAt, createdAt)",
+                )
+            }
+        }
+
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(connection: SQLiteConnection) {
                 connection.execSQL(
@@ -118,7 +146,7 @@ abstract class syncappDatabase : RoomDatabase() {
  * filled it, so leaving it behind would show the previous user's chats to the next
  * one on the same phone.
  */
-suspend fun syncappDatabase.clearUserData() = withTransaction {
+suspend fun SyncAppDatabase.clearUserData() = withTransaction {
     messageDao().clear()
     outboxDao().clear()
     readReceiptDao().clear()

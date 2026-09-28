@@ -11,6 +11,7 @@ import com.syncapp.messenger.domain.model.UserPresence
 import com.syncapp.messenger.domain.model.UserSummary
 import com.syncapp.messenger.domain.repository.UserRepository
 import com.syncapp.messenger.network.SyncAppGateway
+import com.syncapp.messenger.network.request
 import com.syncapp.messenger.network.protocol.ContactList
 import com.syncapp.messenger.network.protocol.ContactSync
 import com.syncapp.messenger.network.protocol.MsgType
@@ -23,8 +24,8 @@ import kotlinx.coroutines.flow.map
 
 @Singleton
 class UserRepositoryImpl @Inject constructor(
-    private val gateway: syncappGateway,
-    private val database: syncappDatabase,
+    private val gateway: SyncAppGateway,
+    private val database: SyncAppDatabase,
     private val profiles: ProfileFetcher,
     private val presenceTracker: PresenceTracker,
     private val sessionHolder: SessionHolder,

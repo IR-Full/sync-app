@@ -31,8 +31,8 @@ func main() {
 	defer b.Close()
 
 	svc := chat.New(b.Stores.Chats, b.IDs)
-	addr := platform.Env("SyncApp_CHATD_ADDR", ":9002")
-	if err := platform.ServeGRPC(ctx, addr, platform.Env("SyncApp_CHATD_METRICS", ":9102"), b.Log,
+	addr := platform.Env("SYNCAPP_CHATD_ADDR", ":9002")
+	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_CHATD_METRICS", ":9102"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterChat(s, svc) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)

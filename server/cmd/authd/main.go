@@ -30,8 +30,8 @@ func main() {
 	defer b.Close()
 
 	svc := auth.New(b.Stores.Users, b.Stores.Sessions, b.IDs)
-	addr := platform.Env("SyncApp_AUTHD_ADDR", ":9001")
-	if err := platform.ServeGRPC(ctx, addr, platform.Env("SyncApp_AUTHD_METRICS", ":9101"), b.Log,
+	addr := platform.Env("SYNCAPP_AUTHD_ADDR", ":9001")
+	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_AUTHD_METRICS", ":9101"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterAuth(s, svc) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)

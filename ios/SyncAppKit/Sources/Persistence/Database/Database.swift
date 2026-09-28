@@ -40,7 +40,13 @@ public actor Database {
         var handle: OpaquePointer?
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(url.path, &handle, flags, nil) == SQLITE_OK, let handle else {
-            throw DatabaseError.open(String(cString: sqlite3_errmsg(handle)))
+            // sqlite3_open_v2 allocates a handle even on most failures, and it is
+            // the only thing that can report why. Read the message, then close it:
+            // `deinit` never runs for a failed `init`, so leaving it open leaks the
+            // connection — once per retry, and `AppContainer.prepare` does retry.
+            let message = handle.map { String(cString: sqlite3_errmsg($0)) } ?? "cannot open database"
+            if let handle { sqlite3_close_v2(handle) }
+            throw DatabaseError.open(message)
         }
         self.handle = handle
     }
@@ -165,11 +171,31 @@ public actor Database {
 
     /// Drops every row. Used by logout: a stale cache under a different account
     /// is the one bug in a messenger nobody forgives.
+    /// Empties every table in the database.
+    ///
+    /// Enumerated from `sqlite_master` rather than from a hardcoded list, and that is
+    /// the point of this method existing at all. The list version silently stopped
+    /// being complete the moment a migration added a table — which it did: the
+    /// ratchet-session table would have survived a logout, leaving one user's
+    /// secret-chat chain keys on disk for whoever signed in next. A list that has to be
+    /// edited in step with the schema is a list that will not be.
+    ///
+    /// `sqlite_%` is excluded because those are SQLite's own (`sqlite_sequence` and
+    /// friends) and deleting from them is either an error or a corruption.
     public func wipe() throws {
-        try transaction(
-            ["messages", "chats", "outbox", "drafts", "contacts", "users", "meta"]
-                .map { Statement("DELETE FROM \($0)") }
-        )
+        let tables = try query(
+            """
+            SELECT name FROM sqlite_master
+             WHERE type = 'table'
+               AND name NOT LIKE 'sqlite_%'
+            """
+        ).compactMap { $0.string("name") }
+
+        // Foreign keys point between these tables, so the deletes have to be able to
+        // happen in any order. Deferring the constraints for the transaction is
+        // cheaper and less fragile than topologically sorting the schema.
+        try execute("PRAGMA defer_foreign_keys = ON")
+        try transaction(tables.map { Statement("DELETE FROM \"\($0)\"") })
         try execute("VACUUM")
     }
 
@@ -224,6 +250,17 @@ public enum SQLValue: Equatable, Sendable {
         guard let value else { return .null }
         return .integer(Int64(value.timeIntervalSince1970 * 1000))
     }
+    /// A date for a NOT NULL millis column, where absence is `0` rather than NULL.
+    ///
+    /// `date(_:)` binds NULL for a missing value, which a `NOT NULL DEFAULT 0` column
+    /// REJECTS — a default applies only when the column is left out of the statement
+    /// entirely, not when NULL is bound to it. Using the wrong one of these two turns
+    /// "unmute this chat" into a constraint failure.
+    public static func millis(_ value: Date?) -> SQLValue {
+        guard let value else { return .integer(0) }
+        return .integer(Int64(value.timeIntervalSince1970 * 1000))
+    }
+
     public static func optionalText(_ value: String?) -> SQLValue {
         guard let value, !value.isEmpty else { return .null }
         return .text(value)
@@ -285,6 +322,16 @@ public struct Row: Sendable {
 
     public func date(_ column: String) -> Date? {
         guard let millis = int(column) else { return nil }
+        return Date(timeIntervalSince1970: Double(millis) / 1000)
+    }
+
+    /// The read half of `SQLValue.millis`: `0` means absent, not 1 January 1970.
+    ///
+    /// Without this a chat that has never been muted reads back as "muted until 1970"
+    /// — which happens to behave correctly wherever the value is only compared against
+    /// now, and renders as a date from before the app existed anywhere it is shown.
+    public func millisDate(_ column: String) -> Date? {
+        guard let millis = int(column), millis > 0 else { return nil }
         return Date(timeIntervalSince1970: Double(millis) / 1000)
     }
 }

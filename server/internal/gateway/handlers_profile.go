@@ -7,9 +7,11 @@ package gateway
 import (
 	"context"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
@@ -36,25 +38,40 @@ func (c *conn) handleChatList(ctx context.Context, e wire.Envelope) error {
 		limit = defaultChatListLimit
 	}
 
-	list, err := c.gw.svc.Chat.UserChats(ctx, c.userID, body.After, limit)
+	list, err := c.gw.svc.Chat.UserChatPage(ctx, c.userID, chat.ChatPage{
+		AfterActivity:   body.AfterActivity,
+		After:           body.After,
+		Limit:           limit,
+		IncludeArchived: body.IncludeArchived,
+	})
 	if err != nil {
 		return c.replyForError(e.RequestID, err)
 	}
-	// A page shorter than asked for is the last one — the cursor is the id of the
-	// final row, so paging needs nothing the client cannot see.
+	// A page shorter than asked for is the last one. The cursor is BOTH halves of
+	// the final row's sort key — the list is ordered by activity, which reorders as
+	// messages arrive, so an id alone would skip and repeat rows exactly when the
+	// chat is busy.
 	out := wire.ChatsBody{Done: len(list) < limit}
 	for _, s := range list {
 		if s.Chat == nil {
 			continue
 		}
-		out.Chats = append(out.Chats, wire.ChatSummary{
+		row := wire.ChatSummary{
 			ChatID: s.Chat.ID, Type: string(s.Chat.Type), Title: s.Chat.Title,
 			OwnerID: s.Chat.OwnerID, Username: s.Chat.Username, LastSeq: s.Chat.LastSeq,
 			MyRole: string(s.MyRole), PeerID: s.PeerID,
-		})
+			UnreadCount: s.UnreadCount, LastActivityAt: s.LastActivityAt,
+			MutedUntil: s.Flags.MutedUntil, Pinned: s.Flags.Pinned, Archived: s.Flags.Archived,
+		}
+		if s.LastMessage != nil {
+			lm := msgToWire(s.LastMessage)
+			row.LastMessage = &lm
+		}
+		out.Chats = append(out.Chats, row)
 	}
 	if n := len(out.Chats); n > 0 && !out.Done {
-		out.NextAfter = out.Chats[n-1].ChatID
+		last := out.Chats[n-1]
+		out.NextAfter, out.NextAfterActivity = last.ChatID, last.LastActivityAt
 	}
 	return c.reply(wire.MsgChats, e.RequestID, out)
 }
@@ -90,7 +107,16 @@ func (c *conn) handleProfileGet(ctx context.Context, e wire.Envelope) error {
 	if err != nil {
 		return c.replyForError(e.RequestID, err)
 	}
-	return c.reply(wire.MsgProfile, e.RequestID, profileOf(u))
+
+	out := profileOf(u)
+	// The avatar is gated; the display name and handle are not. Those two are how
+	// an account is addressed and recognised, so hiding them would produce a
+	// conversation with a blank row rather than a private one — and the handle is
+	// already public by construction, since anyone can reach the account with it.
+	if !c.gw.maySee(ctx, u.ID, c.userID, u.Privacy.Avatar) {
+		out.AvatarRef = ""
+	}
+	return c.reply(wire.MsgProfile, e.RequestID, out)
 }
 
 // handleProfileSet updates the CALLER's own profile — there is deliberately no
@@ -172,4 +198,57 @@ func validMediaRef(s string) bool {
 		}
 	}
 	return true
+}
+
+// --- Per-member chat settings ---
+
+/*
+handleChatFlags writes the caller's own mute/pin/archive for a chat.
+
+The `muted` column has existed since the first migration and nothing ever read
+it: there was no message a client could send to set it, and the notification path
+never consulted it. So muting a chat was impossible while the schema, the model and
+the gRPC converters all implied it was supported — the worst kind of missing
+feature, because it looks present from every angle except the one that matters.
+
+Authorization is membership, and it is enforced by the store's own predicate
+rather than by a check here: the update names (chat_id, user_id), so a non-member's
+write matches no row. That is stronger than an explicit check, because it cannot be
+bypassed by a second code path that forgets to make it.
+*/
+func (c *conn) handleChatFlags(ctx context.Context, e wire.Envelope) error {
+	var body wire.ChatFlagsBody
+	if err := wire.Unmarshal(e.Body, &body); err != nil {
+		return c.replyError(e.RequestID, wire.ErrBadArg, "bad chat flags body")
+	}
+	if !validID(body.ChatID) {
+		return c.replyError(e.RequestID, wire.ErrBadArg, "invalid chat id")
+	}
+	// A mute deadline in the past is not an error but it is also not a mute, so it
+	// is normalised to "not muted" rather than stored as a deadline that already
+	// expired — otherwise a client reading its own flags back sees a value it has
+	// to interpret before it can render a toggle.
+	if body.MutedUntil != 0 && body.MutedUntil <= time.Now().UnixMilli() {
+		body.MutedUntil = 0
+	}
+	// Bound the deadline. An unbounded one is harmless to store and confusing to
+	// show ("muted until the year 12000"), and the far-future value the migration
+	// uses for "forever" has to stay representable.
+	if body.MutedUntil > maxMuteUntil {
+		body.MutedUntil = maxMuteUntil
+	}
+	flags, err := c.gw.svc.Chat.SetChatFlags(ctx, body.ChatID, c.userID, model.MemberFlags{
+		MutedUntil: body.MutedUntil, Pinned: body.Pinned, Archived: body.Archived,
+	})
+	if err != nil {
+		return c.replyForError(e.RequestID, err)
+	}
+	// Echo what was STORED, not what was asked: a client that raced two changes
+	// converges on the server's state instead of on whichever request it sent last.
+	return c.reply(wire.MsgChatFlagsSet, e.RequestID, wire.ChatFlagsSetBody{
+		ChatID:     body.ChatID,
+		MutedUntil: flags.MutedUntil,
+		Pinned:     flags.Pinned,
+		Archived:   flags.Archived,
+	})
 }

@@ -12,6 +12,22 @@ import Foundation
 public struct Chat: Identifiable, Hashable, Sendable {
     public enum Kind: String, Sendable, Codable {
         case direct, group, channel
+        /// End-to-end encrypted, two parties, Premium-gated.
+        ///
+        /// A chat TYPE rather than a mode, which is the whole design: it is created,
+        /// listed, opened and read like any other chat, and the only differences the
+        /// user sees are a lock badge and the safety number. Making it a separate
+        /// surface — the shape it had before — meant secret conversations had no
+        /// history, no unread count and no place in the list, so nobody used them.
+        case secret
+
+        /// Exactly two participants, so the row is named after the peer rather than
+        /// a title. Both `direct` and `secret` qualify, and forgetting the second is
+        /// why secret chats rendered with a blank name.
+        public var isTwoParty: Bool { self == .direct || self == .secret }
+
+        /// The messages never leave the devices in plaintext.
+        public var isEndToEnd: Bool { self == .secret }
     }
 
     public var id: String
@@ -32,7 +48,31 @@ public struct Chat: Identifiable, Hashable, Sendable {
     /// rather than stored, so a read receipt from another device fixes the badge
     /// without a separate counter to keep in sync.
     public var lastReadSeq: UInt64
-    public var isMuted: Bool
+
+    /// When notifications resume. `nil` is "not muted".
+    ///
+    /// A DEADLINE, not a flag. "Mute for eight hours" is what muting almost always
+    /// means, and the boolean this replaced could not express it — so the only
+    /// available mute was forever, which is why a mute button was never added.
+    public var mutedUntil: Date?
+    /// Sorted above everything else, regardless of activity.
+    public var isPinned: Bool
+    /// Hidden from the main list. Not deleted, and not `hidden` — that column is the
+    /// cache's own bookkeeping, while this is a per-member setting the server stores.
+    public var isArchived: Bool
+    /// The sort key: the last message, or the chat's creation time when there is
+    /// none. Falling back to creation is what puts a brand-new empty chat at the top
+    /// where the user just made it, rather than at the bottom.
+    public var lastActivityAt: Date?
+
+    /// Whether notifications are suppressed right NOW.
+    ///
+    /// Computed from the deadline rather than stored, so a mute expires on its own
+    /// without anything having to run at the moment it does.
+    public var isMuted: Bool {
+        guard let mutedUntil else { return false }
+        return mutedUntil > Date()
+    }
 
     public init(
         id: String,
@@ -45,7 +85,10 @@ public struct Chat: Identifiable, Hashable, Sendable {
         lastMessageAt: Date? = nil,
         lastSeq: UInt64 = 0,
         lastReadSeq: UInt64 = 0,
-        isMuted: Bool = false
+        mutedUntil: Date? = nil,
+        isPinned: Bool = false,
+        isArchived: Bool = false,
+        lastActivityAt: Date? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -57,7 +100,13 @@ public struct Chat: Identifiable, Hashable, Sendable {
         self.lastMessageAt = lastMessageAt
         self.lastSeq = lastSeq
         self.lastReadSeq = lastReadSeq
-        self.isMuted = isMuted
+        self.mutedUntil = mutedUntil
+        self.isPinned = isPinned
+        self.isArchived = isArchived
+        // Falls back to the last message, so a caller that knows only that is not
+        // forced to pass the same value twice — and a chat with neither sorts by id,
+        // which is stable rather than arbitrary.
+        self.lastActivityAt = lastActivityAt ?? lastMessageAt
     }
 }
 

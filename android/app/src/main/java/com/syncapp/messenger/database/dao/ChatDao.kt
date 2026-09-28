@@ -52,10 +52,55 @@ interface ChatDao {
             WHERE m.chatId = c.chatId AND m.senderId != :selfId
         ) AS otherSenderCount
         FROM chats c
-        ORDER BY CASE WHEN c.lastMessageAt > 0 THEN c.lastMessageAt ELSE c.createdAt END DESC
+        WHERE c.archived = 0
+        ORDER BY c.pinned DESC,
+                 CASE
+                     WHEN c.lastActivityAt > 0 THEN c.lastActivityAt
+                     WHEN c.lastMessageAt > 0 THEN c.lastMessageAt
+                     ELSE c.createdAt
+                 END DESC
         """,
     )
     fun observeChatList(selfId: String): Flow<List<ChatListRow>>
+
+    /**
+     * The archived pile.
+     *
+     * The same projection as [observeChatList] with the filter inverted, rather than one
+     * query taking a boolean. Room compiles each `@Query` separately, so a parameterised
+     * version would not be shared work — and two named queries say at the call site which
+     * list is being read.
+     *
+     * Pinned is NOT part of the ordering here: archiving unpins, so there is nothing to
+     * sort by, and honouring a stale pin would put a row at the top of a list the user
+     * has said they do not want to look at.
+     */
+    @Query(
+        """
+        SELECT c.*, (
+            SELECT COUNT(*) FROM messages m
+            WHERE m.chatId = c.chatId
+              AND m.seq > c.myReadSeq
+              AND m.senderId != :selfId
+              AND m.deleted = 0
+        ) AS unreadCount, (
+            SELECT m.senderId FROM messages m
+            WHERE m.chatId = c.chatId AND m.senderId != :selfId
+            ORDER BY m.seq ASC LIMIT 1
+        ) AS otherSenderId, (
+            SELECT COUNT(DISTINCT m.senderId) FROM messages m
+            WHERE m.chatId = c.chatId AND m.senderId != :selfId
+        ) AS otherSenderCount
+        FROM chats c
+        WHERE c.archived = 1
+        ORDER BY CASE
+                     WHEN c.lastActivityAt > 0 THEN c.lastActivityAt
+                     WHEN c.lastMessageAt > 0 THEN c.lastMessageAt
+                     ELSE c.createdAt
+                 END DESC
+        """,
+    )
+    fun observeArchivedChatList(selfId: String): Flow<List<ChatListRow>>
 
     @Query("SELECT * FROM chats WHERE chatId = :chatId")
     fun observeChat(chatId: String): Flow<ChatEntity?>
@@ -142,7 +187,11 @@ interface ChatDao {
             type = :type,
             title = :title,
             ownerId = :ownerId,
-            peerUserId = COALESCE(:peerUserId, peerUserId)
+            peerUserId = COALESCE(:peerUserId, peerUserId),
+            mutedUntil = :mutedUntil,
+            pinned = :pinned,
+            archived = :archived,
+            lastActivityAt = MAX(lastActivityAt, :lastActivityAt)
         WHERE chatId = :chatId
         """,
     )
@@ -152,6 +201,10 @@ interface ChatDao {
         title: String,
         ownerId: String?,
         peerUserId: String?,
+        mutedUntil: Long,
+        pinned: Boolean,
+        archived: Boolean,
+        lastActivityAt: Long,
     )
 
     /**
@@ -161,6 +214,34 @@ interface ChatDao {
      */
     @Query("UPDATE chats SET peerUsername = :username WHERE peerUserId = :peerUserId AND peerUsername IS NULL")
     suspend fun setPeerUsername(peerUserId: String, username: String)
+
+    /**
+     * Writes the three per-member flags.
+     *
+     * All three unconditionally, because that is what the server sends back: the reply to
+     * CHAT_FLAGS is the stored state, and merging it selectively would keep a local value
+     * the server has just contradicted.
+     */
+    @Query(
+        """
+        UPDATE chats SET
+            mutedUntil = :mutedUntil,
+            pinned = :pinned,
+            archived = :archived
+        WHERE chatId = :chatId
+        """,
+    )
+    suspend fun updateFlags(chatId: String, mutedUntil: Long, pinned: Boolean, archived: Boolean)
+
+    /**
+     * Moves the activity timestamp forward, never back.
+     *
+     * A partial write that knows nothing about activity passes 0 and changes nothing,
+     * which is what keeps a thin update — an implied chat from an inbound message — from
+     * dropping a row to the bottom of the list.
+     */
+    @Query("UPDATE chats SET lastActivityAt = :at WHERE chatId = :chatId AND lastActivityAt < :at")
+    suspend fun advanceActivity(chatId: String, at: Long)
 
     @Query("DELETE FROM chats WHERE chatId = :chatId")
     suspend fun deleteById(chatId: String)
@@ -195,6 +276,9 @@ interface ChatDao {
                     peerUsername = peerUsername,
                     ownerId = ownerId,
                     createdAt = createdAt,
+                    // Seeded from creation so a brand-new chat sorts to the top where the
+                    // user just made it, rather than below every chat with any history.
+                    lastActivityAt = createdAt,
                 ),
             )
             return

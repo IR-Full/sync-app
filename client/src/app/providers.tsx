@@ -11,8 +11,14 @@ import { CallOverlay, useCallEngine } from '@/features/calls'
 import { useDraftSync } from '@/features/drafts'
 import { useMessageNotifications } from '@/features/notifications'
 import { useReceiptReset } from '@/features/read-receipts'
+import { useChatListSync } from '@/features/chat-list-sync'
 import { useRealtimeSync } from '@/features/realtime-sync'
-import { useSecretChatEngine, useSecretKeyPublisher } from '@/features/secret-chats'
+import { useSubscriptionSync } from '@/features/billing'
+import {
+  useSecretChatEngine,
+  useSecretKeyPublisher,
+  useSecretSync,
+} from '@/features/secret-chats'
 import { useOutboxFlush, useOutboxStore } from '@/features/send-message'
 import { ProtocolError, SyncAppProvider, useIsConnected } from '@/shared/api'
 import { useLocaleStore } from '@/shared/i18n'
@@ -70,9 +76,21 @@ function AppBootstrap({ children }: { children: ReactNode }) {
   useRestoreSession()
   useSessionExpiryWatcher()
   useRealtimeSync()
+  // Enumerates the account's chats on connect. Without it a browser that has
+  // never received traffic for a chat — a fresh profile, cleared storage, a
+  // second browser — opens to an empty list it has no way to populate.
+  useChatListSync()
   useCallEngine()
   useSecretKeyPublisher()
   useSecretChatEngine()
+  // AFTER the engine: the sync asks the server to replay what this device missed,
+  // and the replayed frames arrive as ordinary SECRET_RECV — so the handler that
+  // decrypts them has to be listening before any of them can land.
+  useSecretSync()
+  // Entitlements, kept current by a request on connect AND by a push: a
+  // subscription changes without this client asking, and a client showing the old
+  // tier offers features the server has started refusing.
+  useSubscriptionSync()
   useDraftSync()
   useOutboxFlush()
   useMessageNotifications()

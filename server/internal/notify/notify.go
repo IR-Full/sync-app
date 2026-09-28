@@ -95,8 +95,16 @@ func (s *Service) fanOutToDevices(ctx context.Context, job PushJob) error {
 }
 
 // Send logs the notification.
+//
+// The message text is NOT logged, and this was the second half of the same leak
+// as the provider payload. LogProvider is the development provider, and it is also
+// the DEFAULT when no HTTP endpoint is configured — so every message on such a
+// deployment went into the log file, which outlives the process, gets shipped to
+// whatever aggregates logs, and is read by people who were never party to the
+// conversation. The ids are enough to trace a delivery; the words never were.
 func (p LogProvider) Send(_ context.Context, job PushJob) error {
-	p.Log.Info("PUSH", "to", job.UserID, "chat", job.ChatID, "from", job.SenderID, "preview", job.Preview)
+	p.Log.Info("PUSH", "to", job.UserID, "chat", job.ChatID, "from", job.SenderID,
+		"has_preview", job.Preview != "")
 	return nil
 }
 

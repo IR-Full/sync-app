@@ -18,8 +18,8 @@ func newBatcher(s *Store) *batcher {
 		store:    s,
 		jobs:     make(chan *writeJob, 8192),
 		done:     make(chan struct{}),
-		maxBatch: envInt("SyncApp_WRITE_BATCH_SIZE", 64),
-		maxWait:  time.Duration(envInt("SyncApp_WRITE_BATCH_WAIT_US", 2000)) * time.Microsecond,
+		maxBatch: envInt("SYNCAPP_WRITE_BATCH_SIZE", 64),
+		maxWait:  time.Duration(envInt("SYNCAPP_WRITE_BATCH_WAIT_US", 2000)) * time.Microsecond,
 	}
 	go b.run()
 	return b
@@ -126,7 +126,9 @@ func (b *batcher) flushTx(ctx context.Context, batch []*writeJob) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	// Rollback after a successful Commit is a no-op that returns
+	// ErrTxClosed; there is nothing to do with it either way.
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Phase 1 (pipelined): allocate each chat's next seq from chat_seq (upsert).
 	// Same-chat messages get consecutive seqs because the server executes the
@@ -140,7 +142,9 @@ func (b *batcher) flushTx(ctx context.Context, batch []*writeJob) error {
 	seqs := make([]int64, len(batch))
 	for i := range batch {
 		if err := br.QueryRow().Scan(&seqs[i]); err != nil {
-			br.Close()
+			// The scan error is what matters; a close error on an already-failed
+			// batch adds nothing the caller can act on.
+			_ = br.Close()
 			return err // fall back per-job
 		}
 	}
@@ -173,16 +177,16 @@ func (b *batcher) flushTx(ctx context.Context, batch []*writeJob) error {
 		if j.mkOb != nil {
 			if rec := j.mkOb(&cp); rec != nil {
 				ins.Queue(
-					`INSERT INTO outbox (id, subject, key, payload, created_at) VALUES ($1,$2,$3,$4,$5)`,
-					atoi(rec.ID), rec.Subject, rec.Key, rec.Data, nowMs())
+					`INSERT INTO outbox (id, subject, key, payload, created_at, trace) VALUES ($1,$2,$3,$4,$5,$6)`,
+					atoi(rec.ID), rec.Subject, rec.Key, rec.Data, nowMs(), traceColumn(rec))
 			}
 		}
 	}
-	ins.Queue(`NOTIFY SyncApp_outbox`) // one wakeup for the whole batch
+	ins.Queue(`NOTIFY SYNCAPP_outbox`) // one wakeup for the whole batch
 	br2 := tx.SendBatch(ctx, ins)
 	for i := 0; i < ins.Len(); i++ {
 		if _, err := br2.Exec(); err != nil {
-			br2.Close()
+			_ = br2.Close()
 			return err // dedup race etc → fall back per-job
 		}
 	}

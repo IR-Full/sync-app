@@ -8,6 +8,7 @@ import com.syncapp.messenger.database.entity.StoredAttachment
 import com.syncapp.messenger.database.entity.UserEntity
 import com.syncapp.messenger.domain.model.AttachmentKind
 import com.syncapp.messenger.domain.model.Chat
+import com.syncapp.messenger.domain.model.ChatFlags
 import com.syncapp.messenger.domain.model.ChatKind
 import com.syncapp.messenger.domain.model.ForwardedFrom
 import com.syncapp.messenger.domain.model.LastMessage
@@ -172,12 +173,17 @@ fun ChatEntity.toDomain(unreadCount: Int = 0): Chat = Chat(
     myReadSeq = myReadSeq,
     oldestLoadedSeq = oldestLoadedSeq,
     hasMoreHistory = hasMoreHistory,
+    flags = ChatFlags(mutedUntil = mutedUntil, pinned = pinned, archived = archived),
+    // Falls back to the newest message and then to creation, so an empty chat still has
+    // a position in the ordering rather than sorting below everything.
+    lastActivityAt = maxOf(lastActivityAt, lastMessageAt, createdAt),
 )
 
 fun kindOf(type: String): ChatKind = when (type.lowercase()) {
     "direct" -> ChatKind.DIRECT
     "group" -> ChatKind.GROUP
     "channel" -> ChatKind.CHANNEL
+    "secret" -> ChatKind.SECRET
     else -> ChatKind.UNKNOWN
 }
 
@@ -185,6 +191,10 @@ fun ChatKind.toWire(): String = when (this) {
     ChatKind.DIRECT -> "direct"
     ChatKind.GROUP -> "group"
     ChatKind.CHANNEL -> "channel"
+    ChatKind.SECRET -> "secret"
+    // A kind this build does not recognise cannot be created, and "group" is the least
+    // harmful thing to ask for — but it is a fallback for a value that should never
+    // reach here, not a default anyone selects.
     ChatKind.UNKNOWN -> "group"
 }
 

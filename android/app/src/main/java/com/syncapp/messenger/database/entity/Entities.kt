@@ -35,6 +35,26 @@ data class ChatEntity(
     val oldestLoadedSeq: Long = 0,
     val hasMoreHistory: Boolean = true,
     val createdAt: Long = 0,
+    /**
+     * When notifications resume, unix millis. 0 = not muted.
+     *
+     * A DEADLINE, not a flag — and `muted` as a boolean is exactly what migration 2
+     * REMOVED, on the grounds that a column nothing can set is a promise the app cannot
+     * keep. It comes back as a deadline because there is now a message that sets it, and
+     * because "mute for eight hours" is what muting almost always means; the boolean
+     * could only say "forever", which is why nobody ever wired it up.
+     */
+    val mutedUntil: Long = 0,
+    val pinned: Boolean = false,
+    /** Hidden from the main list. Not deleted, and a per-member setting the server holds. */
+    val archived: Boolean = false,
+    /**
+     * The sort key the server pages on: the last message, falling back to the chat's
+     * creation time. Distinct from [lastMessageAt] precisely because of that fallback —
+     * a brand-new empty chat sorts to the top where the user just made it, rather than
+     * below every chat that has ever been written to.
+     */
+    val lastActivityAt: Long = 0,
 )
 
 /**

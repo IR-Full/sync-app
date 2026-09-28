@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 	"github.com/SyncApp-chat/SyncApp/pkg/id"
@@ -125,6 +127,34 @@ func TestPollClosedRejectsVotes(t *testing.T) {
 	}
 	if _, err := s.Vote(ctx, id, "bob", 0, 2); !errors.Is(err, ErrClosed) {
 		t.Fatalf("vote on closed poll: got %v, want ErrClosed", err)
+	}
+}
+
+// The service reads `closed` before it writes, so a close landing between those
+// two steps used to be accepted. The store now re-checks under the write, which
+// this asserts by calling it directly with a stale "open" view of the poll.
+func TestPollStoreRejectsVoteOnClosedPoll(t *testing.T) {
+	stores := memory.New().Stores()
+	polls := stores.Polls
+	ctx := context.Background()
+	ids, _ := id.NewGenerator(5)
+	p := &model.Poll{
+		ID: ids.NextString(), ChatID: "c1", MessageID: "m1", CreatorID: "alice",
+		Question: "Lunch?", Options: []string{"Pizza", "Sushi"},
+	}
+	if err := polls.CreatePoll(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	if err := polls.ClosePoll(ctx, p.ID); err != nil {
+		t.Fatal(err)
+	}
+	_, err := polls.Vote(ctx, &model.PollVote{PollID: p.ID, UserID: "bob"}, false)
+	if !errors.Is(err, store.ErrPollClosed) {
+		t.Fatalf("store vote on closed poll: got %v, want store.ErrPollClosed", err)
+	}
+	tally, _ := polls.Tally(ctx, p.ID)
+	if len(tally) != 0 {
+		t.Fatalf("closed poll recorded a vote: %v", tally)
 	}
 }
 

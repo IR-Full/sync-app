@@ -84,13 +84,10 @@ enum WireMapping {
 
     /// The chat a message implies.
     ///
-    /// This is the workaround for the protocol's one real gap: there is no
-    /// "list my chats" message, and `ListUserChats` exists in the store but was
-    /// never given a wire type. So the chat list is assembled locally from
-    /// everything that mentions a chat — inbound messages, send acks, chat
-    /// creations, joins — and persisted. A brand-new device therefore starts
-    /// empty and fills in as traffic arrives; see README for the two ways to
-    /// close that gap properly.
+    /// Not the authoritative view — `chat(from: ChatSummaryBody)` is, and the sync
+    /// engine fetches it on every connect. This keeps the list current *between*
+    /// enumerations: a chat someone creates and writes into appears from the
+    /// message itself rather than waiting for the next reconnect.
     ///
     /// A direct chat's title is unknowable here (no member list for 1:1), so it
     /// is left empty and the UI falls back to the peer's handle or id.
@@ -109,6 +106,55 @@ enum WireMapping {
             lastMessageAt: message.sentAt,
             lastSeq: message.seq
         )
+    }
+
+    /// A chat as the gateway enumerates it (`CHAT_LIST` → `CHATS`).
+    ///
+    /// This is the authoritative view, unlike `impliedChat`: the type, title,
+    /// owner, public handle and this account's role all come from the server
+    /// instead of being guessed from a message. Fields the enumeration does not
+    /// carry — the last message preview and our read cursor — are left to the
+    /// caller to preserve, because the cache already knows them and an empty
+    /// value here means "not included", not "empty".
+    static func chat(from summary: ChatSummaryBody) -> Chat {
+        Chat(
+            id: summary.chatID,
+            kind: Chat.Kind(rawValue: summary.type) ?? .group,
+            title: summary.title,
+            username: summary.username.nilIfEmpty,
+            ownerID: summary.ownerID,
+            peerUserID: summary.peerID.nilIfEmpty,
+            // The preview and the timestamp now DO come with the enumeration, so the
+            // note above about the caller preserving them applies only to the read
+            // cursor. Before this, a client that wanted a preview had to call HISTORY
+            // once per chat — the server-side N+1 moved onto the network and became a
+            // round trip per row.
+            lastMessagePreview: summary.lastMessage.map(preview(of:)) ?? "",
+            lastMessageAt: date(millis: summary.lastMessage?.timestamp ?? 0),
+            lastSeq: summary.lastSeq,
+            mutedUntil: date(millis: summary.mutedUntil),
+            isPinned: summary.pinned,
+            isArchived: summary.archived,
+            lastActivityAt: date(millis: summary.lastActivityAt)
+        )
+    }
+
+    /// What a chat-list row shows for its newest message.
+    ///
+    /// An attachment has no text, and a row that renders as blank reads as a bug
+    /// rather than as a photo — so the kind is named instead. Deleted messages are
+    /// named too: the tombstone is what the peer sees, and hiding it would leave the
+    /// preview showing text that no longer exists.
+    static func preview(of body: NewMessageBody) -> String {
+        if body.deleted { return "" }
+        if !body.text.isEmpty { return body.text }
+        guard let attachment = body.attachment, !attachment.mediaRef.isEmpty else { return "" }
+        switch Attachment.Kind(rawValue: attachment.kind) ?? .unknown {
+        case .image: return "\u{1F4F7}"
+        case .video, .videoNote: return "\u{1F3AC}"
+        case .voice: return "\u{1F3A4}"
+        case .file, .unknown: return attachment.filename.isEmpty ? "\u{1F4C4}" : attachment.filename
+        }
     }
 
     static func date(millis: Int64) -> Date? {

@@ -1,0 +1,59 @@
+# Dependency updates.
+#
+# `govulncheck` in server-ci already fails the build on a known CVE, which is the
+# safety net. This is the other half: a scan that only ever says "you are
+# vulnerable" leaves someone to do the upgrade by hand, under time pressure, on
+# whatever version happens to be current. Steady small bumps mean the CVE fix is
+# usually a patch release away rather than a major-version migration.
+#
+# Weekly rather than daily, and grouped rather than one PR per package: this is a
+# four-ecosystem repository, and ungrouped daily updates would produce more pull
+# requests than commits.
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /server
+    schedule:
+      interval: weekly
+    groups:
+      # Patch and minor together: the test suite is the gate, and reviewing them
+      # one at a time buys nothing when they pass or fail as a set.
+      go-minor-patch:
+        update-types: [minor, patch]
+    # A major Go-module bump is an import-path change. It needs a human deciding
+    # to do the migration, not a bot opening a PR that cannot compile.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /client
+    schedule:
+      interval: weekly
+    groups:
+      web-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Next.js and React majors move together and change app conventions; the
+      # repository pins them deliberately (see client/AGENTS.md).
+      - dependency-name: next
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+    groups:
+      android-minor-patch:
+        update-types: [minor, patch]
+
+  # The workflows themselves pin action versions, and a stale pinned action is a
+  # supply-chain exposure in the thing that builds everything else.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -78,6 +78,18 @@ func (m *memoryBuffer) Since(_ context.Context, sessionID string, afterSeq uint6
 	return out, nil
 }
 
+func (m *memoryBuffer) HighWater(_ context.Context, sessionID string) (uint64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s := m.sessions[sessionID]
+	if s == nil || len(s.frames) == 0 {
+		return 0, nil
+	}
+	// The last frame, not a scan: Append only ever adds ascending seqs and trims
+	// from the front, so the tail is the maximum by construction.
+	return s.frames[len(s.frames)-1].Seq, nil
+}
+
 func (m *memoryBuffer) Drop(_ context.Context, sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

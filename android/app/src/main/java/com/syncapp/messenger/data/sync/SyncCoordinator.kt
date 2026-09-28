@@ -2,6 +2,8 @@ package com.syncapp.messenger.data.sync
 
 import android.util.Log
 import com.syncapp.messenger.core.AppScope
+import com.syncapp.messenger.data.secret.SecretChatEngine
+import com.syncapp.messenger.data.secret.SecretTranscriptStore
 import com.syncapp.messenger.data.repository.MessageRepositoryImpl
 import com.syncapp.messenger.database.SyncAppDatabase
 import com.syncapp.messenger.datastore.SessionStore
@@ -30,9 +32,9 @@ import kotlinx.coroutines.sync.withLock
  */
 @Singleton
 class SyncCoordinator @Inject constructor(
-    private val gateway: syncappGateway,
+    private val gateway: SyncAppGateway,
     private val sessionStore: SessionStore,
-    private val database: syncappDatabase,
+    private val database: SyncAppDatabase,
     private val ingestor: MessageIngestor,
     private val profiles: ProfileFetcher,
     private val typingTracker: TypingTracker,
@@ -40,6 +42,8 @@ class SyncCoordinator @Inject constructor(
     private val messageRepository: MessageRepositoryImpl,
     private val userSync: ContactSyncer,
     private val pushTokens: PushTokenRegistrar,
+    private val secretChats: SecretChatEngine,
+    private val secretTranscripts: SecretTranscriptStore,
     private val networkMonitor: NetworkMonitor,
     @param:AppScope private val scope: CoroutineScope,
 ) {
@@ -105,11 +109,21 @@ class SyncCoordinator @Inject constructor(
                 // handled there; one arriving unsolicited is another device's send, whose
                 // message reaches us as a NEW frame anyway.
                 is ServerEvent.Acked -> Unit
+                // Decrypted the moment it lands. The ratchet advances with each
+                // message, so deferring the work would reorder the chain — and the
+                // server holds no copy to re-deliver, so a dropped one is gone.
+                is ServerEvent.SecretMessage -> onSecretMessage(event)
                 is ServerEvent.PresenceUpdate -> presenceTracker.onPresence(
                     userId = event.body.userId,
                     online = event.body.online,
                     lastSeenMs = event.body.lastSeenMs,
                 )
+                // Nothing to do here: the gateway broadcasts this on its own flow, and
+                // AccountSecurityRepository holds the entitlement state. Listed
+                // explicitly rather than swept up by an `else` so the next event type
+                // added to the protocol is a compile error in this file — which is how
+                // the ones above got handled at all.
+                is ServerEvent.SubscriptionChanged -> Unit
                 is ServerEvent.Failure -> Log.i(TAG, "gateway error: ${event.error}")
                 is ServerEvent.SessionExpired -> onSessionExpired()
             }
@@ -136,10 +150,36 @@ class SyncCoordinator @Inject constructor(
         scope.launch { messageRepository.flushOutbox() }
         scope.launch { userSync.syncQuietly() }
         scope.launch { pushTokens.sync() }
+        // Republished on every connect: KEY_PUBLISH is fire-and-forget, so
+        // "published" cannot be confirmed, and the directory upserts. This is
+        // also where rotation happens, so a device that has been offline past
+        // its signed prekey's lifetime refreshes it on the way back.
+        scope.launch { runCatching { secretChats.publishKeys() } }
+        // The transcripts live only on this device, so they are read from disk
+        // rather than fetched — there is nothing on the server to fetch.
+        scope.launch { secretTranscripts.load(event.session.userId) }
         // Self-destructing messages carry a deadline, and the server reaps its own
         // copy — a cached one that outlived it would make this device the only place
         // the message still exists.
         scope.launch { database.messageDao().purgeExpired(System.currentTimeMillis()) }
+    }
+
+    /**
+     * Opens one inbound secret message and files it under the peer.
+     *
+     * A failure is recorded rather than dropped. The usual cause is a peer that
+     * reinstalled and started a fresh session against a prekey this device no
+     * longer holds; showing nothing would leave the reader believing the other
+     * person never wrote, which is worse than an explicit "could not decrypt".
+     */
+    private suspend fun onSecretMessage(event: ServerEvent.SecretMessage) {
+        val opened = runCatching { secretChats.receive(event.body) }.getOrNull()
+        secretTranscripts.append(
+            peerId = event.body.fromUserId,
+            text = opened?.plaintext.orEmpty(),
+            outgoing = false,
+            failed = opened == null,
+        )
     }
 
     /**

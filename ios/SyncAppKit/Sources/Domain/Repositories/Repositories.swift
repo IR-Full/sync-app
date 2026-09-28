@@ -67,7 +67,23 @@ public protocol ChatRepository: Sendable {
     /// Joins by invite code or `@handle`; returns the chat id.
     func join(code: String?, handle: String?) async throws -> String
 
-    func setMuted(chatID: String, muted: Bool) async
+    /// Cache-backed list of the ARCHIVED pile, which the main list excludes.
+    func observeArchivedChats() -> AsyncStream<[ChatSummary]>
+
+    /// Starts a secret chat with a user id.
+    ///
+    /// Throws `AppError.premiumRequired` when the tier does not include it — a distinct
+    /// error rather than `forbidden`, because the two mean different things to a screen:
+    /// forbidden is final, this one has an answer.
+    func createSecretChat(peer: String) async throws -> Chat
+
+    /// Sets this account's own flags for a chat.
+    ///
+    /// All three at once, and absolute. proto3 has no field presence for scalars, so
+    /// "leave pinned alone" cannot be expressed on the wire — a partial setter would
+    /// have to invent the missing values, and inventing them is how muting a chat
+    /// silently unpins it.
+    func setFlags(chatID: String, mutedUntil: Date?, pinned: Bool, archived: Bool) async
 
     /// Deletes the local cache of a chat. There is no server-side "leave chat"
     /// in this protocol, so this is explicitly a local hide, not a leave.

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,7 +40,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +59,7 @@ import coil.compose.AsyncImage
 import com.syncapp.messenger.R
 import com.syncapp.messenger.domain.model.AttachmentKind
 import com.syncapp.messenger.domain.model.ChatKind
+import com.syncapp.messenger.presentation.secret.SecretChatSheet
 import com.syncapp.messenger.domain.model.Message
 import com.syncapp.messenger.domain.model.MessageStatus
 import com.syncapp.messenger.presentation.components.Avatar
@@ -122,6 +127,15 @@ fun ChatScreen(
             .collect { viewModel.loadOlderMessages() }
     }
 
+    // Secret chats are pairwise by construction — the ratchet has no group
+    // form — so the entry point exists only where it can actually be used.
+    val currentChat = chat
+    val secretPeerId = currentChat
+        ?.takeIf { it.kind == ChatKind.DIRECT }
+        ?.peerUserId
+        ?.takeIf { it.isNotEmpty() }
+    var secretOpen by rememberSaveable { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -166,6 +180,16 @@ fun ChatScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.action_back),
                         )
+                    }
+                },
+                actions = {
+                    if (secretPeerId != null) {
+                        IconButton(onClick = { secretOpen = true }) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = stringResource(R.string.secret_open),
+                            )
+                        }
                     }
                 },
             )
@@ -277,6 +301,14 @@ fun ChatScreen(
                 }
             }
         }
+    }
+
+    if (secretOpen && secretPeerId != null) {
+        SecretChatSheet(
+            peerUserId = secretPeerId,
+            peerLabel = currentChat?.title?.takeIf { it.isNotEmpty() } ?: chatKey,
+            onDismiss = { secretOpen = false },
+        )
     }
 }
 

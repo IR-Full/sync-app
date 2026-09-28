@@ -371,10 +371,10 @@ time; replying from the app arrives in Bob's terminal.
 
 Every value reaches the app through `Info.plist` substitution and is read once by
 `ServerEnvironment.current` — no URL is hardcoded at a call site. Switching to
-the raw TCP transport is `SyncApp_TRANSPORT = tcp` in an `.xcconfig`.
+the raw TCP transport is `SYNCAPP_TRANSPORT = tcp` in an `.xcconfig`.
 
 `ServerEnvironment.current` additionally refuses to honour
-`SyncApp_ALLOWS_INSECURE_TLS` when the environment is `prod`, so a mistake in a
+`SYNCAPP_ALLOWS_INSECURE_TLS` when the environment is `prod`, so a mistake in a
 config file cannot silently disable certificate validation in a shipped build.
 
 ### Tests
@@ -428,13 +428,13 @@ an **empty** token, which clears it server-side and stops the push at the source
 rather than at the device.
 
 The server side needs one thing you have to provide: `notify.ProviderFor` sends
-to a generic HTTP endpoint (`SyncApp_PUSH_ENDPOINT`), not to APNs directly, and
+to a generic HTTP endpoint (`SYNCAPP_PUSH_ENDPOINT`), not to APNs directly, and
 defaults to a logger when unset. So pushes only arrive once that endpoint points
 at an APNs bridge:
 
 ```bash
-SyncApp_PUSH_ENDPOINT=https://your-apns-bridge/notify \
-SyncApp_PUSH_KEY=... \
+SYNCAPP_PUSH_ENDPOINT=https://your-apns-bridge/notify \
+SYNCAPP_PUSH_KEY=... \
 go run ./cmd/server
 ```
 
@@ -479,5 +479,12 @@ everywhere.
 
 The protocol client implements these; they have no screen yet, and the reason is
 scope rather than difficulty: threads, pins, forwarding, invite links and roles,
-scheduled sends, polls, calls, and E2E secret chats. Adding a screen for any of
-them is a view model over a method that already exists.
+scheduled sends, polls, and calls. Adding a screen for any of them is a view
+model over a method that already exists.
+
+**E2E secret chats are not in that list.** `MsgType` carries `secretSend` /
+`secretRecv` so the frames decode, but there is no X3DH, no Double Ratchet and no
+key storage anywhere in `SyncAppKit` — this client cannot produce or open a
+ciphertext. That is a port of `server/pkg/e2e`, not a view model, and it has not
+been written. `CapSecretChat` must not be advertised until it is, or the server
+will route ciphertext here that nothing can read.

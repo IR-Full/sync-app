@@ -15,6 +15,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import com.syncapp.messenger.network.CertificatePinning
+import com.syncapp.messenger.network.PinningConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 
@@ -65,6 +67,30 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        /*
+         * TLS pinning for the gateway host.
+         *
+         * This app pinned the KEYS OF THE PERSON it talks to — trust-on-first-use plus
+         * safety numbers in `crypto/Trust.kt` — and did not pin the server, which is out
+         * of proportion: anyone holding a certificate from a CA the device trusts (a
+         * corporate MDM profile, a compromised authority) reads every ordinary chat,
+         * profile and session token. End-to-end encryption neither suffers from that
+         * attack nor helps against it.
+         *
+         * Applied unconditionally rather than under `if (!DEBUG)`, because
+         * `pinnerFor` already returns null when no pins are configured — and the
+         * development flavour configures none, since its gateway is plain ws:// on an
+         * emulator loopback.
+         */
+        .apply {
+            CertificatePinning.pinnerFor(
+                PinningConfig(
+                    host = CertificatePinning.hostOf(BuildConfig.GATEWAY_URL),
+                    spkiSha256 = BuildConfig.TLS_PINS.split(",").filter { it.isNotBlank() },
+                    expiresAtMs = BuildConfig.TLS_PINS_EXPIRE_AT,
+                ),
+            )?.let { certificatePinner(it) }
+        }
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS) // a WebSocket read blocks for as long as it likes
         .writeTimeout(30, TimeUnit.SECONDS)

@@ -35,6 +35,12 @@ data class ProfileEditState(
     val error: AppError? = null,
 )
 
+/** The account-deletion dialog's own state, kept apart from the profile form. */
+data class DeleteAccountState(
+    val deleting: Boolean = false,
+    val error: AppError? = null,
+)
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsStore: SettingsStore,
@@ -43,8 +49,41 @@ class SettingsViewModel @Inject constructor(
     private val pushTokens: PushTokenRegistrar,
     private val logoutUseCase: LogoutUseCase,
     private val mediaUrls: MediaUrlCache,
-    authRepository: AuthRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
+
+    private val _deleteState = MutableStateFlow(DeleteAccountState())
+    val deleteState: StateFlow<DeleteAccountState> = _deleteState.asStateFlow()
+
+    /**
+     * Erases the account.
+     *
+     * The password goes to the server, which re-checks it even though this
+     * connection is already authenticated: a session token lives on this device,
+     * and someone holding an unlocked phone must not be able to destroy the
+     * account behind it with two taps.
+     *
+     * On success the repository tears the local state down as well, which is
+     * what routes the app back to the login screen — there is no account to
+     * return to, and a UI that stayed on the settings screen of a deleted
+     * account would be showing something that no longer exists.
+     */
+    fun deleteAccount(password: String) {
+        if (password.isEmpty()) return
+        viewModelScope.launch {
+            _deleteState.update { it.copy(deleting = true, error = null) }
+            when (val result = authRepository.deleteAccount(password)) {
+                is Outcome.Success -> _deleteState.update { it.copy(deleting = false) }
+                is Outcome.Failure -> _deleteState.update {
+                    it.copy(deleting = false, error = result.error)
+                }
+            }
+        }
+    }
+
+    fun clearDeleteError() {
+        _deleteState.update { it.copy(error = null) }
+    }
 
     val settings: StateFlow<AppSettings> = settingsStore.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppSettings())

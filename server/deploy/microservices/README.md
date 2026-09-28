@@ -20,9 +20,9 @@ scale and deploy independently.
                      ┌─────────▼──────────┐   ┌──────────┐       └───────────┘
                      │  presenced keydird │   │ fanoutd  │◄── message.* events
                      └────────────────────┘   │ searchd  │      (NATS bus)
-                                               │ notifyd  │
-                                               │moderationd│
-                                               └──────────┘
+                                              │ notifyd  │
+                                              │moderationd|
+                                              └──────────┘
         shared data plane:  Postgres (metadata + messages + outbox) · Redis
         (presence/router/keydir/resume) · NATS JetStream (event bus)
 ```
@@ -66,7 +66,7 @@ message sent through one gateway is delivered to a client on the other.
 
 Start the infra (`docker compose up -d` at the repo root), then launch each daemon
 with the shared backends set — see the env in the compose file
-(`SyncApp_PG_DSN`/`SyncApp_REDIS_ADDR`/`SyncApp_NATS_URL` + the `*_ADDR` peers).
+(`SYNCAPP_PG_DSN`/`SYNCAPP_REDIS_ADDR`/`SYNCAPP_NATS_URL` + the `*_ADDR` peers).
 The `cmd/server` monolith remains the zero-setup path (`go run ./cmd/server`).
 
 ## Notes
@@ -77,7 +77,7 @@ The `cmd/server` monolith remains the zero-setup path (`go run ./cmd/server`).
 - **Latency tax.** Every send now crosses `gatewayd → messaged → chatd`, so
   per-message throughput is lower than the monolith — the expected cost of the
   split. Scale `messaged`/`fanoutd` horizontally to compensate.
-- **mTLS** between services is enabled by setting `SyncApp_MTLS_CA/CERT/KEY`
+- **mTLS** between services is enabled by setting `SYNCAPP_MTLS_CA/CERT/KEY`
   (see `internal/platform`); left off here for a zero-config local run.
 - **One edge shortcut: profiles.** `gatewayd` reaches the `users` table directly
   (`gateway.Services.Users`) rather than through `authd` — for `@username`

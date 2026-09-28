@@ -5,8 +5,11 @@ import SyncAppDomain
 /// sync engine applies goes through here, so the SQL lives in one file and the
 /// mapping between rows and domain types lives next to it.
 public struct LocalStore: Sendable {
-    private let database: Database
-    private let broker: ChangeBroker
+    // Internal rather than private: `private` is file-scoped, and the secret-chat
+    // queries live in `LocalStore+Secret.swift` — a separate file, so they could not
+    // reach these at all. Still not `public`: the SQL stays inside this module.
+    let database: Database
+    let broker: ChangeBroker
 
     public init(database: Database, broker: ChangeBroker) {
         self.database = database
@@ -22,8 +25,9 @@ public struct LocalStore: Sendable {
         try await database.run(
             """
             INSERT INTO chats (id, kind, title, username, owner_id, peer_user_id,
-                               last_message_preview, last_message_at, last_seq, last_read_seq, is_muted)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               last_message_preview, last_message_at, last_seq, last_read_seq,
+                               muted_until, pinned, archived, last_activity_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 kind                 = excluded.kind,
                 title                = CASE WHEN excluded.title <> '' THEN excluded.title ELSE chats.title END,
@@ -31,13 +35,28 @@ public struct LocalStore: Sendable {
                 owner_id             = CASE WHEN excluded.owner_id <> '' THEN excluded.owner_id ELSE chats.owner_id END,
                 peer_user_id         = COALESCE(excluded.peer_user_id, chats.peer_user_id),
                 last_seq             = MAX(excluded.last_seq, chats.last_seq),
-                last_read_seq        = MAX(excluded.last_read_seq, chats.last_read_seq)
+                last_read_seq        = MAX(excluded.last_read_seq, chats.last_read_seq),
+                -- The flags come from the server on every enumeration, so the
+                -- authoritative value wins outright. MAX would be wrong here: unmuting
+                -- sends 0, and MAX(0, old) would silently refuse it.
+                muted_until          = excluded.muted_until,
+                pinned               = excluded.pinned,
+                archived             = excluded.archived,
+                -- Never backwards. A partial write that knows nothing about activity
+                -- passes NULL, and COALESCE keeps what the list enumeration
+                -- established rather than dropping the chat to the bottom.
+                last_activity_at     = MAX(
+                    COALESCE(excluded.last_activity_at, 0),
+                    COALESCE(chats.last_activity_at, 0)
+                )
             """,
             [
                 .text(chat.id), .text(chat.kind.rawValue), .text(chat.title),
                 .optionalText(chat.username), .text(chat.ownerID), .optionalText(chat.peerUserID),
                 .text(chat.lastMessagePreview), .date(chat.lastMessageAt),
-                .uint(chat.lastSeq), .uint(chat.lastReadSeq), .bool(chat.isMuted),
+                .uint(chat.lastSeq), .uint(chat.lastReadSeq),
+                .millis(chat.mutedUntil), .bool(chat.isPinned), .bool(chat.isArchived),
+                .date(chat.lastActivityAt),
             ]
         )
         await broker.notify(.chats)
@@ -51,7 +70,12 @@ public struct LocalStore: Sendable {
     /// The list screen's query. Unread is derived, not stored: a receipt from
     /// another device moves `last_read_seq` and the badge follows, with no
     /// counter to drift.
-    public func chatSummaries() async throws -> [ChatSummary] {
+    /// `archived: true` lists the archive instead of the main list.
+    ///
+    /// Ordering is pinned-first, then activity, then id — matching the gateway paging
+    /// order exactly. Matching it is not cosmetic: the two lists are merged as pages
+    /// arrive, and a client that sorts differently reshuffles rows on every sync.
+    public func chatSummaries(archived: Bool = false) async throws -> [ChatSummary] {
         let rows = try await database.query(
             """
             SELECT c.*,
@@ -63,9 +87,12 @@ public struct LocalStore: Sendable {
                    (SELECT online FROM users u WHERE u.id = c.peer_user_id) AS peer_online
               FROM chats c
              WHERE c.hidden = 0
-             ORDER BY c.last_message_at DESC NULLS LAST, c.id DESC
+               AND c.archived = ?
+             ORDER BY c.pinned DESC,
+                      COALESCE(c.last_activity_at, c.last_message_at) DESC NULLS LAST,
+                      c.id DESC
             """,
-            [.text((try await currentUserID()) ?? "")]
+            [.text((try await currentUserID()) ?? ""), .bool(archived)]
         )
         return rows.map { row in
             ChatSummary(
@@ -76,9 +103,21 @@ public struct LocalStore: Sendable {
         }
     }
 
-    public func setChatMuted(_ chatID: String, muted: Bool) async throws {
+    /// Applies the three flags locally.
+    ///
+    /// Called twice per change: optimistically before the request, then again with
+    /// whatever the server echoed back. The second write is the one that matters — two
+    /// devices toggling the same flag converge on the stored state rather than on
+    /// whichever request happened to be sent last.
+    public func setChatFlags(
+        _ chatID: String,
+        mutedUntil: Date?,
+        pinned: Bool,
+        archived: Bool
+    ) async throws {
         try await database.run(
-            "UPDATE chats SET is_muted = ? WHERE id = ?", [.bool(muted), .text(chatID)]
+            "UPDATE chats SET muted_until = ?, pinned = ?, archived = ? WHERE id = ?",
+            [.millis(mutedUntil), .bool(pinned), .bool(archived), .text(chatID)]
         )
         await broker.notify(.chats)
     }
@@ -329,7 +368,13 @@ public struct LocalStore: Sendable {
     /// frame happened to arrive second.
     public func upsertDraft(chatID: String, text: String, replyTo: String?, updatedAt: Date) async throws {
         if text.isEmpty {
-            try await database.run("DELETE FROM drafts WHERE chat_id = ?", [.text(chatID)])
+            // Clearing is last-writer-wins too. Without the timestamp check, a
+            // "cleared" frame that arrives late — the user sent from one device
+            // while typing on another — would delete a draft written after it.
+            try await database.run(
+                "DELETE FROM drafts WHERE chat_id = ? AND updated_at <= ?",
+                [.text(chatID), .date(updatedAt)]
+            )
         } else {
             try await database.run(
                 """
@@ -459,6 +504,16 @@ public struct LocalStore: Sendable {
         public static let userID = "user_id"
         public static let contactCursor = "contact_cursor"
         public static let draftCursor = "draft_cursor"
+        /// The push token the server *should* hold ("" means "cleared").
+        /// Registration needs a live connection, and APNs hands the token over
+        /// whenever it likes — often before one exists — so the intent is recorded
+        /// here and flushed on connect. Without it a registration attempted while
+        /// offline is simply lost, and the server keeps pushing to a dead token or
+        /// never learns the new one.
+        public static let desiredPushToken = "push_token_desired"
+        /// The token the server has acknowledged. Flushing is skipped when the two
+        /// match, so a reconnect does not re-register on every attempt.
+        public static let ackedPushToken = "push_token_acked"
     }
 
     // MARK: - Row mapping
@@ -475,7 +530,10 @@ public struct LocalStore: Sendable {
             lastMessageAt: row.date("last_message_at"),
             lastSeq: row.uint("last_seq"),
             lastReadSeq: row.uint("last_read_seq"),
-            isMuted: row.bool("is_muted")
+            mutedUntil: row.millisDate("muted_until"),
+            isPinned: row.bool("pinned"),
+            isArchived: row.bool("archived"),
+            lastActivityAt: row.date("last_activity_at")
         )
     }
 

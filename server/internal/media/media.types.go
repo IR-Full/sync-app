@@ -1,17 +1,37 @@
 package media
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
+// FetchAuthorizer decides whether a user may download a blob.
+//
+// Injected rather than built in, because the answer lives in the message log and
+// the user directory — neither of which the media service knows about, and
+// neither of which it should have to import to hand out a signed URL.
+//
+// A nil authorizer means "any authenticated holder of the ref may fetch", which
+// is the behaviour this service shipped with: sound against guessing (the ref
+// carries 128 bits of entropy and the URL is signed), and nothing at all against
+// a ref that leaked.
+type FetchAuthorizer interface {
+	// MayFetch reports whether userID may download ref. An error is treated as a
+	// denial by the caller: failing open here would make a database blip into an
+	// access-control bypass.
+	MayFetch(ctx context.Context, userID, ref string) (bool, error)
+}
+
 // ObjectStore is the blob backend. fsStore (this package) is the local default;
 // an S3 implementation slots in unchanged.
 type ObjectStore interface {
 	// Put stores the object. It MUST fail with ErrExists if ref is already
-	// present, and must do so atomically (fs: O_EXCL; S3: If-None-Match).
+	// present, and must do so atomically (fs: link into place; S3: If-None-Match).
+	// It must also publish atomically: a concurrent Get either misses the ref or
+	// reads the object whole, never a partial write.
 	Put(ref string, data []byte) error
 	Get(ref string) ([]byte, error)
 	Exists(ref string) bool
@@ -47,8 +67,9 @@ type Service struct {
 	baseURL string        // public base, e.g. http://localhost:8080
 	ttl     time.Duration // ticket lifetime
 	maxSize int64
-	scanner Scanner    // anti-malware hook run on upload
-	refs    Referencer // "is this blob still referenced?" (nil = never collect)
+	scanner Scanner
+	auth    FetchAuthorizer // anti-malware hook run on upload
+	refs    Referencer      // "is this blob still referenced?" (nil = never collect)
 	log     *slog.Logger
 }
 

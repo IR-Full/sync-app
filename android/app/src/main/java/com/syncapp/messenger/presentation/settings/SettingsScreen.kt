@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,6 +57,10 @@ import com.syncapp.messenger.presentation.components.localized
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onOpenSessions: () -> Unit,
+    onOpenPrivacy: () -> Unit,
+    onOpenSecurity: () -> Unit,
+    onOpenPremium: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -73,6 +78,9 @@ fun SettingsScreen(
         mutableStateOf(settings.gatewayUrlOverride ?: BuildConfig.GATEWAY_URL)
     }
     var confirmLogout by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var deletePassword by remember { mutableStateOf("") }
+    val deleteState by viewModel.deleteState.collectAsStateWithLifecycle()
 
     val pickAvatar = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -263,6 +271,32 @@ fun SettingsScreen(
             }
 
             SectionDivider()
+            SectionTitle(stringResource(R.string.settings_account))
+
+            // Security first in this section, and above the session list on purpose:
+            // changing the password is what REVOKES those sessions, so reading downwards
+            // matches the order somebody actually secures an account in.
+            OutlinedButton(
+                onClick = onOpenSecurity,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(R.string.security_title)) }
+
+            OutlinedButton(
+                onClick = onOpenPremium,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) { Text(stringResource(R.string.premium_title)) }
+
+            OutlinedButton(
+                onClick = onOpenPrivacy,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) { Text(stringResource(R.string.privacy_title)) }
+
+            OutlinedButton(
+                onClick = onOpenSessions,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) { Text(stringResource(R.string.sessions_title)) }
+
+            SectionDivider()
 
             OutlinedButton(
                 onClick = { confirmLogout = true },
@@ -274,7 +308,73 @@ fun SettingsScreen(
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
+
+            // Below logout and worded as what it is. An app that lets someone
+            // create an account must let them destroy it in the app; burying it
+            // in a support email is the pattern both store policies exist to
+            // forbid.
+            TextButton(
+                onClick = {
+                    deletePassword = ""
+                    confirmDelete = true
+                },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_delete_account),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { if (!deleteState.deleting) confirmDelete = false },
+            title = { Text(stringResource(R.string.settings_delete_account)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.settings_delete_account_confirm))
+                    OutlinedTextField(
+                        value = deletePassword,
+                        onValueChange = { deletePassword = it },
+                        label = { Text(stringResource(R.string.auth_password)) },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        enabled = !deleteState.deleting,
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    )
+                    deleteState.error?.let { error ->
+                        Text(
+                            text = error.localized(),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.deleteAccount(deletePassword) },
+                    enabled = deletePassword.isNotEmpty() && !deleteState.deleting,
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_delete_account),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearDeleteError()
+                        confirmDelete = false
+                    },
+                    enabled = !deleteState.deleting,
+                ) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 
     if (confirmLogout) {

@@ -27,11 +27,11 @@ func main() {
 	}
 	defer b.Close()
 
-	banned := strings.Split(platform.Env("SyncApp_BANNED_TERMS", "spamword,scamlink"), ",")
+	banned := strings.Split(platform.Env("SYNCAPP_BANNED_TERMS", "spamword,scamlink"), ",")
 	svc := moderation.New(b.Bus, banned, b.Log)
 	if err := svc.Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
-	platform.RunWorker(ctx, platform.Env("SyncApp_MODERATIOND_METRICS", ":9108"), b.Log)
+	platform.RunWorker(ctx, platform.Env("SYNCAPP_MODERATIOND_METRICS", ":9108"), b.Log)
 }

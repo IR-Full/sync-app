@@ -29,11 +29,34 @@ public actor SyncEngine {
     private var statusSubscribers: [UUID: AsyncStream<ConnectionStatus>.Continuation] = [:]
     private var expirySubscribers: [UUID: AsyncStream<Void>.Continuation] = [:]
     private var profileSubscribers: [UUID: AsyncStream<ProfileBody>.Continuation] = [:]
+    private var subscriptionSubscribers: [UUID: AsyncStream<SubscriptionBody>.Continuation] = [:]
+
+    /// Secret chats. Optional so a build without the E2E module still compiles and runs
+    /// — and so a test can drive the engine without a Keychain.
+    ///
+    /// When it is nil, inbound `SECRET_RECV` frames are logged and dropped rather than
+    /// silently discarded. That distinction matters: a dropped secret message is
+    /// invisible to both ends, and a log line is the only thing that says the build
+    /// received something it was not equipped to open.
+    private var secret: SecretChatService?
+
+    /// The entitlements last heard from the server.
+    ///
+    /// Cached because it arrives as a PUSH as well as a reply: a subscription lapses
+    /// without this client asking, and a UI that gates on a value it fetched at launch
+    /// goes on offering features the server has started refusing.
+    public private(set) var entitlements: SubscriptionBody?
 
     public init(client: SyncAppClient, store: LocalStore, broker: ChangeBroker) {
         self.client = client
         self.store = store
         self.broker = broker
+    }
+
+    /// Attaches the secret-chat pipeline. Separate from `init` because the service
+    /// needs the device id, which the app resolves after the engine is built.
+    public func attach(secret: SecretChatService) {
+        self.secret = secret
     }
 
     /// Starts consuming protocol events. Idempotent.
@@ -204,6 +227,20 @@ public actor SyncEngine {
                 try? await store.setMeta(LocalStore.MetaKey.draftCursor, String(body.cursor))
             }
 
+        case .secretMessage(let body):
+            guard let secret else {
+                // Not a silent drop. A build with no secret pipeline can still be
+                // ADDRESSED by one that has it, and "a message arrived that this
+                // version cannot open" is the only useful thing to say about it.
+                log.notice("received a secret frame but no secret-chat service is attached")
+                break
+            }
+            await secret.receive(body, ourUserID: userID)
+
+        case .subscription(let body):
+            entitlements = body
+            for continuation in subscriptionSubscribers.values { continuation.yield(body) }
+
         case .error(let error):
             log.error("uncorrelated protocol error \(error.code.rawValue): \(error.message)")
 
@@ -221,8 +258,19 @@ public actor SyncEngine {
             // address book catches up. Both are cheap and both are wrong to
             // defer until the user notices.
             scheduleFlush()
+            await flushPushToken()
+            await syncChatList()
             await syncContacts()
             await syncDrafts()
+            await syncEntitlements()
+            // Keys first, then the replay. In that order because publishing is what
+            // makes this device addressable at all: draining the queue before the
+            // directory knows about the device would drain whatever accumulated for a
+            // device the peers could not see.
+            if let secret {
+                await secret.publishIfNeeded()
+                await secret.syncQueue()
+            }
             try? await store.purgeExpired()
         case .connecting, .authenticating, .reconnecting:
             setStatus(.connecting)
@@ -291,12 +339,25 @@ public actor SyncEngine {
         } else {
             typingByChat[chatID]?[typist] = nil
         }
-        Task { await broker.notify(.typing(chatID: chatID)) }
+        Task { await broker.notify([.typing(chatID: chatID), .anyTyping]) }
     }
 
     public func typingUsers(chatID: String) -> Set<String> {
         let cutoff = Date().addingTimeInterval(-Self.typingTTL)
         return Set((typingByChat[chatID] ?? [:]).filter { $0.value > cutoff }.keys)
+    }
+
+    /// Who is typing, across every chat with a live signal. The chat list needs
+    /// all of them at once; asking per row would mean one actor hop per row on
+    /// every redraw.
+    public func typingByChatSnapshot() -> [String: Set<String>] {
+        let cutoff = Date().addingTimeInterval(-Self.typingTTL)
+        var out: [String: Set<String>] = [:]
+        for (chatID, typists) in typingByChat {
+            let live = Set(typists.filter { $0.value > cutoff }.keys)
+            if !live.isEmpty { out[chatID] = live }
+        }
+        return out
     }
 
     private func startTypingSweeper() {
@@ -315,7 +376,7 @@ public actor SyncEngine {
             let live = typists.filter { $0.value > cutoff }
             if live.count != typists.count {
                 typingByChat[chatID] = live.isEmpty ? nil : live
-                await broker.notify(.typing(chatID: chatID))
+                await broker.notify([.typing(chatID: chatID), .anyTyping])
             }
         }
     }
@@ -384,6 +445,112 @@ public actor SyncEngine {
 
     /// Incremental sync: the server returns everything changed after our cursor,
     /// so a full download happens exactly once per install.
+    /// Delivers the push token the app wants the server to hold, if it differs
+    /// from the one the server has acknowledged.
+    ///
+    /// Called both when the token changes and on every connect, because the two
+    /// events are unordered: APNs commonly hands over a token before a connection
+    /// exists, and turning notifications off while offline still has to reach the
+    /// server eventually — otherwise the push keeps arriving.
+    public func flushPushToken() async {
+        let desired = (try? await store.meta(LocalStore.MetaKey.desiredPushToken)) ?? nil
+        guard let desired else { return } // never set: nothing to deliver
+        let acked = (try? await store.meta(LocalStore.MetaKey.ackedPushToken)) ?? nil
+        guard desired != acked else { return }
+        do {
+            try await client.registerPushToken(desired)
+            try? await store.setMeta(LocalStore.MetaKey.ackedPushToken, desired)
+        } catch {
+            // Left un-acked on purpose, so the next connect tries again.
+            log.notice("push token registration deferred: \(String(describing: error))")
+        }
+    }
+
+    /// Enumerates the chats this account belongs to and reconciles the cache.
+    ///
+    /// This is what a fresh install needs: every other path learns about a chat as
+    /// a consequence of traffic, so without this a new device opens to an empty
+    /// list and stays empty until somebody writes to it. Run on every connect, not
+    /// just the first, because a chat joined from another device is otherwise
+    /// invisible here too.
+    ///
+    /// Server fields win where the server is authoritative — type, title, owner,
+    /// handle, `lastSeq`, and now the mute/pin/archive flags, the preview and the
+    /// activity timestamp, all of which the enumeration carries. Only the READ CURSOR
+    /// stays local, because the server does not send it and overwriting it with nothing
+    /// would reset every unread badge on every connect.
+    public func syncChatList() async {
+        do {
+            let summaries = try await client.allChats()
+            for summary in summaries where !summary.chatID.isEmpty {
+                var chat = WireMapping.chat(from: summary)
+                if let cached = (try? await store.chat(id: chat.id)) ?? nil {
+                    chat.lastReadSeq = cached.lastReadSeq
+                    // The mute/pin/archive flags are NOT restored from the cache any
+                    // more: the server now stores them per member and sends them with
+                    // every enumeration, so it is authoritative and keeping the cached
+                    // copy would silently revert a change made on another device.
+                    //
+                    // The preview and activity are still kept when the server sends
+                    // nothing, because an empty value there means "not included".
+                    if chat.lastMessagePreview.isEmpty {
+                        chat.lastMessagePreview = cached.lastMessagePreview
+                        chat.lastMessageAt = cached.lastMessageAt
+                    }
+                    if chat.lastActivityAt == nil { chat.lastActivityAt = cached.lastActivityAt }
+                    // A direct chat's peer is filled in locally when the server
+                    // does not name one, so do not drop what we already resolved.
+                    if chat.peerUserID == nil { chat.peerUserID = cached.peerUserID }
+                    // The server's lastSeq can only move forward; a cached value
+                    // ahead of it means we ingested a message it has not counted yet.
+                    chat.lastSeq = max(chat.lastSeq, cached.lastSeq)
+                }
+                try? await store.upsertChat(chat)
+            }
+        } catch let error as ProtocolError where error.code == .unsupported {
+            // An older gateway has no CHAT_LIST; the locally-assembled list stands.
+        } catch {
+            log.notice("chat list sync failed: \(String(describing: error))")
+        }
+    }
+
+    /// A stream of subscription changes, for the screens that gate on entitlements.
+    public func subscriptions() -> AsyncStream<SubscriptionBody> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<SubscriptionBody>.makeStream()
+        subscriptionSubscribers[id] = continuation
+        if let entitlements { continuation.yield(entitlements) }
+
+        let engine = self
+        continuation.onTermination = { [weak engine, id] _ in
+            Task { [weak engine, id] in
+                await engine?.dropSubscriptionSubscriber(id)
+            }
+        }
+        return stream
+    }
+
+    private func dropSubscriptionSubscriber(_ id: UUID) { subscriptionSubscribers[id] = nil }
+
+    /// Reads the tier once per connect, so a screen has something to gate on before the
+    /// first push arrives.
+    ///
+    /// A gateway with no billing service still ANSWERS this, with everything granted —
+    /// it does not error — so the `unsupported` branch below is only for a gateway too
+    /// old to know the type at all. There the value is left absent, which callers read
+    /// as "not yet known" rather than as "not entitled".
+    public func syncEntitlements() async {
+        do {
+            let body = try await client.subscription()
+            entitlements = body
+            for continuation in subscriptionSubscribers.values { continuation.yield(body) }
+        } catch let error as ProtocolError where error.code == .unsupported {
+            entitlements = nil
+        } catch {
+            log.notice("subscription sync failed: \(String(describing: error))")
+        }
+    }
+
     public func syncContacts() async {
         do {
             let since = Int64((try? await store.meta(LocalStore.MetaKey.contactCursor)) ?? "") ?? 0

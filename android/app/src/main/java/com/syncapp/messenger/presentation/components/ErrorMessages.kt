@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.syncapp.messenger.R
 import com.syncapp.messenger.core.AppError
 import com.syncapp.messenger.domain.usecase.CredentialProblem
+import com.syncapp.messenger.network.protocol.ErrorCode
 
 /**
  * Turns a failure into something a person can read.
@@ -22,7 +23,21 @@ fun AppError.localized(): String = when (this) {
     is AppError.NotFound -> message ?: stringResource(R.string.error_not_found)
     is AppError.Forbidden -> message ?: stringResource(R.string.error_forbidden)
     is AppError.RateLimited -> message ?: stringResource(R.string.error_rate_limited)
-    is AppError.Rejected -> message ?: stringResource(R.string.error_generic)
+    /*
+     * Three codes get their own text, and all three arrive on the same screens.
+     *
+     * The distinction is not cosmetic. PREMIUM_REQUIRED has an ANSWER — an upgrade —
+     * while every other rejection is a dead end, and showing the server's own sentence
+     * for it makes a purchasable feature look broken. A wrong second-factor code is worth
+     * retrying and a demanded one means a field has not been filled in; both read as
+     * "request rejected" through the generic branch.
+     */
+    is AppError.Rejected -> when (code) {
+        ErrorCode.PREMIUM_REQUIRED -> stringResource(R.string.error_premium_required)
+        ErrorCode.TWO_FACTOR_REQUIRED -> stringResource(R.string.error_two_factor_required)
+        ErrorCode.TWO_FACTOR_INVALID -> stringResource(R.string.error_two_factor_invalid)
+        else -> message ?: stringResource(R.string.error_generic)
+    }
     is AppError.Unexpected -> message ?: stringResource(R.string.error_generic)
 }
 

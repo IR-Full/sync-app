@@ -12,6 +12,7 @@ package contact
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"unicode/utf8"
 
@@ -129,7 +130,27 @@ func (s *Service) SetBlocked(ctx context.Context, ownerID, target string, blocke
 	return s.store.SetBlocked(ctx, ownerID, u.ID, blocked, now)
 }
 
-// IsBlocked reports whether owner has blocked user.
+// IsContact reports whether userID is in ownerID's address book.
+//
+// The direction is the whole point and is easy to invert by accident: this asks
+// whether the OWNER has the other person saved, which is what a "visible to my
+// contacts" setting means. Asking it the other way round would let anyone grant
+// themselves access by adding the person they want to see.
+//
+// A row that exists only to carry a block (Remove keeps it, so the block
+// survives) is NOT a contact: the name was cleared, and someone you blocked is
+// the last person "my contacts" is meant to include.
+func (s *Service) IsContact(ctx context.Context, ownerID, userID string) (bool, error) {
+	c, err := s.store.GetContact(ctx, ownerID, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return !c.Blocked, nil
+}
+
 func (s *Service) IsBlocked(ctx context.Context, ownerID, userID string) (bool, error) {
 	return s.store.IsBlocked(ctx, ownerID, userID)
 }

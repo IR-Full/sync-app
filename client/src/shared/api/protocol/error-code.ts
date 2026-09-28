@@ -20,12 +20,43 @@ export const ErrorCode = {
   BAD_TOKEN: 2001,
   SESSION_REVOKED: 2002,
   DEVICE_UNKNOWN: 2003,
+  /**
+   * The password was right and a two-factor code is needed.
+   *
+   * In the AUTH band because it only ever arrives BEFORE a session exists —
+   * "re-authenticate" is literally what it asks for. A client shows a six-digit
+   * prompt on the screen it is already on rather than a login form.
+   */
+  TWO_FACTOR_REQUIRED: 2004,
+  /**
+   * A resume token that had already been rotated away was presented again, so two
+   * parties held the chain and the session has been ended. Distinct from
+   * RESUME_EXPIRED: expiry is routine, this means someone else had the token, and
+   * it is worth telling the user.
+   */
+  RESUME_REPLAYED: 2005,
 
   // 3xxx — authorization / business (do not retry as-is)
   FORBIDDEN: 3000,
   NOT_FOUND: 3001,
   CONFLICT: 3002,
   BAD_ARG: 3003,
+  /**
+   * A two-factor code did not verify.
+   *
+   * BUSINESS and not auth, deliberately: this also arrives on an AUTHENTICATED
+   * connection (confirming an enrolment, disabling the factor), and an auth-class
+   * code would sign somebody out for mistyping six digits.
+   */
+  TWO_FACTOR_INVALID: 3004,
+  /**
+   * The feature exists and this account tier does not include it.
+   *
+   * Its own code rather than FORBIDDEN, because the two mean different things here:
+   * forbidden is final, this one has an answer — show the upgrade screen. Business
+   * band for the same reason as above: it arrives on a live session.
+   */
+  PREMIUM_REQUIRED: 3005,
 
   // 4xxx — throttling (retry after backoff, honour retryAfterMs)
   RATE_LIMITED: 4000,

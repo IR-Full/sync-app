@@ -14,9 +14,11 @@ import (
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/internal/audit"
+	"github.com/SyncApp-chat/SyncApp/internal/billing"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 	"github.com/SyncApp-chat/SyncApp/internal/router"
+	"github.com/SyncApp-chat/SyncApp/internal/safego"
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
@@ -33,12 +35,6 @@ func pickUserLimits(s ratelimit.Shared) ratelimit.Shared {
 	return ratelimit.NewLocalShared(2, 20)
 }
 
-// roleOf returns a user's platform role ("" if none).
-func (g *Gateway) roleOf(userID string) Role { return g.roles[userID] }
-
-// isAdmin reports whether a user holds the platform-admin role.
-func (g *Gateway) isAdmin(userID string) bool { return g.roles[userID] == RoleAdmin }
-
 // canExportAny reports whether a user may export ANY chat (admin or moderator).
 // Chat owners can always export their own chat regardless of platform role.
 func (g *Gateway) canExportAny(userID string) bool {
@@ -54,29 +50,93 @@ func (g *Gateway) StartDelivery() error {
 		return nil // single-process without cross-node bus wiring
 	}
 	// One goroutine per node turns written frames into delivery receipts.
-	go g.runDeliveryReporter()
+	safego.Loop(g.reaperDone, g.log, "gateway.deliveryReporter", g.runDeliveryReporter)
+	// Subscription changes are PUSHED to the account's devices.
+	//
+	// Not polled, because the change is not the client's doing: a payment settles or
+	// a period lapses, and until the client hears about it it goes on offering
+	// features the server has started refusing — which the user experiences as the
+	// app breaking rather than as a plan ending.
+	//
+	// No queue group, so EVERY node receives it: the account may be connected on
+	// several, and a queue group would deliver the news to exactly one of them.
+	if err := g.svc.Bus.Subscribe(eventbus.SubjSubscription, "", g.onSubscriptionChange); err != nil {
+		return err
+	}
 	return g.svc.Bus.Subscribe(router.DeliverSubject(g.cfg.NodeID), "", func(_ context.Context, e eventbus.Event) error {
 		nd, err := router.DecodeNodeDelivery(e.Data)
 		if err != nil {
 			return err
 		}
-		d := delivery.Delivery{Type: wire.MsgType(nd.Type), Body: nd.Body}
-		// A message is the one frame whose arrival the sender is entitled to hear
-		// about, and this node is the only place that can witness it.
-		if d.Type == wire.MsgNew {
-			d.OnWritten = g.deliveryReporterFor(nd.UserID, nd.Body)
+		// One delivery now names every recipient that lives on this node, so the
+		// body crossed the bus once for all of them. The per-recipient Delivery is
+		// still built per user: OnWritten reports a receipt on behalf of ONE
+		// recipient, and sharing one callback across a group would credit the
+		// whole page to whoever's frame happened to land first.
+		// A secret frame is decoded ONCE per bus message, not once per recipient: it
+		// is addressed to a single device, so there is one recipient anyway, and the
+		// decode has to happen before the per-connection re-encode can.
+		var secretBody *wire.SecretMsgBody
+		if wire.MsgType(nd.Type) == wire.MsgSecretRecv {
+			var sb wire.SecretMsgBody
+			if err := wire.Unmarshal(nd.Body, &sb); err == nil {
+				secretBody = &sb
+			}
 		}
-		if nd.DeviceID != "" {
-			g.svc.Hub.RouteDevice(nd.UserID, nd.DeviceID, d)
-		} else {
-			g.svc.Hub.Route(nd.UserID, d)
+		for _, userID := range nd.Users {
+			d := delivery.Delivery{Type: wire.MsgType(nd.Type), Body: nd.Body}
+			if secretBody != nil {
+				// Re-encode for whichever socket this lands on. The relay normalised
+				// the payload to bytes between nodes; a peer that did not negotiate
+				// CapSecretQueue reads only the base64 fields, and handing it the
+				// binary ones would deliver a message with no content in it.
+				sb := *secretBody
+				header, cipher, _ := wire.SecretPayload(sb)
+				d.BodyFor = func(caps wire.Cap) any {
+					out := sb
+					wire.SetSecretPayloadFor(&out, caps, header, cipher)
+					return out
+				}
+			}
+			// A message is the one frame whose arrival the sender is entitled to
+			// hear about, and this node is the only place that can witness it.
+			if d.Type == wire.MsgNew {
+				d.OnWritten = g.deliveryReporterFor(userID, nd.Body)
+			}
+			if nd.DeviceID != "" {
+				g.svc.Hub.RouteDevice(userID, nd.DeviceID, d)
+			} else {
+				g.svc.Hub.Route(userID, d)
+			}
 		}
 		return nil
 	})
 }
 
+// routeToDevice publishes a delivery addressed at ONE device, and returns the
+// number of nodes that actually hold a connection for it.
+//
+// Separate from routeToUser because the count is the point. The secret relay
+// uses the answer to decide whether to queue the ciphertext, and the user-level
+// lookup cannot support that decision: it reports a node whenever ANY of the
+// account's devices is connected, so a message addressed to an offline laptop
+// looked delivered because a phone was online, and was dropped.
+//
+// An empty deviceID means "every device of that user" and falls back to the
+// user-level index, which is the correct answer for that address.
+func (g *Gateway) routeToDevice(ctx context.Context, userID, deviceID string, typ wire.MsgType, body []byte) int {
+	if g.svc.Router == nil || g.svc.Bus == nil {
+		return 0
+	}
+	nodes, err := g.svc.Router.NodesForDevice(ctx, userID, deviceID)
+	if err != nil {
+		return 0
+	}
+	return g.publishToNodes(ctx, nodes, userID, deviceID, typ, body)
+}
+
 // routeToUser publishes a node-targeted delivery to every node holding userID's
-// connections (used by the secret-chat relay). Returns nodes reached.
+// connections. Returns nodes reached.
 func (g *Gateway) routeToUser(ctx context.Context, userID, deviceID string, typ wire.MsgType, body []byte) int {
 	if g.svc.Router == nil || g.svc.Bus == nil {
 		return 0
@@ -85,7 +145,12 @@ func (g *Gateway) routeToUser(ctx context.Context, userID, deviceID string, typ 
 	if err != nil {
 		return 0
 	}
-	nd := router.NodeDelivery{UserID: userID, DeviceID: deviceID, Type: uint16(typ), Body: body}
+	return g.publishToNodes(ctx, nodes, userID, deviceID, typ, body)
+}
+
+// publishToNodes is the shared tail of both routes.
+func (g *Gateway) publishToNodes(ctx context.Context, nodes []string, userID, deviceID string, typ wire.MsgType, body []byte) int {
+	nd := router.NodeDelivery{Users: []string{userID}, DeviceID: deviceID, Type: uint16(typ), Body: body}
 	data := nd.Encode()
 	for _, node := range nodes {
 		_ = g.svc.Bus.Publish(ctx, eventbus.Event{Subject: router.DeliverSubject(node), Key: userID, Data: data})
@@ -102,6 +167,19 @@ func (g *Gateway) audit(ctx context.Context, action, actor, target, detail strin
 
 // New builds a gateway.
 func New(svc Services, cfg Config, log *slog.Logger) *Gateway {
+	// Gate media downloads on chat membership where the media service can accept
+	// a gate. Done here because the answer is assembled from the chat service,
+	// the user directory and the message log — all of which the gateway already
+	// holds and the media service deliberately does not.
+	//
+	// A media service that does not accept an authorizer, or a deployment with no
+	// way to resolve a blob to its chats, keeps the previous behaviour: the
+	// unguessable ref plus the signed URL. Denying wholesale on a missing
+	// capability would take media away rather than secure it.
+	if gated, ok := svc.Media.(fetchGatedMedia); ok {
+		gated.WithFetchAuthorizer(mediaAuthorizer{svc: &svc})
+	}
+
 	g := &Gateway{
 		svc: svc,
 		cfg: cfg,
@@ -139,6 +217,14 @@ func New(svc Services, cfg Config, log *slog.Logger) *Gateway {
 	if cfg.MaxConnsPerIP > 0 || cfg.AcceptRatePerIP > 0 {
 		g.ipg = newIPGuard(cfg.AcceptRatePerIP, cfg.MaxConnsPerIP)
 	}
+	trusted, bad := parseTrustedProxies(cfg.TrustedProxies)
+	g.trustedProxies = trusted
+	for _, entry := range bad {
+		// Loud, because the failure mode is silent trust: an operator who meant to
+		// trust their ingress and typed the CIDR wrong would otherwise see the
+		// guard keep working — on the wrong address — with nothing to say so.
+		log.Error("ignoring an unparseable trusted proxy entry", "entry", entry)
+	}
 	for _, u := range cfg.ModeratorUsers {
 		g.roles[u] = RoleModerator
 	}
@@ -162,7 +248,9 @@ func (g *Gateway) Shutdown() {
 
 func (g *Gateway) track(c *conn) {
 	g.conns.Store(c, struct{}{})
-	g.reaperOnce.Do(func() { go g.reaper() })
+	g.reaperOnce.Do(func() {
+		safego.Loop(g.reaperDone, g.log, "gateway.reaper", g.reaper)
+	})
 }
 func (g *Gateway) untrack(c *conn) { g.conns.Delete(c) }
 
@@ -204,7 +292,7 @@ func (g *Gateway) ServeTCP(ctx context.Context, ln net.Listener) error {
 	}
 	errc := make(chan error, n)
 	for i := 0; i < n; i++ {
-		go func() { errc <- g.acceptLoop(ctx, ln) }()
+		safego.Go(g.log, "gateway.acceptLoop", func() { errc <- g.acceptLoop(ctx, ln) })
 	}
 	return <-errc
 }
@@ -230,16 +318,19 @@ func (g *Gateway) acceptLoop(ctx context.Context, ln net.Listener) error {
 			_ = c.Close()
 			continue
 		}
-		go func() {
+		safego.Go(g.log, "gateway.serveTCP", func() {
 			defer g.ipg.release(host)
 			g.serve(ctx, wire.NewTCPTransport(c), remote)
-		}()
+		})
 	}
 }
 
 // ServeWS is an http.Handler that upgrades to WebSocket and serves the client.
 func (g *Gateway) ServeWS(w http.ResponseWriter, r *http.Request) {
-	host, ok := g.ipg.acquire(r.RemoteAddr)
+	// Behind a trusted proxy the peer address is the proxy's, so the guard would
+	// charge every client on earth to one bucket. clientIP resolves the forwarded
+	// address when — and only when — the hop it came from is one we configured.
+	host, ok := g.ipg.acquire(clientIP(r.RemoteAddr, r.Header, g.trustedProxies))
 	if !ok {
 		metrics.ConnRejected.Inc()
 		http.Error(w, "too many connections", http.StatusTooManyRequests)
@@ -252,11 +343,37 @@ func (g *Gateway) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer g.ipg.release(host)
-	g.serve(r.Context(), wire.NewWSTransport(c), r.RemoteAddr)
+	g.serve(r.Context(), wire.NewWSTransport(c), host)
 }
 
 // serve runs one connection lifecycle on a transport.
+//
+// This is the single funnel for all three transports (TCP, WebSocket, QUIC), and
+// therefore the one place a per-connection panic guard belongs: a malformed frame
+// that trips a nil dereference in a handler must cost that one connection, not
+// every connection on the node. The client reconnects and resyncs via history.
 func (g *Gateway) serve(ctx context.Context, t wire.Transport, remote string) {
+	defer safego.Recover(g.log, "gateway.serve")
 	cn := newConn(g, t, remote)
 	cn.run(ctx)
+}
+
+// onSubscriptionChange pushes new entitlements to an account's local connections.
+//
+// It routes through the Hub directly rather than through the router and the bus: the
+// event is already on every node, so re-publishing per node would multiply one
+// change into one message per node per node.
+func (g *Gateway) onSubscriptionChange(_ context.Context, e eventbus.Event) error {
+	userID, ent, ok := billing.DecodeSubscriptionEvent(e.Data)
+	if !ok {
+		return nil
+	}
+	if g.svc.Hub == nil {
+		return nil
+	}
+	g.svc.Hub.Route(userID, delivery.Delivery{
+		Type: wire.MsgSubscription,
+		Body: subscriptionToWire(nil, ent),
+	})
+	return nil
 }

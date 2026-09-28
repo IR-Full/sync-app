@@ -1,6 +1,10 @@
 package memory
 
-import "time"
+import (
+	"time"
+
+	"github.com/SyncApp-chat/SyncApp/internal/model"
+)
 
 func nowMs() int64 { return time.Now().UnixMilli() }
 
@@ -10,4 +14,16 @@ func directKey(a, b string) string {
 		a, b = b, a
 	}
 	return a + "|" + b
+}
+
+// pairKey namespaces the canonical-pair index by chat type.
+//
+// The direct form stays UNPREFIXED so every entry written before secret chats
+// existed still resolves — prefixing the default would orphan every 1:1 chat to
+// express a distinction nothing needed until now.
+func pairKey(typ model.ChatType, a, b string) string {
+	if typ == model.ChatDirect || typ == "" {
+		return directKey(a, b)
+	}
+	return string(typ) + ":" + directKey(a, b)
 }

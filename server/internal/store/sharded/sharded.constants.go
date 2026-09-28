@@ -16,8 +16,9 @@ import "github.com/SyncApp-chat/SyncApp/internal/store"
 // build if a future one is added to store.MessageStore's optional set and not
 // forwarded here.
 var (
-	_ store.MessageStore    = (*MessageStore)(nil)
-	_ store.ThreadReader    = (*MessageStore)(nil)
-	_ store.Expirer         = (*MessageStore)(nil)
-	_ store.MediaReferencer = (*MessageStore)(nil)
+	_ store.MessageStore      = (*MessageStore)(nil)
+	_ store.ThreadReader      = (*MessageStore)(nil)
+	_ store.Expirer           = (*MessageStore)(nil)
+	_ store.MediaReferencer   = (*MessageStore)(nil)
+	_ store.MediaChatResolver = (*MessageStore)(nil)
 )

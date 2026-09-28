@@ -13,11 +13,11 @@ import (
 
 // TestRedisKeydirSharedAcrossNodes proves a prekey published via one directory
 // instance ("node A") is visible via another ("node B") — the multi-node E2E
-// requirement. Runs only when SyncApp_TEST_REDIS_ADDR is set.
+// requirement. Runs only when SYNCAPP_TEST_REDIS_ADDR is set.
 func TestRedisKeydirSharedAcrossNodes(t *testing.T) {
-	addr := os.Getenv("SyncApp_TEST_REDIS_ADDR")
+	addr := os.Getenv("SYNCAPP_TEST_REDIS_ADDR")
 	if addr == "" {
-		t.Skip("set SyncApp_TEST_REDIS_ADDR to run the Redis keydir test")
+		t.Skip("set SYNCAPP_TEST_REDIS_ADDR to run the Redis keydir test")
 	}
 	rdb := redis.NewClient(&redis.Options{Addr: addr})
 	defer rdb.Close()

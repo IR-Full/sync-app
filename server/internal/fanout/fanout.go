@@ -10,6 +10,7 @@ package fanout
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 	"unicode/utf8"
@@ -26,6 +27,53 @@ import (
 func New(bus eventbus.Bus, chats Chats, rtr router.Router, log *slog.Logger) *Service {
 	return &Service{bus: bus, chats: chats, router: rtr, log: log,
 		cache: map[string]memberEntry{}, lastSweep: time.Now()}
+}
+
+// WithPresenceAudience gates presence on the sender's privacy setting.
+//
+// Optional: without it presence reaches every direct peer, which is what this
+// service did before settings existed. Denying wholesale on a missing dependency
+// would turn "we cannot check" into "everyone is invisible".
+func (s *Service) WithPresenceAudience(a PresenceAudience) *Service {
+	s.audience = a
+	return s
+}
+
+// WithPreviewPolicy decides, per recipient, whether message text may travel to
+// the push provider.
+//
+// Optional — and with no policy wired, NO preview is sent. That is the opposite
+// default from the other optional dependencies here, deliberately: for presence
+// and mute, an unwired dependency preserves the old behaviour because the old
+// behaviour was a reasonable one. Here the old behaviour was handing every
+// message to a third party, so an unconfigured deployment should not inherit it.
+func (s *Service) WithPreviewPolicy(p PreviewPolicy) *Service {
+	s.previews = p
+	return s
+}
+
+// WithMuteChecker makes the notification path honour a muted chat.
+//
+// Optional in the same sense as the presence audience: a deployment without one
+// notifies every offline recipient, which is what happened before this existed.
+func (s *Service) WithMuteChecker(m MuteChecker) *Service {
+	s.mutes = m
+	return s
+}
+
+// muted reports whether userID has silenced chatID right now.
+//
+// Fails OPEN on an error: a missed message is worse than an unwanted notification,
+// and a settings lookup that is briefly unavailable must not silence a chat.
+func (s *Service) muted(ctx context.Context, chatID, userID string) bool {
+	if s.mutes == nil {
+		return false
+	}
+	f, err := s.mutes.ChatFlags(ctx, chatID, userID)
+	if err != nil {
+		return false
+	}
+	return f.MutedAt(time.Now().UnixMilli())
 }
 
 // members returns a chat's delivery shape from a short-TTL cache: either its
@@ -120,18 +168,84 @@ func (s *Service) Start() error {
 
 // route publishes a node-targeted delivery to every node holding the user's
 // connections. Returns how many nodes were targeted (0 = user offline).
+//
+// Kept for the single-recipient callers (presence, call signaling, anything
+// addressed at one person). Everything that addresses a CHAT goes through
+// routeMany instead — see the comment there for why that distinction is the
+// whole performance story of this file.
 func (s *Service) route(ctx context.Context, userID, deviceID string, typ wire.MsgType, body []byte) int {
 	nodes, err := s.router.NodesFor(ctx, userID)
 	if err != nil {
 		s.log.Warn("router lookup failed", "user", userID, "err", err)
 		return 0
 	}
-	nd := router.NodeDelivery{UserID: userID, DeviceID: deviceID, Type: uint16(typ), Body: body}
-	data := nd.Encode()
-	for _, node := range nodes {
-		_ = s.bus.Publish(ctx, eventbus.Event{Subject: router.DeliverSubject(node), Key: userID, Data: data})
-	}
+	s.publish(ctx, nodes, []string{userID}, deviceID, typ, body)
 	return len(nodes)
+}
+
+// routeMany delivers one payload to a page of recipients, and returns those that
+// reached no node — the ones a caller may want to push to.
+//
+// This replaced a loop that called route per recipient, and the two costs it
+// removes are both multiplicative in the size of the chat:
+//
+//   - One router round trip instead of N. A group of 200 cost 200 SEQUENTIAL
+//     Redis lookups per event, and "per event" includes every typing indicator.
+//   - One publish per NODE instead of one per recipient, each of which carried a
+//     full copy of the body. A 4 KB message to a thousand members spread over ten
+//     nodes put 4 MB on the bus to deliver what ten frames' worth of addressing
+//     could have carried.
+//
+// The offline list is returned rather than pushed from here so the caller decides
+// what an absence means: a new message earns a notification, a reaction does not.
+func (s *Service) routeMany(ctx context.Context, userIDs []string, typ wire.MsgType, body []byte) (offline []string) {
+	if len(userIDs) == 0 {
+		return nil
+	}
+	byUser, err := s.router.NodesForMany(ctx, userIDs)
+	if err != nil {
+		s.log.Warn("router batch lookup failed", "users", len(userIDs), "err", err)
+		// Every recipient is unresolved, not offline. Reporting them offline would
+		// turn a Redis outage into a push storm addressed at people who are
+		// connected — so the caller is told nothing reached anyone and nothing is
+		// claimed about why.
+		return nil
+	}
+	// Invert to node → recipients on it, so the body is encoded and published once
+	// per node no matter how many of its members are there.
+	perNode := make(map[string][]string, len(byUser))
+	for _, uid := range userIDs {
+		nodes := byUser[uid]
+		if len(nodes) == 0 {
+			offline = append(offline, uid)
+			continue
+		}
+		for _, n := range nodes {
+			perNode[n] = append(perNode[n], uid)
+		}
+	}
+	for node, users := range perNode {
+		s.publish(ctx, []string{node}, users, "", typ, body)
+	}
+	return offline
+}
+
+// publish encodes one delivery and puts it on each node's subject.
+//
+// Key is the first recipient rather than something chat-scoped: the bus uses it
+// for partitioning, and a delivery destined for one node has no ordering
+// relationship with any other. Per-chat ordering is carried by chat_seq, not by
+// bus arrival order.
+func (s *Service) publish(ctx context.Context, nodes, users []string, deviceID string, typ wire.MsgType, body []byte) {
+	nd := router.NodeDelivery{Users: users, DeviceID: deviceID, Type: uint16(typ), Body: body}
+	data := nd.Encode()
+	key := ""
+	if len(users) > 0 {
+		key = users[0]
+	}
+	for _, node := range nodes {
+		_ = s.bus.Publish(ctx, eventbus.Event{Subject: router.DeliverSubject(node), Key: key, Data: data})
+	}
 }
 
 func (s *Service) onMessage(ctx context.Context, e eventbus.Event) error {
@@ -224,14 +338,61 @@ func (s *Service) eachMember(ctx context.Context, chatID string, fn func(userID 
 
 // deliverNew routes a NEW message to a set of members (offline → push). Shared by
 // the inline path and the sharded (onShard) path.
+//
+// Recipients are resolved in PAGES rather than one batch, even though the inline
+// path is already bounded by fanoutShardThreshold. The bound on a Redis pipeline
+// and on a map of node→recipients should come from this function, not from a
+// constant somewhere else that happens to be small today.
 func (s *Service) deliverNew(ctx context.Context, members []string, body wire.NewMessageBody) {
 	payload := wire.Marshal(body)
-	for _, uid := range members {
-		delivered := s.route(ctx, uid, "", wire.MsgNew, payload)
-		if delivered == 0 && uid != body.SenderID {
+	for start := 0; start < len(members); start += routeBatchSize {
+		end := min(start+routeBatchSize, len(members))
+		for _, uid := range s.routeMany(ctx, members[start:end], wire.MsgNew, payload) {
+			// The sender's own absence is not news: they know they sent it, and a
+			// notification for your own message is a bug users report as one.
+			if uid == body.SenderID {
+				continue
+			}
+			// And a muted chat gets no notification. The message is still delivered
+			// and still waits in history — muting silences the buzz, not the chat.
+			if s.muted(ctx, body.ChatID, uid) {
+				metrics.PushSuppressedMuted.Inc()
+				continue
+			}
 			s.enqueuePush(ctx, uid, body)
 		}
 	}
+}
+
+// broadcast delivers a chat-wide event to every member, optionally skipping one
+// (normally the person who caused it).
+//
+// Every chat-wide event used to walk members one at a time through route, which
+// made a read receipt or a typing indicator in a 200-member group cost 200
+// sequential router round trips. They all reach the same audience a message does
+// and none of them deserves its own machinery, so they share this.
+func (s *Service) broadcast(ctx context.Context, chatID string, typ wire.MsgType, payload []byte, skipUser string) error {
+	batch := make([]string, 0, routeBatchSize)
+	flush := func() {
+		if len(batch) == 0 {
+			return
+		}
+		s.routeMany(ctx, batch, typ, payload)
+		batch = batch[:0]
+	}
+	if err := s.eachMember(ctx, chatID, func(uid string) {
+		if uid == skipUser {
+			return
+		}
+		batch = append(batch, uid)
+		if len(batch) == routeBatchSize {
+			flush()
+		}
+	}); err != nil {
+		return err
+	}
+	flush()
+	return nil
 }
 
 // onShard delivers one chunk of a hot chat's recipients. Many workers run this
@@ -254,16 +415,8 @@ func (s *Service) onRead(ctx context.Context, e eventbus.Event) error {
 	if err := wire.Unmarshal(e.Data, &body); err != nil {
 		return err
 	}
-	payload := wire.Marshal(body)
-	if err := s.eachMember(ctx, body.ChatID, func(uid string) {
-		if uid == body.UserID {
-			return // the reader/typist does not need their own event back
-		}
-		s.route(ctx, uid, "", wire.MsgReadUpd, payload)
-	}); err != nil {
-		return err
-	}
-	return nil
+	// The reader does not need their own receipt back.
+	return s.broadcast(ctx, body.ChatID, wire.MsgReadUpd, wire.Marshal(body), body.UserID)
 }
 
 // onReaction delivers a reaction change to every chat member. Unlike a new
@@ -277,13 +430,9 @@ func (s *Service) onReaction(ctx context.Context, e eventbus.Event) error {
 	if err := wire.Unmarshal(e.Data, &body); err != nil {
 		return err
 	}
-	payload := wire.Marshal(body)
-	if err := s.eachMember(ctx, body.ChatID, func(uid string) {
-		s.route(ctx, uid, "", wire.MsgReactUpd, payload)
-	}); err != nil {
-		return err
-	}
-	return nil
+	// No skip: the reactor's OWN other devices need this, or multi-device
+	// disagrees about what is on the message.
+	return s.broadcast(ctx, body.ChatID, wire.MsgReactUpd, wire.Marshal(body), "")
 }
 
 func (s *Service) onTyping(ctx context.Context, e eventbus.Event) error {
@@ -293,16 +442,10 @@ func (s *Service) onTyping(ctx context.Context, e eventbus.Event) error {
 	if err := wire.Unmarshal(e.Data, &body); err != nil {
 		return err
 	}
-	payload := wire.Marshal(body)
-	if err := s.eachMember(ctx, body.ChatID, func(uid string) {
-		if uid == body.UserID {
-			return // the reader/typist does not need their own event back
-		}
-		s.route(ctx, uid, "", wire.MsgTyping, payload)
-	}); err != nil {
-		return err
-	}
-	return nil
+	// The typist does not need their own indicator back. This is the
+	// highest-frequency chat-wide event there is, which is why it mattered most
+	// that it stopped costing one router round trip per member.
+	return s.broadcast(ctx, body.ChatID, wire.MsgTyping, wire.Marshal(body), body.UserID)
 }
 
 // onPresence delivers a user's online/last-seen transition to the people who are
@@ -335,9 +478,33 @@ func (s *Service) onPresence(ctx context.Context, e eventbus.Event) error {
 	}
 	payload := wire.Marshal(body)
 	for _, uid := range peers {
+		// The audience is filtered here rather than at the socket, because this is
+		// where it is known: by the time a frame reaches a connection the only
+		// thing left to do is drop it, and the routing work is already paid for.
+		if !s.mayAnnounce(ctx, body.UserID, uid) {
+			continue
+		}
 		s.route(ctx, uid, "", wire.MsgPresence, payload)
 	}
 	return nil
+}
+
+// mayAnnounce reports whether owner's presence may be delivered to viewer.
+//
+// A lookup failure hides the transition. Presence is ephemeral and the next one
+// supersedes it, so the cost of a false negative is a stale dot for a few
+// seconds; the cost of failing open is announcing someone who asked to be
+// invisible, which is not recoverable by waiting.
+func (s *Service) mayAnnounce(ctx context.Context, ownerID, viewerID string) bool {
+	if s.audience == nil {
+		return true
+	}
+	ok, err := s.audience.MaySeePresence(ctx, ownerID, viewerID)
+	if err != nil {
+		s.log.Warn("presence audience check failed", "user", ownerID, "err", err)
+		return false
+	}
+	return ok
 }
 
 // directPeers lists the other side of every direct chat a user is in, de-duplicated
@@ -382,14 +549,27 @@ func (s *Service) RouteSecret(ctx context.Context, toUser, toDevice string, body
 	s.route(ctx, toUser, toDevice, wire.MsgSecretRecv, wire.Marshal(body))
 }
 
+// enqueuePush asks for a notification for one offline recipient.
+//
+// The preview is opt-IN, per recipient, and defaults to absent. It used to be
+// included unconditionally: every notification carried up to 120 runes of the
+// message, and the provider that receives it is Apple or Google. So a third party
+// saw the contents of every conversation on the system — a wider disclosure than
+// anything end-to-end encryption was protecting against, since E2E guards against
+// the server and this was the server handing the text over.
+//
+// It is the RECIPIENT's setting, not the sender's. The person whose device shows
+// the notification, and whose provider account receives it, is the one making the
+// trade — and they are the only party who can.
 func (s *Service) enqueuePush(ctx context.Context, userID string, msg wire.NewMessageBody) {
-	job := map[string]any{
-		"user_id": userID, "chat_id": msg.ChatID, "message_id": msg.MessageID,
-		"sender_id": msg.SenderID, "preview": preview(msg.Text),
+	job := pushJob{
+		UserID: userID, ChatID: msg.ChatID, MessageID: msg.MessageID,
+		SenderID: msg.SenderID,
 	}
-	if err := s.bus.Publish(ctx, eventbus.Event{Subject: eventbus.SubjNotifyPush, Key: userID, Data: wire.Marshal(job)}); err != nil {
-		s.log.Warn("enqueue push failed", "user", userID, "err", err)
+	if s.previews != nil && s.previews.WantsPushPreview(ctx, userID) {
+		job.Preview = preview(msg.Text)
 	}
+	s.publishPush(ctx, userID, job)
 }
 
 // preview trims a notification body. The cut is by RUNE, not by byte: slicing
@@ -435,12 +615,43 @@ func (s *Service) onCallState(ctx context.Context, e eventbus.Event) error {
 
 // enqueueCallPush asks the notification worker to wake an offline invitee.
 func (s *Service) enqueueCallPush(ctx context.Context, userID string, c wire.CallStateBody) {
-	job := map[string]any{
-		"user_id": userID, "chat_id": c.ChatID, "call_id": c.CallID,
-		"sender_id": c.InitiatorID, "preview": "Incoming " + c.Kind + " call",
+	job := pushJob{
+		UserID: userID, ChatID: c.ChatID, CallID: c.CallID,
+		SenderID: c.InitiatorID, Preview: "Incoming " + c.Kind + " call",
 	}
-	if err := s.bus.Publish(ctx, eventbus.Event{Subject: eventbus.SubjNotifyPush, Key: userID, Data: wire.Marshal(job)}); err != nil {
-		s.log.Warn("enqueue call push failed", "user", userID, "err", err)
+	s.publishPush(ctx, userID, job)
+}
+
+/*
+ * pushJob mirrors notify.PushJob, which the worker decodes with encoding/json.
+ *
+ * It is JSON and not the wire codec on purpose, and the type is explicit rather
+ * than a map for the same reason: wire.Marshal is protobuf-backed and has no
+ * mapping for an ad-hoc map, so it returned an ERROR that Marshal's `b, _ :=`
+ * discarded — publishing zero bytes. The worker then failed to decode an empty
+ * payload and no notification was ever delivered, with nothing in the path
+ * reporting a problem. A named struct keeps the contract checkable at compile
+ * time; duplicated rather than imported so fanout does not depend on notify.
+ */
+type pushJob struct {
+	UserID    string `json:"user_id"`
+	ChatID    string `json:"chat_id"`
+	MessageID string `json:"message_id,omitempty"`
+	CallID    string `json:"call_id,omitempty"`
+	SenderID  string `json:"sender_id"`
+	Preview   string `json:"preview"`
+}
+
+func (s *Service) publishPush(ctx context.Context, userID string, job pushJob) {
+	data, err := json.Marshal(job)
+	if err != nil {
+		s.log.Warn("encode push job failed", "user", userID, "err", err)
+		return
+	}
+	if err := s.bus.Publish(ctx, eventbus.Event{
+		Subject: eventbus.SubjNotifyPush, Key: userID, Data: data,
+	}); err != nil {
+		s.log.Warn("enqueue push failed", "user", userID, "err", err)
 	}
 }
 
@@ -456,13 +667,7 @@ func (s *Service) onPollState(ctx context.Context, e eventbus.Event) error {
 	}
 	// Defensive: a broadcast must never leak one member's selections to others.
 	body.MyVotes = nil
-	payload := wire.Marshal(body)
-	if err := s.eachMember(ctx, body.ChatID, func(uid string) {
-		s.route(ctx, uid, "", wire.MsgPollState, payload)
-	}); err != nil {
-		return err
-	}
-	return nil
+	return s.broadcast(ctx, body.ChatID, wire.MsgPollState, wire.Marshal(body), "")
 }
 
 // onPinned delivers a chat's updated pin set to every member. Pins are chat-wide
@@ -474,11 +679,5 @@ func (s *Service) onPinned(ctx context.Context, e eventbus.Event) error {
 	if err := wire.Unmarshal(e.Data, &body); err != nil {
 		return err
 	}
-	payload := wire.Marshal(body)
-	if err := s.eachMember(ctx, body.ChatID, func(uid string) {
-		s.route(ctx, uid, "", wire.MsgPinned, payload)
-	}); err != nil {
-		return err
-	}
-	return nil
+	return s.broadcast(ctx, body.ChatID, wire.MsgPinned, wire.Marshal(body), "")
 }

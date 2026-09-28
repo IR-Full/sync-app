@@ -5,3 +5,4 @@ export {
   type SecretIdentity,
   type SecretMessage,
 } from './model'
+export { useTrustStore, type PinnedIdentity, type TrustVerdict } from './trust'

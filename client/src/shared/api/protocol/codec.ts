@@ -4,7 +4,7 @@
  * The gateway installs the protobuf codec in `pkg/wire/protocodec.go`'s package
  * `init()`, unconditionally — there is no JSON fallback to negotiate and no
  * runtime switch. So every envelope body on this connection is protobuf encoded
- * per `server/proto/synapse/v1/body.proto`.
+ * per `server/proto/syncapp/v1/body.proto`.
  *
  * We load the schema as a pre-parsed JSON descriptor through `protobufjs/light`
  * (the runtime without the .proto parser), so the bundle carries the codec but
@@ -56,6 +56,7 @@ const BODY_TYPES = {
   [MsgType.SECRET_RECV]: 'SecretMsg',
   [MsgType.KEY_FETCH_ALL]: 'KeyFetch',
   [MsgType.KEY_BUNDLES]: 'KeyBundles',
+  [MsgType.KEY_STATE]: 'KeyState',
   [MsgType.SEARCH]: 'Search',
   [MsgType.SEARCH_RESULTS]: 'SearchResults',
   [MsgType.CHAT_EXPORT]: 'ChatExport',
@@ -109,6 +110,47 @@ const BODY_TYPES = {
   // DELIVERED reuses ReadUpdate — a delivery cursor has the same shape as a read
   // one, and the server's own convention is to reuse a body under a new type.
   [MsgType.DELIVERED]: 'ReadUpdate',
+  [MsgType.ACCOUNT_DELETE]: 'AccountDelete',
+  [MsgType.ACCOUNT_DELETED]: 'AccountDeleted',
+  [MsgType.SESSION_LIST]: 'SessionList',
+  [MsgType.SESSIONS]: 'Sessions',
+  [MsgType.SESSION_REVOKE]: 'SessionRevoke',
+  [MsgType.SESSION_REVOKED]: 'SessionRevoked',
+  [MsgType.HISTORY_PAGE]: 'HistoryPage',
+  [MsgType.PRIVACY_GET]: 'PrivacyGet',
+  [MsgType.PRIVACY_SET]: 'PrivacySet',
+  [MsgType.PRIVACY]: 'Privacy',
+
+  // Durable secret chats. SECRET_SYNCED carries the page terminator for BOTH
+  // SECRET_SYNC and SECRET_ACKED, because both answer "how many, and is that all"
+  // — a second message shape for the same question would be two things to keep in
+  // step.
+  [MsgType.SECRET_ACK]: 'SecretAck',
+  [MsgType.SECRET_SYNC]: 'SecretSync',
+  [MsgType.SECRET_SYNCED]: 'SecretSynced',
+  [MsgType.SECRET_ACKED]: 'SecretAcked',
+
+  // Per-member chat settings.
+  [MsgType.CHAT_FLAGS]: 'ChatFlags',
+  [MsgType.CHAT_FLAGS_SET]: 'ChatFlagsSet',
+
+  // Account security.
+  [MsgType.PASSWORD_CHANGE]: 'PasswordChange',
+  [MsgType.PASSWORD_CHANGED]: 'PasswordChanged',
+  [MsgType.TOTP_SETUP]: 'TOTPSetup',
+  [MsgType.TOTP_SETUP_INFO]: 'TOTPSetupInfo',
+  [MsgType.TOTP_CONFIRM]: 'TOTPConfirm',
+  [MsgType.TOTP_DISABLE]: 'TOTPDisable',
+  [MsgType.TOTP_STATE]: 'TOTPState',
+
+  // Billing.
+  [MsgType.BILLING_PLANS]: 'BillingPlans',
+  [MsgType.BILLING_OFFERS]: 'BillingOffers',
+  [MsgType.BILLING_CHECKOUT]: 'BillingCheckout',
+  [MsgType.BILLING_PAYMENT]: 'BillingPayment',
+  [MsgType.BILLING_STATUS]: 'BillingStatus',
+  [MsgType.SUBSCRIPTION]: 'Subscription',
+  [MsgType.BILLING_CANCEL]: 'BillingCancel',
 } as const satisfies Partial<Record<number, string>>
 
 const typeCache = new Map<number, Type>()
@@ -118,7 +160,7 @@ function lookup(msgType: number): Type | null {
   if (cached) return cached
   const name = (BODY_TYPES as Record<number, string | undefined>)[msgType]
   if (!name) return null
-  const type = root.lookupType(`synapse.v1.${name}`)
+  const type = root.lookupType(`syncapp.v1.${name}`)
   typeCache.set(msgType, type)
   return type
 }

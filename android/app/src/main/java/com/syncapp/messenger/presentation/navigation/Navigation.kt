@@ -15,6 +15,10 @@ object Routes {
     const val CHATS = "chats"
     const val NEW_CHAT = "new_chat"
     const val SETTINGS = "settings"
+    const val SESSIONS = "sessions"
+    const val PRIVACY = "privacy"
+    const val SECURITY = "security"
+    const val PREMIUM = "premium"
 
     const val CHAT_ARG_ID = "chatId"
     const val CHAT_ARG_PEER = "peer"

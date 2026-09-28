@@ -31,8 +31,8 @@ final class FrameTests: XCTestCase {
         }
     }
 
-    func testRejectsUnknownVersion() {
-        var frame = try! Frame.encode(payload: Data([1]))
+    func testRejectsUnknownVersion() throws {
+        var frame = try Frame.encode(payload: Data([1]))
         frame[2] = 0x02
         XCTAssertThrowsError(try Frame.decode(frame)) { error in
             XCTAssertEqual(error as? WireError, .unsupportedVersion(2))
@@ -49,8 +49,8 @@ final class FrameTests: XCTestCase {
         }
     }
 
-    func testRejectsTruncatedPayload() {
-        var frame = try! Frame.encode(payload: Data([1, 2, 3, 4]))
+    func testRejectsTruncatedPayload() throws {
+        var frame = try Frame.encode(payload: Data([1, 2, 3, 4]))
         frame.removeLast(2)
         XCTAssertThrowsError(try Frame.decode(frame)) { error in
             XCTAssertEqual(error as? WireError, .truncatedFrame)
@@ -59,8 +59,8 @@ final class FrameTests: XCTestCase {
 
     /// We never advertise compression, so a compressed frame is a protocol
     /// violation rather than something to silently mishandle.
-    func testRejectsCompressedFrameWeNeverNegotiated() {
-        var frame = try! Frame.encode(payload: Data([1, 2, 3]))
+    func testRejectsCompressedFrameWeNeverNegotiated() throws {
+        var frame = try Frame.encode(payload: Data([1, 2, 3]))
         frame[3] = FrameFlag.compressed
         XCTAssertThrowsError(try Frame.decode(frame)) { error in
             XCTAssertEqual(error as? WireError, .unsupportedCompression(FrameFlag.compressed))

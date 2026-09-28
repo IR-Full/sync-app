@@ -52,7 +52,9 @@ async function main() {
     identity: generateKeyPair(),
     signing: generateSigningKeyPair(),
     signedPreKey: generateKeyPair(),
+    signedPreKeyCreatedAt: Date.now(),
     oneTimePreKeys: Array.from({ length: 8 }, () => generateKeyPair()),
+    publishedPreKeys: [],
   }
 
   client.send(MsgType.KEY_PUBLISH, {

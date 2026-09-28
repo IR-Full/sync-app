@@ -38,3 +38,22 @@ type memberRole struct {
 	member  bool
 	expires time.Time
 }
+
+// ChatPage is a chat-list request.
+//
+// The cursor is (AfterActivity, After) — the last row of the previous page —
+// rather than a bare chat id. A list ordered by activity reorders as messages
+// arrive, so a cursor that named only a position would skip and repeat rows
+// exactly when the chat is busy; naming the row's sort key AND its id gives a
+// total order the walk cannot fall out of.
+type ChatPage struct {
+	// AfterActivity is the previous page's last LastActivityAt (0 = first page).
+	AfterActivity int64
+	// After is the previous page's last chat id, breaking ties on AfterActivity.
+	After string
+	Limit int
+	// IncludeArchived lists the archived pile instead of hiding it. Archiving is a
+	// per-member flag, so this filters the caller's own rows rather than selecting
+	// a different set of chats.
+	IncludeArchived bool
+}

@@ -6,6 +6,7 @@ import com.syncapp.messenger.domain.model.AttachmentKind
 import com.syncapp.messenger.domain.model.MessageAttachment
 import com.syncapp.messenger.domain.repository.MediaRepository
 import com.syncapp.messenger.network.SyncAppGateway
+import com.syncapp.messenger.network.request
 import com.syncapp.messenger.network.media.MediaApi
 import com.syncapp.messenger.network.protocol.MediaFetch
 import com.syncapp.messenger.network.protocol.MediaInit

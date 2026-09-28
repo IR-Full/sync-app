@@ -116,6 +116,16 @@ func (c *conn) handleForward(ctx context.Context, e wire.Envelope) error {
 	if err != nil {
 		return c.replyResolveErr(e.RequestID, err)
 	}
+	// Forwarding OUT of a secret chat would copy content into a chat where it IS
+	// stored, silently undoing the choice the user made for that message. Checked
+	// on the SOURCE — the destination being secret is refused by the send rule
+	// above, and the two together are what closes the loop in both directions.
+	if c.refuseIfSecret(ctx, e.RequestID, src, "forward") {
+		return nil
+	}
+	if c.refuseIfSecret(ctx, e.RequestID, dst, "send") {
+		return nil
+	}
 	m, dup, err := c.gw.svc.Msg.Forward(ctx, c.userID, src, body.MessageID, dst, body.DedupKey)
 	if err != nil {
 		return c.replyForError(e.RequestID, err)
