@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
@@ -37,6 +38,9 @@ and an Idempotence-Key, notifications as {"event", "object": <payment>}.
     notifications, so the body is a stranger's claim; the payment is fetched back
     from the API with the shop's credentials and only that answer is believed.
     A forged notification can at most make us re-read a real payment's real state.
+    Before that, a notification from outside YooKassa's published address ranges
+    is refused outright (AllowedSources), so a stranger cannot even trigger the
+    re-read.
     (This used to check an HMAC header that YooKassa never sends, which would have
     rejected every genuine notification in production.)
   - A notification for an unpaid or cancelled payment is a normal outcome and maps
@@ -57,7 +61,29 @@ type YooKassa struct {
 	// when they arrive directly; authenticity then rests on fetching the payment
 	// back from the API (see Verify), which does not depend on it.
 	WebhookSecret string
-	HTTP          *http.Client
+	// AllowedSources, if set, refuses a notification from any other address before
+	// it costs an API lookup (see source.go). Empty means no restriction; the
+	// server wires YooKassaNotificationSources by default.
+	AllowedSources []netip.Prefix
+	HTTP           *http.Client
+}
+
+// AllowsSource reports whether a notification from src may be considered at all.
+// An unknown source is refused when a list is configured.
+func (y *YooKassa) AllowsSource(src netip.Addr) bool {
+	if len(y.AllowedSources) == 0 {
+		return true
+	}
+	if !src.IsValid() {
+		return false
+	}
+	src = src.Unmap()
+	for _, p := range y.AllowedSources {
+		if p.Contains(src) {
+			return true
+		}
+	}
+	return false
 }
 
 // Name identifies the provider in stored rows.

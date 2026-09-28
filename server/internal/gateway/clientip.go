@@ -120,3 +120,10 @@ func clientIP(remoteAddr string, header http.Header, trusted []*net.IPNet) strin
 	// the closest thing to a client address we have.
 	return peer
 }
+
+// ClientIP resolves the address a plain HTTP request came from, with the same
+// trusted-proxy rules as the connection guard. Exported for the billing webhook,
+// which checks notifications against the acquirer's published addresses.
+func (g *Gateway) ClientIP(r *http.Request) string {
+	return clientIP(r.RemoteAddr, r.Header, g.trustedProxies)
+}

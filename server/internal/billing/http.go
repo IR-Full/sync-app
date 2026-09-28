@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 )
@@ -29,13 +30,30 @@ consequences shape this handler:
 
 // Handler serves provider callbacks at /billing/webhook/{provider}.
 type Handler struct {
-	svc *Service
-	log *slog.Logger
+	svc      *Service
+	log      *slog.Logger
+	clientIP func(*http.Request) string
 }
 
 // NewHandler builds the webhook handler.
 func NewHandler(svc *Service, log *slog.Logger) *Handler {
-	return &Handler{svc: svc, log: log}
+	return &Handler{svc: svc, log: log, clientIP: peerIP}
+}
+
+// WithClientIP sets how the handler finds the address a callback came from.
+// Behind a proxy that is the forwarded address, resolved only through a trusted
+// hop — the server passes the gateway's resolver (gateway.Gateway.ClientIP).
+// Without it the peer address is used.
+func (h *Handler) WithClientIP(f func(*http.Request) string) *Handler {
+	h.clientIP = f
+	return h
+}
+
+func peerIP(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
 }
 
 // Register mounts the endpoint on a mux.
@@ -71,7 +89,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		headers[k] = r.Header.Get(k)
 	}
 
-	switch err := h.svc.HandleCallback(r.Context(), provider, raw, headers); {
+	source := h.clientIP(r)
+	ctx := WithCallbackSource(r.Context(), source)
+	switch err := h.svc.HandleCallback(ctx, provider, raw, headers); {
 	case err == nil:
 		// 200 covers "applied" AND "was not news". A duplicate notification that gets
 		// anything else is a notification the provider will send again, forever.
@@ -80,6 +100,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// An unknown provider in the path. 404, and NOT retryable: retrying will not
 		// make the path exist.
 		http.Error(w, "unknown provider", http.StatusNotFound)
+	case errors.Is(err, ErrUntrustedSource):
+		// 403: not from the acquirer. The acquirer retries any non-200, so if this is
+		// a genuine notification refused by a misconfiguration, nothing is lost while
+		// the configuration is fixed — which is why the log says what to check.
+		h.log.Warn("webhook from an address outside the provider's ranges",
+			"provider", provider, "source", source, "remote", r.RemoteAddr,
+			"hint", "behind a proxy, list it in SYNCAPP_TRUSTED_PROXIES")
+		http.Error(w, "forbidden", http.StatusForbidden)
 	case errors.Is(err, ErrBadSignature):
 		// The important one. 400 rather than 401, because there is no credential to
 		// re-present — the body itself failed to authenticate, and a retry of the same

@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
@@ -352,6 +353,13 @@ func run(log *slog.Logger) error {
 	if stores.Billing != nil {
 		billingSvc = billing.New(stores.Billing, bus, ids, log)
 		if shop := envcfg.Get("SYNCAPP_YOOKASSA_SHOP_ID"); shop != "" {
+			sources, err := yooKassaSources(envcfg.Get("SYNCAPP_YOOKASSA_ALLOWED_IPS"))
+			if err != nil {
+				return err
+			}
+			if sources == nil {
+				log.Warn("billing: yookassa notifications accepted from any address (SYNCAPP_YOOKASSA_ALLOWED_IPS=off)")
+			}
 			billingSvc = billingSvc.WithProvider(&billing.YooKassa{
 				Endpoint:  envcfg.GetDefault("SYNCAPP_YOOKASSA_ENDPOINT", "https://api.yookassa.ru/v3/payments"),
 				ShopID:    shop,
@@ -360,6 +368,8 @@ func run(log *slog.Logger) error {
 				// YooKassa does not sign its own; each one is checked by fetching the
 				// payment back from the API (billing.YooKassa.Verify).
 				WebhookSecret: envcfg.Get("SYNCAPP_YOOKASSA_WEBHOOK_SECRET"),
+				// Second layer: only YooKassa's published addresses may notify.
+				AllowedSources: sources,
 			})
 			log.Info("billing: yookassa enabled (card + sbp)")
 		}
@@ -467,7 +477,9 @@ func run(log *slog.Logger) error {
 		// construction — an acquirer has no credential of ours to present — so the
 		// only thing between a stranger and a free subscription is the signature on
 		// the body. See internal/billing/http.go.
-		billing.NewHandler(billingSvc, log).Register(mux)
+		// The source address is resolved through the trusted proxies, as for the
+		// gateway, so YooKassa's address check sees YooKassa and not the ingress.
+		billing.NewHandler(billingSvc, log).WithClientIP(gw.ClientIP).Register(mux)
 	}
 	if envcfg.Get("SYNCAPP_PPROF") == "1" {
 		// Live profiling (CPU/heap/goroutine/block). Gated because it exposes
@@ -566,6 +578,24 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// yooKassaSources reads SYNCAPP_YOOKASSA_ALLOWED_IPS: unset means YooKassa's
+// published notification addresses, "off" means no address check (nil), anything
+// else is a comma-separated list of addresses and CIDRs that replaces them. A bad
+// entry stops startup rather than quietly narrowing the list.
+func yooKassaSources(v string) ([]netip.Prefix, error) {
+	switch strings.TrimSpace(strings.ToLower(v)) {
+	case "":
+		return billing.ParseSources(billing.YooKassaNotificationSources)
+	case "off":
+		return nil, nil
+	}
+	sources, err := billing.ParseSources(strings.Split(v, ","))
+	if err == nil && len(sources) == 0 {
+		err = fmt.Errorf("SYNCAPP_YOOKASSA_ALLOWED_IPS lists no addresses; use \"off\" to disable the check")
+	}
+	return sources, err
 }
 
 // dmBlockGate answers the scheduler's "is this 1:1 send refused by a block?" by
