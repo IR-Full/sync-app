@@ -69,7 +69,7 @@ func genSelfSigned() (tls.Certificate, error) {
 // knows this string can forge a signed upload or download URL for any blob, so
 // a production boot has to be able to detect it rather than trust an operator
 // to have read a warning.
-const devMediaSecret = "dev-insecure-media-secret-change-me"
+const devMediaSecret = "dev-insecure-media-secret-change-me" // #nosec G101 -- public dev default; EnforceProduction refuses to boot with it
 
 // MediaSecret returns the HMAC key used to sign media URLs (SYNCAPP_MEDIA_SECRET),
 // or an insecure dev default. The gateway and mediad must share the same value.

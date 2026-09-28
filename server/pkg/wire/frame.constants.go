@@ -37,6 +37,9 @@ var (
 	ErrBadVersion = errors.New("wire: unsupported version")
 	// ErrTooLarge means the length prefix exceeds MaxPayloadSize.
 	ErrTooLarge = errors.New("wire: payload too large")
+	// ErrCompressionNotNegotiated means a frame used a compression flag the
+	// connection never agreed to (see Conn.SetInboundPolicy).
+	ErrCompressionNotNegotiated = errors.New("wire: compression not negotiated")
 )
 
 // frameBufPool recycles the header+payload assembly buffer used by WriteFrame.

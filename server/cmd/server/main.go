@@ -151,7 +151,11 @@ func run(log *slog.Logger) error {
 		// Wrap in a circuit breaker + local fallback: a Redis outage degrades to
 		// same-node delivery instead of a total routing failure.
 		rtr = router.NewResilient(router.NewRedis(rdb, 60*time.Second), log)
-		replayBuf = replay.NewRedis(rdb, 10*time.Minute)
+		// Async: the gateway appends every outbound frame from the connection's
+		// single writer, which must never wait on Redis (see replay.Async).
+		asyncReplay := replay.NewAsync(replay.NewRedis(rdb, 10*time.Minute), 0, log)
+		defer asyncReplay.Close() // runs before the rdb.Close deferred above
+		replayBuf = asyncReplay
 		log.Info("presence+router+resume: redis", "addr", addr)
 	} else {
 		pbackend = presence.NewMemoryBackend()
@@ -176,7 +180,8 @@ func run(log *slog.Logger) error {
 	contactSvc := contact.New(stores.Contacts, stores.Users)
 	pinSvc := pin.New(stores.Pins, stores.Drafts, chatSvc, bus)
 	inviteSvc := invite.New(stores.Invites, stores.Chats.(store.MemberRoleStore), chatSvc)
-	schedSvc := schedule.New(stores.Schedule, chatSvc, msgSvc, ids, log)
+	schedSvc := schedule.New(stores.Schedule, chatSvc, msgSvc, ids, log).
+		WithBlockGate(dmBlockGate{chats: chatSvc, contacts: contactSvc})
 	go schedSvc.Run(ctx, 5*time.Second) // dispatches due sends + reaps self-destructed
 
 	// Presence is gated on the sender's privacy setting. The gate is built from
@@ -192,6 +197,9 @@ func run(log *slog.Logger) error {
 		// has existed since the first migration with nothing reading it, so until
 		// this line muting a chat did nothing at all.
 		WithMuteChecker(chatSvc).
+		// Chat kind keeps channel read receipts with the reader (see
+		// fanout.receiptsArePrivate).
+		WithChatKinds(chatSvc).
 		// Message text reaches the push provider only for accounts that asked for
 		// it. Without this the payload carried a preview of every message to
 		// Apple/Google — the server volunteering the plaintext that E2E exists to
@@ -345,9 +353,12 @@ func run(log *slog.Logger) error {
 		billingSvc = billing.New(stores.Billing, bus, ids, log)
 		if shop := envcfg.Get("SYNCAPP_YOOKASSA_SHOP_ID"); shop != "" {
 			billingSvc = billingSvc.WithProvider(&billing.YooKassa{
-				Endpoint:      envcfg.GetDefault("SYNCAPP_YOOKASSA_ENDPOINT", "https://api.yookassa.ru/v3/payments"),
-				ShopID:        shop,
-				SecretKey:     envcfg.Get("SYNCAPP_YOOKASSA_SECRET"),
+				Endpoint:  envcfg.GetDefault("SYNCAPP_YOOKASSA_ENDPOINT", "https://api.yookassa.ru/v3/payments"),
+				ShopID:    shop,
+				SecretKey: envcfg.Get("SYNCAPP_YOOKASSA_SECRET"),
+				// Optional: only for notifications relayed through a signing proxy.
+				// YooKassa does not sign its own; each one is checked by fetching the
+				// payment back from the API (billing.YooKassa.Verify).
 				WebhookSecret: envcfg.Get("SYNCAPP_YOOKASSA_WEBHOOK_SECRET"),
 			})
 			log.Info("billing: yookassa enabled (card + sbp)")
@@ -555,4 +566,20 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// dmBlockGate answers the scheduler's "is this 1:1 send refused by a block?" by
+// combining the chat service's cached peer lookup with the contact service. It
+// lives here because neither package should import the other.
+type dmBlockGate struct {
+	chats    *chat.Service
+	contacts *contact.Service
+}
+
+func (g dmBlockGate) Blocked(ctx context.Context, chatID, senderID string) (bool, error) {
+	peer, ok, err := g.chats.DirectPeer(ctx, chatID, senderID)
+	if err != nil || !ok {
+		return false, err
+	}
+	return g.contacts.BlocksBetween(ctx, senderID, peer)
 }

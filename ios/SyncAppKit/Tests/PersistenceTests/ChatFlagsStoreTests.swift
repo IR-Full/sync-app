@@ -10,21 +10,31 @@ import XCTest
 /// sends them, so a local sort that differs from the server's reshuffles rows on every
 /// sync — visible to the user as a list that will not sit still.
 final class ChatFlagsStoreTests: XCTestCase {
-    private var databaseURL: URL!
-    private var store: LocalStore!
+    private var databaseURL: URL?
+    private var storage: LocalStore?
+
+    /// The store under test. Throws (failing the test with a message) rather than
+    /// crashing when `setUp` did not get as far as creating it.
+    private var store: LocalStore {
+        get throws { try XCTUnwrap(storage, "setUp did not create a store") }
+    }
 
     override func setUp() async throws {
-        databaseURL = FileManager.default.temporaryDirectory
+        let databaseURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("syncapp-flags-\(UUID().uuidString).sqlite")
+        self.databaseURL = databaseURL
         let database = try Database(url: databaseURL)
         try await database.prepare()
-        store = LocalStore(database: database, broker: ChangeBroker())
+        let store = LocalStore(database: database, broker: ChangeBroker())
+        storage = store
         try await store.setMeta(LocalStore.MetaKey.userID, "me")
     }
 
     override func tearDown() async throws {
-        store = nil
-        try? FileManager.default.removeItem(at: databaseURL)
+        storage = nil
+        if let databaseURL {
+            try? FileManager.default.removeItem(at: databaseURL)
+        }
     }
 
     private func chat(
@@ -178,8 +188,9 @@ final class ChatFlagsStoreTests: XCTestCase {
         try await store.saveSecretSession(peerUserID: "bob", peerDeviceID: "phone", state: new)
 
         let stored = try await store.secretSession(peerUserID: "bob", peerDeviceID: "phone")
+        let devices = try await store.secretSessionDevices(peerUserID: "bob")
         XCTAssertEqual(stored, new)
-        XCTAssertEqual(try await store.secretSessionDevices(peerUserID: "bob"), ["phone"])
+        XCTAssertEqual(devices, ["phone"])
     }
 
     func testForgettingASessionRemovesOnlyThatDevice() async throws {
@@ -187,12 +198,15 @@ final class ChatFlagsStoreTests: XCTestCase {
         try await store.saveSecretSession(peerUserID: "bob", peerDeviceID: "tablet", state: session())
         try await store.forgetSecretSession(peerUserID: "bob", peerDeviceID: "phone")
 
-        XCTAssertNil(try await store.secretSession(peerUserID: "bob", peerDeviceID: "phone"))
-        XCTAssertNotNil(try await store.secretSession(peerUserID: "bob", peerDeviceID: "tablet"))
+        let phone = try await store.secretSession(peerUserID: "bob", peerDeviceID: "phone")
+        let tablet = try await store.secretSession(peerUserID: "bob", peerDeviceID: "tablet")
+        XCTAssertNil(phone)
+        XCTAssertNotNil(tablet)
     }
 
     func testAMissingSessionIsNilNotAnError() async throws {
-        XCTAssertNil(try await store.secretSession(peerUserID: "nobody", peerDeviceID: "none"))
+        let missing = try await store.secretSession(peerUserID: "nobody", peerDeviceID: "none")
+        XCTAssertNil(missing)
     }
 
     // MARK: - Pending acks
@@ -200,10 +214,12 @@ final class ChatFlagsStoreTests: XCTestCase {
     func testAcksAreRecordedAndClearedByID() async throws {
         try await store.noteSecretAck(queueID: "q1")
         try await store.noteSecretAck(queueID: "q2")
-        XCTAssertEqual(Set(try await store.pendingSecretAcks()), ["q1", "q2"])
+        let recorded = try await store.pendingSecretAcks()
+        XCTAssertEqual(Set(recorded), ["q1", "q2"])
 
         try await store.clearSecretAcks(["q1"])
-        XCTAssertEqual(try await store.pendingSecretAcks(), ["q2"])
+        let remaining = try await store.pendingSecretAcks()
+        XCTAssertEqual(remaining, ["q2"])
     }
 
     func testNotingTheSameIDTwiceIsHarmless() async throws {
@@ -211,14 +227,16 @@ final class ChatFlagsStoreTests: XCTestCase {
         // insert must not fail the transaction that is also writing the plaintext.
         try await store.noteSecretAck(queueID: "q1")
         try await store.noteSecretAck(queueID: "q1")
-        XCTAssertEqual(try await store.pendingSecretAcks(), ["q1"])
+        let pending = try await store.pendingSecretAcks()
+        XCTAssertEqual(pending, ["q1"])
     }
 
     func testAnEmptyQueueIDIsIgnored() async throws {
         // A LIVE frame carries no queue id. Storing one would leave a row that can never
         // be acked, which the server would never drop.
         try await store.noteSecretAck(queueID: "")
-        XCTAssertTrue(try await store.pendingSecretAcks().isEmpty)
+        let pending = try await store.pendingSecretAcks()
+        XCTAssertTrue(pending.isEmpty)
     }
 
     // MARK: - Logout
@@ -234,8 +252,11 @@ final class ChatFlagsStoreTests: XCTestCase {
         // hardcoded list stopped being complete the moment a migration added a table, and
         // what survived was one user's ratchet chain keys, on disk, for whoever signed in
         // next.
-        XCTAssertNil(try await store.secretSession(peerUserID: "bob", peerDeviceID: "phone"))
-        XCTAssertTrue(try await store.pendingSecretAcks().isEmpty)
-        XCTAssertTrue(try await store.chatSummaries().isEmpty)
+        let leftover = try await store.secretSession(peerUserID: "bob", peerDeviceID: "phone")
+        let acks = try await store.pendingSecretAcks()
+        let chats = try await store.chatSummaries()
+        XCTAssertNil(leftover)
+        XCTAssertTrue(acks.isEmpty)
+        XCTAssertTrue(chats.isEmpty)
     }
 }

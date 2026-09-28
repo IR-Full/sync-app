@@ -50,6 +50,7 @@ func (f *fsStore) Put(ref string, data []byte) error {
 		return err
 	}
 	tmpName := tmp.Name()
+	// #nosec G703 -- tmpName comes from os.CreateTemp inside f.dir, not from the request.
 	defer func() { _ = os.Remove(tmpName) }() // no-op once linked; cleans up on any failure path
 	if err := tmp.Chmod(0o600); err != nil {
 		_ = tmp.Close()

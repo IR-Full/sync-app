@@ -6,28 +6,28 @@ import (
 )
 
 func TestGetReadsTheDocumentedSpelling(t *testing.T) {
-	t.Setenv("SyncApp_EXAMPLE", "value")
-	if got := Get("SyncApp_EXAMPLE"); got != "value" {
+	t.Setenv("SYNCAPP_EXAMPLE", "value")
+	if got := Get("SYNCAPP_EXAMPLE"); got != "value" {
 		t.Fatalf("Get = %q, want %q", got, "value")
 	}
 }
 
-// The bug this package exists to prevent: three call sites read SYNCAPP_* while
-// every document promised SyncApp_*, so configuring tracing exactly as the
-// README described silently did nothing. The legacy spelling still has to work
-// for anyone who configured a deployment before the rename.
+// The bug this package exists to prevent: call sites and documents disagreed on
+// the spelling, so configuring a variable exactly as the README described it
+// silently did nothing. The mixed-case spelling the code used before the rename
+// still has to work for anyone who configured a deployment with it.
 func TestGetFallsBackToTheLegacySpelling(t *testing.T) {
-	t.Setenv("SYNCAPP_LEGACY_ONLY", "legacy value")
-	if got := Get("SyncApp_LEGACY_ONLY"); got != "legacy value" {
+	t.Setenv("SyncApp_LEGACY_ONLY", "legacy value")
+	if got := Get("SYNCAPP_LEGACY_ONLY"); got != "legacy value" {
 		t.Fatalf("legacy fallback not honoured: %q", got)
 	}
 }
 
 func TestDocumentedSpellingWinsOverLegacy(t *testing.T) {
 	requireCaseSensitiveEnv(t)
-	t.Setenv("SyncApp_BOTH", "current")
-	t.Setenv("SYNCAPP_BOTH", "legacy")
-	if got := Get("SyncApp_BOTH"); got != "current" {
+	t.Setenv("SYNCAPP_BOTH", "current")
+	t.Setenv("SyncApp_BOTH", "legacy")
+	if got := Get("SYNCAPP_BOTH"); got != "current" {
 		t.Fatalf("Get = %q, want the documented spelling to win", got)
 	}
 }
@@ -94,8 +94,8 @@ func TestInt(t *testing.T) {
 }
 
 func TestIntAcceptsLegacySpelling(t *testing.T) {
-	t.Setenv("SYNCAPP_LEGACY_NUMBER", "13")
-	if got := Int("SyncApp_LEGACY_NUMBER", 0); got != 13 {
+	t.Setenv("SyncApp_LEGACY_NUMBER", "13")
+	if got := Int("SYNCAPP_LEGACY_NUMBER", 0); got != 13 {
 		t.Fatalf("Int = %d, want the legacy value 13", got)
 	}
 }

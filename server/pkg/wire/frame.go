@@ -56,34 +56,63 @@ func EncodeFrame(flags byte, payload []byte) ([]byte, error) {
 // where each binary message is exactly one frame). It returns the decompressed
 // payload.
 func DecodeFrame(b []byte) (payload []byte, err error) {
+	flags, raw, err := decodeRawFrame(b, MaxPayloadSize)
+	if err != nil {
+		return nil, err
+	}
+	return decompress(flags, raw)
+}
+
+// decodeRawFrame validates an in-memory frame and returns its flags and a COPY
+// of its still-compressed payload, refusing a declared length above max.
+func decodeRawFrame(b []byte, max int) (flags byte, payload []byte, err error) {
 	if len(b) < HeaderSize {
-		return nil, io.ErrUnexpectedEOF
+		return 0, nil, io.ErrUnexpectedEOF
 	}
-	if b[0] != Magic0 || b[1] != Magic1 {
-		return nil, ErrBadMagic
-	}
-	if b[2] != Version {
-		return nil, fmt.Errorf("%w: got %d want %d", ErrBadVersion, b[2], Version)
-	}
-	flags := b[3]
-	n := binary.BigEndian.Uint32(b[4:8])
-	if n > MaxPayloadSize {
-		return nil, ErrTooLarge
+	flags, n, err := parseHeader(b[:HeaderSize], max)
+	if err != nil {
+		return 0, nil, err
 	}
 	if len(b) < HeaderSize+int(n) {
-		return nil, io.ErrUnexpectedEOF
+		return 0, nil, io.ErrUnexpectedEOF
 	}
-	payload = b[HeaderSize : HeaderSize+int(n)]
+	// Copy so callers own the slice independent of the input buffer.
+	out := make([]byte, n)
+	copy(out, b[HeaderSize:HeaderSize+int(n)])
+	return flags, out, nil
+}
+
+// parseHeader validates the fixed header and returns the flags and the declared
+// payload length. The length is checked against max BEFORE anything is
+// allocated for it: the prefix is attacker-controlled.
+func parseHeader(hdr []byte, max int) (flags byte, n uint32, err error) {
+	if hdr[0] != Magic0 || hdr[1] != Magic1 {
+		return 0, 0, ErrBadMagic
+	}
+	if hdr[2] != Version {
+		return 0, 0, fmt.Errorf("%w: got %d want %d", ErrBadVersion, hdr[2], Version)
+	}
+	n = binary.BigEndian.Uint32(hdr[4:8])
+	if max > MaxPayloadSize || max <= 0 {
+		max = MaxPayloadSize
+	}
+	if uint64(n) > uint64(max) {
+		return 0, 0, ErrTooLarge
+	}
+	return hdr[3], n, nil
+}
+
+// decompress undoes whatever compression the flags name. Every path is bounded
+// to MaxPayloadSize of OUTPUT: the input limit alone says nothing about how far
+// a compressed payload expands.
+func decompress(flags byte, payload []byte) ([]byte, error) {
 	if flags&FlagZstd != 0 {
 		return zstdDecompress(payload)
 	}
 	if flags&FlagCompressed != 0 {
 		return gzipDecompress(payload)
 	}
-	// Copy so callers own the slice independent of the input buffer.
-	out := make([]byte, len(payload))
-	copy(out, payload)
-	return out, nil
+	return payload, nil
 }
 
 // WriteFrame encodes and writes a frame to w in a single Write call, reusing a
@@ -117,32 +146,30 @@ func WriteFrame(w io.Writer, flags byte, payload []byte) error {
 // the fixed header, validates it, then reads the declared payload. The returned
 // payload is decompressed if the frame's compressed flag was set.
 func ReadFrame(r io.Reader) (payload []byte, err error) {
-	var hdr [HeaderSize]byte
-	if _, err = io.ReadFull(r, hdr[:]); err != nil {
+	flags, raw, err := readRawFrame(r, MaxPayloadSize)
+	if err != nil {
 		return nil, err
 	}
-	if hdr[0] != Magic0 || hdr[1] != Magic1 {
-		return nil, ErrBadMagic
+	return decompress(flags, raw)
+}
+
+// readRawFrame reads one frame from a stream and returns its flags and its
+// still-compressed payload, refusing a declared length above max before reading
+// (or allocating) the body.
+func readRawFrame(r io.Reader, max int) (flags byte, payload []byte, err error) {
+	var hdr [HeaderSize]byte
+	if _, err = io.ReadFull(r, hdr[:]); err != nil {
+		return 0, nil, err
 	}
-	if hdr[2] != Version {
-		return nil, fmt.Errorf("%w: got %d want %d", ErrBadVersion, hdr[2], Version)
-	}
-	flags := hdr[3]
-	n := binary.BigEndian.Uint32(hdr[4:8])
-	if n > MaxPayloadSize {
-		return nil, ErrTooLarge
+	flags, n, err := parseHeader(hdr[:], max)
+	if err != nil {
+		return 0, nil, err
 	}
 	buf := make([]byte, n)
 	if _, err = io.ReadFull(r, buf); err != nil {
-		return nil, err
+		return 0, nil, err
 	}
-	if flags&FlagZstd != 0 {
-		return zstdDecompress(buf)
-	}
-	if flags&FlagCompressed != 0 {
-		return gzipDecompress(buf)
-	}
-	return buf, nil
+	return flags, buf, nil
 }
 
 func gzipCompress(b []byte) ([]byte, error) {

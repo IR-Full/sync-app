@@ -25,11 +25,8 @@ func (c *conn) authByToken(ctx context.Context, token string) (*authIdentity, er
 	}, nil
 }
 
-func (c *conn) authByPassword(ctx context.Context, username, password, displayName string, register bool) (*authIdentity, error) {
-	return c.authByPasswordWithCode(ctx, username, password, "", displayName, register)
-}
-
-// authByPasswordWithCode is authByPassword with a second factor.
+// authByPasswordWithCode authenticates (or registers) with username and
+// password, plus a second factor when the account enforces one.
 //
 // The code travels on the RETRY: a client cannot know in advance whether an
 // account enforces a factor, and asking would make the protocol an oracle for

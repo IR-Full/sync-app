@@ -70,6 +70,7 @@ func Run(t *testing.T, newStores NewStores) {
 		{"Idempotency", testIdempotency},
 		{"History", testHistory},
 		{"EditDelete", testEditDelete},
+		{"DeleteClearsAttachment", testDeleteClearsAttachment},
 		{"Outbox", testOutbox},
 		{"ReadState", testReadState},
 		{"Reactions", testReactions},
@@ -100,7 +101,7 @@ func mkUser(t *testing.T, s store.Stores) string {
 	id := nextID()
 	u := &model.User{
 		ID: id, Username: "u" + id, DisplayName: "User " + id,
-		PasswordHash: "argon2id$x$y", CreatedAt: 1000,
+		PasswordHash: "argon2id$x$y", CreatedAt: 1000, // #nosec G101 -- test fixture, not a credential
 	}
 	if err := s.Users.CreateUser(ctx(), u); err != nil {
 		t.Fatalf("CreateUser: %v", err)
@@ -700,6 +701,49 @@ func testEditDelete(t *testing.T, s store.Stores) {
 
 	if _, err := s.Messages.EditMessage(ctx(), chatID, nextID(), "x", 1, nil); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("edit of a missing message: got %v, want ErrNotFound", err)
+	}
+}
+
+// A tombstone must not keep what the message pointed at. The text and media_ref
+// were cleared on delete but the attachment was not, so a deleted voice note or
+// file stayed in history — name, size, and a media ref still downloadable — and
+// the blob behind it was never collected, because the row still referenced it.
+func testDeleteClearsAttachment(t *testing.T, s store.Stores) {
+	owner := mkUser(t, s)
+	chatID := mkChat(t, s, owner)
+	m := &model.Message{
+		ID: nextID(), ChatID: chatID, SenderID: owner, CreatedAt: 1000,
+		Attachment: &model.Attachment{
+			Kind: model.AttachFile, MediaRef: "mref-" + nextID(), ThumbRef: "tref-" + nextID(),
+			Filename: "secret-plans.pdf", Size: 4096,
+		},
+	}
+	if _, _, err := s.Messages.InsertMessage(ctx(), m, nextID(), nil); err != nil {
+		t.Fatalf("InsertMessage: %v", err)
+	}
+
+	deleted, err := s.Messages.DeleteMessage(ctx(), chatID, m.ID, 3000, nil)
+	if err != nil {
+		t.Fatalf("DeleteMessage: %v", err)
+	}
+	if deleted.Attachment != nil {
+		t.Fatalf("delete returned the attachment: %+v", deleted.Attachment)
+	}
+	got, err := s.Messages.GetMessage(ctx(), chatID, m.ID)
+	if err != nil {
+		t.Fatalf("GetMessage: %v", err)
+	}
+	if got.Attachment != nil {
+		t.Fatalf("the tombstone still carries the attachment: %+v", got.Attachment)
+	}
+	page, err := s.Messages.History(ctx(), chatID, 0, 10)
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	for _, h := range page {
+		if h.ID == m.ID && h.Attachment != nil {
+			t.Fatalf("history still shows the deleted attachment: %+v", h.Attachment)
+		}
 	}
 }
 

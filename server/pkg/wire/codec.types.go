@@ -28,6 +28,14 @@ type Transport interface {
 	Close() error
 }
 
+// rawTransport is implemented by this package's transports. It hands back a
+// frame's flags and still-compressed payload, so Conn can refuse compression the
+// peer never negotiated and cap the frame size BEFORE the body is read — neither
+// of which ReadFrame can do, because it decompresses as it goes.
+type rawTransport interface {
+	readRawFrame(max int) (flags byte, payload []byte, err error)
+}
+
 // StreamConn is any reliable, ordered byte stream with deadlines: a TCP
 // net.Conn, or a QUIC bidirectional stream. The frame codec is stream-oriented,
 // so the same transport works for both — TCP and QUIC differ only in how the
@@ -54,4 +62,10 @@ type Conn struct {
 	compress       bool // send FlagCompressed (gzip) when body is large enough
 	zstd           bool // prefer zstd+dictionary over gzip when negotiated
 	compressMinLen int
+
+	// Inbound policy (see SetInboundPolicy). Unrestricted by default so clients,
+	// tools and tests built on this package keep working unchanged.
+	restrictIn bool
+	maxIn      int  // largest accepted payload as sent (before decompression)
+	allowIn    byte // compression flags the peer may use (FlagCompressed|FlagZstd)
 }

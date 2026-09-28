@@ -183,6 +183,18 @@ var (
 		Name: "SYNCAPP_secret_expired_total",
 		Help: "End-to-end envelopes collected after their TTL.",
 	})
+	// ReplayDropped counts resume-buffer entries dropped because the async writer's
+	// queue was full. Sustained growth means the replay store (Redis) cannot keep
+	// up or is down; the cost is a history backfill on the affected resumes.
+	ReplayDropped = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "SYNCAPP_replay_dropped_total",
+		Help: "Resume-buffer frames dropped because the async writer queue was full.",
+	})
+	// ReplayWriteErrors counts failed batch writes to the replay store.
+	ReplayWriteErrors = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "SYNCAPP_replay_write_errors_total",
+		Help: "Failed batch writes to the resume replay store.",
+	})
 	// SlowConnDropped counts connections torn down because a non-droppable
 	// outbound lane filled up — the client could not keep up with important
 	// frames. This is backpressure of last resort, so any sustained rate is a

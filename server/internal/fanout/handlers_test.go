@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/SyncApp-chat/SyncApp/internal/router"
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
@@ -770,5 +771,77 @@ func TestPushPreviewSurvivesNonAsciiText(t *testing.T) {
 	job := decodeAsNotifyWorker(t, bus.bySubject(eventbus.SubjNotifyPush)[0].Data)
 	if !utf8ValidString(job.Preview) {
 		t.Error("the preview round-tripped through JSON as invalid UTF-8")
+	}
+}
+
+// ------------------------------------------------------- edits, deletions, reads
+
+// An edit or a deletion reaches connected devices (so they update in place) but
+// is not pushed to anyone offline: a notification per edit is spam, and one per
+// deletion announces the very message its sender just took back.
+func TestEditAndDeleteAreDeliveredButNotPushed(t *testing.T) {
+	for _, tc := range []struct {
+		subject string
+		body    wire.NewMessageBody
+	}{
+		{eventbus.SubjMessageEdited, wire.NewMessageBody{MessageID: "m1", ChatID: "c1", SenderID: "u1", Text: "fixed typo", Edited: true}},
+		{eventbus.SubjMessageDeleted, wire.NewMessageBody{MessageID: "m1", ChatID: "c1", SenderID: "u1", Deleted: true}},
+	} {
+		t.Run(tc.subject, func(t *testing.T) {
+			svc, bus, rtr := newFanout([]string{"u1", "u2", "u3"}, "u2") // u3 is offline
+			if err := svc.onMessage(context.Background(), event(tc.subject, tc.body)); err != nil {
+				t.Fatal(err)
+			}
+			if !rtr.reached()["u2"] {
+				t.Error("an online member was not sent the update")
+			}
+			if got := bus.bySubject(eventbus.SubjNotifyPush); len(got) != 0 {
+				t.Fatalf("%s produced %d push job(s)", tc.subject, len(got))
+			}
+		})
+	}
+}
+
+// The control for the test above: a new message still notifies the offline member.
+func TestNewMessageStillPushesOfflineMembers(t *testing.T) {
+	svc, bus, _ := newFanout([]string{"u1", "u2", "u3"}, "u2")
+	if err := svc.onMessage(context.Background(), event(eventbus.SubjMessageCreated,
+		wire.NewMessageBody{MessageID: "m1", ChatID: "c1", SenderID: "u1", Text: "hi"})); err != nil {
+		t.Fatal(err)
+	}
+	if got := bus.bySubject(eventbus.SubjNotifyPush); len(got) != 1 {
+		t.Fatalf("staged %d push jobs, want 1 (for the offline u3)", len(got))
+	}
+}
+
+type fixedKind model.ChatType
+
+func (k fixedKind) ChatType(context.Context, string) (model.ChatType, error) {
+	return model.ChatType(k), nil
+}
+
+// A read receipt broadcast in a channel would tell every subscriber who else is
+// subscribed, and costs O(members) per read. It stays with the reader there; in a
+// group it still reaches the other members.
+func TestReadReceiptsStayPrivateInChannels(t *testing.T) {
+	for _, tc := range []struct {
+		kind      model.ChatType
+		broadcast bool
+	}{
+		{model.ChatChannel, false},
+		{model.ChatGroup, true},
+		{model.ChatDirect, true},
+	} {
+		t.Run(string(tc.kind), func(t *testing.T) {
+			svc, _, rtr := newFanout([]string{"u1", "u2", "u3"}, "u1", "u2", "u3")
+			svc.WithChatKinds(fixedKind(tc.kind))
+			if err := svc.onRead(context.Background(), event(eventbus.SubjMessageRead,
+				wire.ReadUpdateBody{ChatID: "c1", UserID: "u1", UpToChatSeq: 5})); err != nil {
+				t.Fatal(err)
+			}
+			if got := rtr.reached()["u2"]; got != tc.broadcast {
+				t.Fatalf("%s: other member reached = %v, want %v", tc.kind, got, tc.broadcast)
+			}
+		})
 	}
 }

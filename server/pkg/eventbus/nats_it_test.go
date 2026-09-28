@@ -8,12 +8,12 @@ import (
 )
 
 // TestNATSJetStream exercises the real bus: a durable (JetStream) subject and an
-// ephemeral (core) subject both round-trip. Runs only when SyncApp_TEST_NATS_URL
+// ephemeral (core) subject both round-trip. Runs only when SYNCAPP_TEST_NATS_URL
 // is set to a JetStream-enabled server (nats -js).
 func TestNATSJetStream(t *testing.T) {
-	url := os.Getenv("SyncApp_TEST_NATS_URL")
+	url := os.Getenv("SYNCAPP_TEST_NATS_URL")
 	if url == "" {
-		t.Skip("set SyncApp_TEST_NATS_URL to run the NATS JetStream test")
+		t.Skip("set SYNCAPP_TEST_NATS_URL to run the NATS JetStream test")
 	}
 	bus, err := NewNATS(url)
 	if err != nil {

@@ -1013,6 +1013,9 @@ func (s *Store) UserChatSummaries(ctx context.Context, userID string, afterActiv
 	if limit <= 0 {
 		limit = 50
 	}
+	// The cursor parameters are cast explicitly: `$2 = 0` alone makes Postgres
+	// infer int4 from the literal, and the first page cursor holding a real
+	// snowflake id (which needs 64 bits) then fails to encode.
 	rows, err := s.reader().Query(ctx,
 		`WITH mine AS (
 		   SELECT m.chat_id, m.role, m.muted_until, m.pinned, m.archived
@@ -1038,8 +1041,8 @@ func (s *Store) UserChatSummaries(ctx context.Context, userID string, afterActiv
 		   SELECT user_id FROM chat_members
 		   WHERE chat_id = c.id AND user_id <> $1 LIMIT 1
 		 ) peer ON c.type IN ('direct', 'secret')
-		 WHERE ($2 = 0 AND $3 = 0)
-		    OR (COALESCE(lm.created_at, c.created_at), c.id) < ($2, $3)
+		 WHERE ($2::bigint = 0 AND $3::bigint = 0)
+		    OR (COALESCE(lm.created_at, c.created_at), c.id) < ($2::bigint, $3::bigint)
 		 ORDER BY activity_at DESC, c.id DESC
 		 LIMIT $4`,
 		atoi(userID), afterActivity, atoi(afterChatID), limit, includeArchived)
@@ -1111,7 +1114,7 @@ func derefStr(p *string) string {
 	return *p
 }
 
-// CountPinnedChats counts this user's pinned chats.
+// CountPinnedChatsExcept counts this user's pinned chats other than exceptChatID.
 //
 // Counted in the database rather than by reading rows back, because the answer is
 // a number and the caller only wants to know whether there is room for one more.
@@ -1135,7 +1138,7 @@ func (s *Store) CountPinnedChatsExcept(ctx context.Context, userID, exceptChatID
 func (s *Store) SetMemberFlags(ctx context.Context, chatID, userID string, f model.MemberFlags) error {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE chat_members
-		 SET muted_until=$3, pinned=$4, archived=$5, muted=($3 <> 0)
+		 SET muted_until=$3::bigint, pinned=$4, archived=$5, muted=($3::bigint <> 0)
 		 WHERE chat_id=$1 AND user_id=$2`,
 		atoi(chatID), atoi(userID), f.MutedUntil, f.Pinned, f.Archived)
 	if err != nil {

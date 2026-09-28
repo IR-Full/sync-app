@@ -62,6 +62,30 @@ func (b *redisBuffer) Append(ctx context.Context, sessionID string, seq uint64, 
 	return err
 }
 
+// AppendBatch writes many frames in one pipelined round trip, refreshing each
+// touched session's TTL once. Not a transaction: frames are independent, and a
+// failed XADD (say, a seq that did not advance) must not discard its neighbours.
+func (b *redisBuffer) AppendBatch(ctx context.Context, entries []Entry) error {
+	if len(entries) == 0 {
+		return nil
+	}
+	pipe := b.rdb.Pipeline()
+	touched := make(map[string]struct{}, 4)
+	for _, e := range entries {
+		key := streamKey(e.SessionID)
+		pipe.XAdd(ctx, &redis.XAddArgs{
+			Stream: key, MaxLen: maxFrames, Approx: true,
+			ID: streamID(e.Seq), Values: map[string]any{"p": e.Payload},
+		})
+		touched[key] = struct{}{}
+	}
+	for key := range touched {
+		pipe.Expire(ctx, key, b.ttl)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 func (b *redisBuffer) Since(ctx context.Context, sessionID string, afterSeq uint64) ([]Frame, error) {
 	msgs, err := b.rdb.XRange(ctx, streamKey(sessionID), exclusiveFrom(afterSeq), "+").Result()
 	if err != nil {

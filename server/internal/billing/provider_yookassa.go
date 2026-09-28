@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
@@ -25,17 +27,18 @@ of being redirected, the bank moves the money directly, and the refund path is a
 different call. A design that modelled it as "a card with a QR" would have to
 special-case it at every step anyway, so it is a method from the start.
 
-The HTTP shape here is deliberately generic — a JSON POST to a configured endpoint
-with basic auth, and an HMAC on the callback. Real YooKassa has its own field names
-and its own notification format, and adapting to them is a matter of renaming
-things in requestBody and yooNotification. What is NOT adaptable, and is therefore
-what this file is actually about:
+The shape follows the YooKassa v3 API: JSON POST to /v3/payments with basic auth
+and an Idempotence-Key, notifications as {"event", "object": <payment>}.
 
   - The idempotency key goes in the request, so the acquirer itself deduplicates a
     retried charge. Two layers of idempotency, ours and theirs, because a network
     that ate our response may not have eaten their charge.
-  - The callback signature is verified with a constant-time compare before anything
-    in the body is believed.
+  - A notification is NOT trusted for what it says. YooKassa does not sign its
+    notifications, so the body is a stranger's claim; the payment is fetched back
+    from the API with the shop's credentials and only that answer is believed.
+    A forged notification can at most make us re-read a real payment's real state.
+    (This used to check an HMAC header that YooKassa never sends, which would have
+    rejected every genuine notification in production.)
   - A notification for an unpaid or cancelled payment is a normal outcome and maps
     to a status rather than to an error.
 */
@@ -48,10 +51,11 @@ type YooKassa struct {
 	// ShopID and SecretKey are the API credentials.
 	ShopID    string
 	SecretKey string
-	// WebhookSecret authenticates callbacks. SEPARATE from SecretKey on purpose: the
-	// API credential is used to make outbound calls, the webhook secret to verify
-	// inbound ones, and sharing one value between the two means a leak in either
-	// direction compromises both.
+	// WebhookSecret, if set, additionally requires an HMAC-SHA256 of the body in
+	// X-Signature — for a deployment that relays notifications through its own
+	// signing proxy. YooKassa itself does not sign notifications, so leave it empty
+	// when they arrive directly; authenticity then rests on fetching the payment
+	// back from the API (see Verify), which does not depend on it.
 	WebhookSecret string
 	HTTP          *http.Client
 }
@@ -149,55 +153,112 @@ func (y *YooKassa) Charge(ctx context.Context, req ChargeRequest) (ChargeResult,
 	}, nil
 }
 
-// Verify authenticates a callback and extracts what it says.
+// Verify authenticates a callback by asking the acquirer, and returns what the
+// ACQUIRER says about the payment — not what the notification says.
 //
-// The signature check comes FIRST and nothing in the body is read before it
-// passes. A webhook endpoint is unauthenticated by construction, so the body is an
-// assertion by a stranger until the HMAC says otherwise — and a missing secret is
-// a refusal rather than a skip, because "we could not check" must never mean
-// "therefore it is fine".
-func (y *YooKassa) Verify(_ context.Context, raw []byte, headers map[string]string) (Callback, error) {
-	if y.WebhookSecret == "" {
-		return Callback{}, fmt.Errorf("yookassa: no webhook secret configured")
-	}
-	sig := headerValue(headers, "X-Signature")
-	if sig == "" {
-		return Callback{}, fmt.Errorf("yookassa: callback carried no signature")
-	}
-	mac := hmac.New(sha256.New, []byte(y.WebhookSecret))
-	mac.Write(raw)
-	want := hex.EncodeToString(mac.Sum(nil))
-	// Constant time: an early-exit compare leaks how much of a forged signature is
-	// correct, which turns forgery into a guessing game with feedback.
-	if subtle.ConstantTimeCompare([]byte(want), []byte(sig)) != 1 {
-		return Callback{}, fmt.Errorf("yookassa: signature mismatch")
+// The body is only used to learn which payment to look up. Its status and amount
+// are ignored: anyone who knows the webhook URL can POST a notification, and the
+// only party whose word counts is the API behind the shop's credentials.
+func (y *YooKassa) Verify(ctx context.Context, raw []byte, headers map[string]string) (Callback, error) {
+	if y.WebhookSecret != "" {
+		sig := headerValue(headers, "X-Signature")
+		if sig == "" {
+			return Callback{}, fmt.Errorf("yookassa: callback carried no signature")
+		}
+		mac := hmac.New(sha256.New, []byte(y.WebhookSecret))
+		mac.Write(raw)
+		want := hex.EncodeToString(mac.Sum(nil))
+		// Constant time: an early-exit compare leaks how much of a forged signature
+		// is correct, which turns forgery into a guessing game with feedback.
+		if subtle.ConstantTimeCompare([]byte(want), []byte(sig)) != 1 {
+			return Callback{}, fmt.Errorf("yookassa: signature mismatch")
+		}
 	}
 
 	var n yooNotification
 	if err := json.Unmarshal(raw, &n); err != nil {
 		return Callback{}, fmt.Errorf("yookassa: undecodable callback: %w", err)
 	}
-	if n.Object.ID == "" {
-		return Callback{}, fmt.Errorf("yookassa: callback named no payment")
+	if !validYooID(n.Object.ID) {
+		return Callback{}, fmt.Errorf("yookassa: callback named no valid payment id")
 	}
-	amount, err := decimalToMinor(n.Object.Amount.Value)
+
+	p, err := y.fetchPayment(ctx, n.Object.ID)
 	if err != nil {
-		return Callback{}, fmt.Errorf("yookassa: bad amount %q: %w", n.Object.Amount.Value, err)
+		return Callback{}, err
+	}
+	amount, err := decimalToMinor(p.Amount.Value)
+	if err != nil {
+		return Callback{}, fmt.Errorf("yookassa: bad amount %q: %w", p.Amount.Value, err)
 	}
 	var paidAt int64
-	if n.Object.CapturedAt != "" {
-		if t, err := time.Parse(time.RFC3339, n.Object.CapturedAt); err == nil {
+	if p.CapturedAt != "" {
+		if t, err := time.Parse(time.RFC3339, p.CapturedAt); err == nil {
 			paidAt = t.UnixMilli()
 		}
 	}
 	return Callback{
-		ProviderRef: n.Object.ID,
-		Status:      yooStatus(n.Object.Status, n.Object.Paid),
+		ProviderRef: p.ID,
+		Status:      yooStatus(p.Status, p.Paid),
 		AmountMinor: amount,
-		Currency:    n.Object.Amount.Currency,
+		Currency:    p.Amount.Currency,
 		PaidAt:      paidAt,
 		Raw:         raw,
 	}, nil
+}
+
+// fetchPayment reads a payment from the API with the shop's credentials.
+//
+// Errors split two ways, and the split decides whether the acquirer retries: an
+// unreachable API or a 5xx is ErrProviderUnavailable (answer 500, try again), a
+// payment the API does not know is a rejected callback (answer 400, stop).
+func (y *YooKassa) fetchPayment(ctx context.Context, id string) (yooPayment, error) {
+	// Host and path come from configuration; the id is restricted to
+	// [A-Za-z0-9_-] by validYooID before this is called, and escaped anyway.
+	// #nosec G704 -- not attacker-steerable beyond one path segment of a fixed host.
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		strings.TrimSuffix(y.Endpoint, "/")+"/"+url.PathEscape(id), nil)
+	if err != nil {
+		return yooPayment{}, err
+	}
+	req.SetBasicAuth(y.ShopID, y.SecretKey)
+	resp, err := y.client().Do(req) // #nosec G704 -- see above
+	if err != nil {
+		return yooPayment{}, fmt.Errorf("%w: yookassa: %w", ErrProviderUnavailable, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxProviderResponse))
+	if err != nil {
+		return yooPayment{}, fmt.Errorf("%w: yookassa: %w", ErrProviderUnavailable, err)
+	}
+	switch {
+	case resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests:
+		return yooPayment{}, fmt.Errorf("%w: yookassa: %d", ErrProviderUnavailable, resp.StatusCode)
+	case resp.StatusCode != http.StatusOK:
+		return yooPayment{}, fmt.Errorf("yookassa: payment %s: %d: %s", id, resp.StatusCode, truncate(body, 256))
+	}
+	var p yooPayment
+	if err := json.Unmarshal(body, &p); err != nil {
+		return yooPayment{}, fmt.Errorf("yookassa: undecodable payment: %w", err)
+	}
+	if p.ID != id {
+		return yooPayment{}, fmt.Errorf("yookassa: asked for payment %s, got %s", id, p.ID)
+	}
+	return p, nil
+}
+
+// validYooID accepts the id shapes YooKassa issues (UUID-like) and nothing that
+// could change the meaning of the lookup URL.
+func validYooID(id string) bool {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, r := range id {
+		if !(r == '-' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			return false
+		}
+	}
+	return true
 }
 
 // Refund reverses a settled payment.
@@ -212,7 +273,9 @@ func (y *YooKassa) Refund(ctx context.Context, providerRef string, amountMinor i
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, y.Endpoint+"/refunds", bytes.NewReader(body))
+	// Refunds live beside payments in the API (/v3/refunds), not under them.
+	refunds := strings.TrimSuffix(strings.TrimSuffix(y.Endpoint, "/"), "/payments") + "/refunds"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, refunds, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -235,19 +298,22 @@ func (y *YooKassa) Refund(ctx context.Context, providerRef string, amountMinor i
 	return nil
 }
 
-// yooNotification is the callback body.
+// yooNotification is the callback body. Only the payment id in it is used.
 type yooNotification struct {
-	Event  string `json:"event"`
-	Object struct {
-		ID     string `json:"id"`
-		Status string `json:"status"`
-		Paid   bool   `json:"paid"`
-		Amount struct {
-			Value    string `json:"value"`
-			Currency string `json:"currency"`
-		} `json:"amount"`
-		CapturedAt string `json:"captured_at"`
-	} `json:"object"`
+	Event  string     `json:"event"`
+	Object yooPayment `json:"object"`
+}
+
+// yooPayment is a payment object as the API returns it.
+type yooPayment struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	Paid   bool   `json:"paid"`
+	Amount struct {
+		Value    string `json:"value"`
+		Currency string `json:"currency"`
+	} `json:"amount"`
+	CapturedAt string `json:"captured_at"`
 }
 
 // yooStatus maps the acquirer vocabulary onto ours.

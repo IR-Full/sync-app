@@ -383,6 +383,39 @@ func (s *Service) CanPost(ctx context.Context, chatID, userID string) (bool, err
 	return true, nil
 }
 
+// ChatType returns a chat's kind from the cached authorization view, so fanout
+// can ask it per event without a database read.
+func (s *Service) ChatType(ctx context.Context, chatID string) (model.ChatType, error) {
+	e, err := s.authView(ctx, chatID)
+	if err != nil {
+		return "", err
+	}
+	return e.typ, nil
+}
+
+// DirectPeer returns the other participant of a 1:1 chat (direct or secret) as
+// seen by userID. ok is false for any other kind of chat, and for a caller who is
+// not in it. It answers from the same cached view as authorization, so the
+// gateway can ask it on every send into a DM without a database round trip.
+func (s *Service) DirectPeer(ctx context.Context, chatID, userID string) (peer string, ok bool, err error) {
+	e, err := s.authView(ctx, chatID)
+	if err != nil {
+		return "", false, err
+	}
+	if !e.typ.Is1To1() || e.large {
+		return "", false, nil
+	}
+	if _, member := e.roles[userID]; !member {
+		return "", false, nil
+	}
+	for uid := range e.roles {
+		if uid != userID {
+			return uid, true, nil
+		}
+	}
+	return "", false, nil // a 1:1 chat with only the caller left in it
+}
+
 // IsMember reports chat membership (cached read authorization).
 func (s *Service) IsMember(ctx context.Context, chatID, userID string) (bool, error) {
 	_, _, member, err := s.roleOf(ctx, chatID, userID)
@@ -500,7 +533,8 @@ func (s *Service) SetChatFlags(ctx context.Context, chatID, userID string, f mod
 	return fs.GetMemberFlags(ctx, chatID, userID)
 }
 
-// CountPinnedChats counts the chats a user has pinned to the top of their list.
+// CountPinnedChatsExcept counts the chats a user has pinned to the top of their
+// list, not counting exceptChatID (the chat being pinned right now).
 //
 // It exists for the MaxPinnedChats entitlement, and it answers with a NUMBER
 // because the question is "is there room for one more" — paging every chat to

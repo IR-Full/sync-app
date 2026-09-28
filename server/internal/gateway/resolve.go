@@ -27,6 +27,13 @@ func (c *conn) resolveChat(ctx context.Context, target string) (string, error) {
 		if !validID(target) {
 			return "", errors.New("invalid chat id")
 		}
+		// The block has to hold here too. Checking it only on the "@username" path
+		// below meant a blocked user who already knew the chat id — which every
+		// earlier message had given them — kept writing to and reading from the
+		// conversation as if nothing had happened.
+		if err := c.refuseIfBlocked(ctx, target); err != nil {
+			return "", err
+		}
 		return target, nil
 	}
 	uname := strings.ToLower(strings.TrimPrefix(target, "@"))
@@ -140,4 +147,67 @@ func (c *conn) replyResolveErr(reqID uint64, err error) error {
 		return c.replyError(reqID, wire.ErrForbidden, "blocked")
 	}
 	return c.replyError(reqID, wire.ErrNotFound, err.Error())
+}
+
+// directPeerFinder is the cached peer lookup the in-process chat service offers
+// (chat.Service.DirectPeer). The RPC client does not, and falls back to Get plus
+// Members — correct, one round trip dearer.
+type directPeerFinder interface {
+	DirectPeer(ctx context.Context, chatID, userID string) (peer string, ok bool, err error)
+}
+
+// refuseIfBlocked returns errBlocked when chatID is a 1:1 chat (direct or
+// secret) and either participant has blocked the other. Every other kind of
+// chat passes: a block is between two people, not a ban from a group they share.
+func (c *conn) refuseIfBlocked(ctx context.Context, chatID string) error {
+	if c.gw.svc.Contacts == nil || c.gw.svc.Chat == nil {
+		return nil
+	}
+	peer, ok, err := c.directPeer(ctx, chatID)
+	if err != nil || !ok {
+		// Not a 1:1 (or not ours): membership is checked where it is enforced.
+		// A lookup error is left to that check too rather than reported as a block.
+		return nil
+	}
+	blocked, err := c.gw.svc.Contacts.BlocksBetween(ctx, c.userID, peer)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return errBlocked
+	}
+	return nil
+}
+
+func (c *conn) directPeer(ctx context.Context, chatID string) (string, bool, error) {
+	if f, ok := c.gw.svc.Chat.(directPeerFinder); ok {
+		return f.DirectPeer(ctx, chatID, c.userID)
+	}
+	ch, err := c.gw.svc.Chat.Get(ctx, chatID)
+	if err != nil || !ch.Type.Is1To1() {
+		return "", false, err
+	}
+	members, err := c.gw.svc.Chat.Members(ctx, chatID)
+	if err != nil {
+		return "", false, err
+	}
+	var peer string
+	mine := false
+	for _, m := range members {
+		if m.UserID == c.userID {
+			mine = true
+		} else {
+			peer = m.UserID
+		}
+	}
+	return peer, mine && peer != "", nil
+}
+
+// replyBlocked answers a refuseIfBlocked failure: Forbidden for the block itself,
+// the ordinary error mapping for anything else.
+func (c *conn) replyBlocked(reqID uint64, err error) error {
+	if errors.Is(err, errBlocked) {
+		return c.replyError(reqID, wire.ErrForbidden, "blocked")
+	}
+	return c.replyForError(reqID, err)
 }

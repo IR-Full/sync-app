@@ -34,6 +34,9 @@ DECL = re.compile(r"^(type|const|var|func)\b")
 KIND_OF = {"type": "types", "const": "constants", "var": "constants", "func": "funcs"}
 SUFFIX = {"types": ".types.go", "constants": ".constants.go", "funcs": ".go"}
 
+# The Go convention for marking a file as generated (see `go help generate`).
+GENERATED = re.compile(r"^// Code generated .* DO NOT EDIT\.$")
+
 # `name "path"` or `"path"` inside an import block.
 IMPORT_LINE = re.compile(r'^\s*(?:(\w+|\.|_)\s+)?"([^"]+)"\s*$')
 
@@ -124,9 +127,18 @@ def main() -> int:
         pending = []
         current.append(line)
 
+    # The types/constants files are just as generated as the funcs one, and tools
+    # recognise that only by the banner (gosec -exclude-generated, golangci-lint,
+    # GitHub's diff collapsing). Without it gosec flags the gRPC method-name
+    # constants as hardcoded credentials, because they contain "Password".
+    banner = next((ln for ln in lines[:pkg_at] if GENERATED.match(ln)), "")
+
     for kind, decls in buckets.items():
         body = "\n".join(decls).strip("\n")
-        lead = preamble + "\n\n" if (kind == "funcs" and preamble) else ""
+        if kind == "funcs":
+            lead = preamble + "\n\n" if preamble else ""
+        else:
+            lead = banner + "\n\n" if banner else ""
         text = f"{lead}package {package}\n\n{render_imports(imports, body)}\n{body}\n"
         path = f"{target_dir}/{base}{SUFFIX[kind]}"
         io.open(path, "w", encoding="utf-8", newline="\n").write(text)

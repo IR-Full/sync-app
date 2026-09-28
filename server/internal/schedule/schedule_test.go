@@ -169,3 +169,26 @@ func TestCancelOnlyByOwner(t *testing.T) {
 		t.Fatal("a cancelled message was still dispatched")
 	}
 }
+
+type fixedGate bool
+
+func (g fixedGate) Blocked(context.Context, string, string) (bool, error) { return bool(g), nil }
+
+// A block placed between scheduling and firing must stop the message: the
+// gateway refuses at scheduling time, but only this check covers the gap.
+func TestBlockRecheckedAtFireTime(t *testing.T) {
+	for _, blocked := range []bool{true, false} {
+		s, _, sender := newSvc(true)
+		s.WithBlockGate(fixedGate(blocked))
+		ctx := context.Background()
+		now := time.Now().UnixMilli()
+		if _, err := s.Schedule(ctx, Input{ChatID: "c1", SenderID: "u1", Text: "x", SendAt: now + 1}, now); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(5 * time.Millisecond)
+		s.dispatchDue(ctx)
+		if want := map[bool]int{true: 0, false: 1}[blocked]; sender.count() != want {
+			t.Fatalf("blocked=%v: sent %d, want %d", blocked, sender.count(), want)
+		}
+	}
+}

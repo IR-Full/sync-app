@@ -1,0 +1,5 @@
+# Scripts that run on Linux/macOS CI must keep LF endings even when committed
+# from Windows, or the shebang line breaks ("/bin/sh^M: bad interpreter").
+gradlew     text eol=lf
+*.sh        text eol=lf
+*.bat       text eol=crlf

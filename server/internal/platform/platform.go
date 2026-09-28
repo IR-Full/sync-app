@@ -120,7 +120,12 @@ func Load(ctx context.Context, log *slog.Logger) (*Backends, error) {
 		b.Redis = redis.NewClient(&redis.Options{Addr: addr, Password: envcfg.Get("SYNCAPP_REDIS_PASSWORD")})
 		b.closers = append(b.closers, func() { _ = b.Redis.Close() })
 		b.Router = router.NewResilient(router.NewRedis(b.Redis, 60*time.Second), b.Log)
-		b.Replay = replay.NewRedis(b.Redis, 10*time.Minute)
+		// Async: the gateway appends every outbound frame from the connection's
+		// single writer, which must never wait on Redis (see replay.Async).
+		// Closers run in reverse, so this drains before the client closes.
+		replayBuf := replay.NewAsync(replay.NewRedis(b.Redis, 10*time.Minute), 0, b.Log)
+		b.closers = append(b.closers, replayBuf.Close)
+		b.Replay = replayBuf
 		b.Log.Info("presence+router+resume: redis", "addr", addr)
 	} else {
 		b.Presence = presence.NewMemoryBackend()

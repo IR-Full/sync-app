@@ -65,6 +65,12 @@ type PresenceAudience interface {
 	MaySeePresence(ctx context.Context, ownerID, viewerID string) (bool, error)
 }
 
+// ChatKinds tells fanout what kind of chat an event belongs to. Optional: without
+// it, read receipts are kept private only in chats large enough to be sharded.
+type ChatKinds interface {
+	ChatType(ctx context.Context, chatID string) (model.ChatType, error)
+}
+
 // Service consumes domain events and routes deliveries to the owning nodes.
 type Service struct {
 	bus      eventbus.Bus
@@ -74,6 +80,7 @@ type Service struct {
 	audience PresenceAudience
 	mutes    MuteChecker
 	previews PreviewPolicy
+	kinds    ChatKinds
 
 	mu        sync.RWMutex
 	cache     map[string]memberEntry

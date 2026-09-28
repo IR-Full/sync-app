@@ -192,6 +192,7 @@ func (s *Service) MarkRead(ctx context.Context, userID, chatID string, upToSeq u
 func (s *Service) outboxFor(ctx context.Context, subject string) store.MakeOutbox {
 	trace := tracing.Inject(ctx) // capture the current span for the async consumer
 	return func(m *model.Message) *store.OutboxRecord {
+		m = Redacted(m)
 		body := wire.NewMessageBody{
 			MessageID:  m.ID,
 			ChatID:     m.ChatID,
@@ -334,4 +335,19 @@ func (s *Service) ExpireDue(ctx context.Context, now int64, limit int) (int, err
 		})
 	}
 	return len(expired), nil
+}
+
+// Redacted returns m with its content removed if it is a tombstone. The store
+// clears content on delete; this is the second line, at every point a message
+// becomes a wire body, so a row deleted before that fix (or by a backend that
+// forgets) still cannot reach a client with its text or attachment.
+func Redacted(m *model.Message) *model.Message {
+	if m == nil || !m.Deleted {
+		return m
+	}
+	cp := *m
+	cp.Text = ""
+	cp.MediaRef = ""
+	cp.Attachment = nil
+	return &cp
 }

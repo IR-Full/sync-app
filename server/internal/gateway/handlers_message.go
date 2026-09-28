@@ -114,6 +114,11 @@ func (c *conn) handleEdit(ctx context.Context, e wire.Envelope) error {
 	if !validID(body.ChatID) || !validID(body.MessageID) {
 		return c.replyError(e.RequestID, wire.ErrBadArg, "invalid id")
 	}
+	// Editing rewrites what the other side is shown, so after a block it is just
+	// another way of writing to them.
+	if err := c.refuseIfBlocked(ctx, body.ChatID); err != nil {
+		return c.replyBlocked(e.RequestID, err)
+	}
 	_, err := c.gw.svc.Broker.Submit(ctx, message.Command{
 		Op: message.OpEdit, ActorID: c.userID, ChatID: body.ChatID, MessageID: body.MessageID, Text: body.Text,
 	})
@@ -261,6 +266,7 @@ func (c *conn) handleReact(ctx context.Context, e wire.Envelope) error {
 // msgToWire converts a stored message to its wire form (history/thread streams
 // and export all render the same shape as live fanout delivery).
 func msgToWire(m *model.Message) wire.NewMessageBody {
+	m = message.Redacted(m)
 	return wire.NewMessageBody{
 		MessageID:  m.ID,
 		ChatID:     m.ChatID,

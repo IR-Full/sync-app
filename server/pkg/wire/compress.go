@@ -1,6 +1,8 @@
 package wire
 
 import (
+	"errors"
+
 	"github.com/klauspost/compress/zstd"
 )
 
@@ -34,14 +36,27 @@ func mustEncoder() *zstd.Encoder {
 }
 
 func mustDecoder() *zstd.Decoder {
-	d, err := zstd.NewReader(nil,
+	d, err := zstd.NewReader(nil, append(decoderLimits(),
 		zstd.WithDecoderDictRaw(dictID, sharedDict),
 		zstd.WithDecoderConcurrency(0),
-	)
+	)...)
 	if err != nil {
-		d, _ = zstd.NewReader(nil)
+		d, _ = zstd.NewReader(nil, decoderLimits()...)
 	}
 	return d
+}
+
+// decoderLimits bound what one frame may expand to. Without them DecodeAll
+// allocates the WHOLE output before the length check after it runs: a 112 KB
+// frame of compressed zeros cost 1 GiB, and a 16 MiB one would take the process
+// down — before authentication, since the flag is read from the frame itself.
+// MaxMemory stops decoding once the output would pass MaxPayloadSize; MaxWindow
+// stops a frame from demanding a huge back-reference buffer up front.
+func decoderLimits() []zstd.DOption {
+	return []zstd.DOption{
+		zstd.WithDecoderMaxMemory(MaxPayloadSize),
+		zstd.WithDecoderMaxWindow(MaxPayloadSize),
+	}
 }
 
 // zstdCompress compresses with the shared dictionary. Encoder.EncodeAll is safe
@@ -53,6 +68,9 @@ func zstdCompress(b []byte) []byte {
 // zstdDecompress decompresses, bounding output against zip bombs.
 func zstdDecompress(b []byte) ([]byte, error) {
 	out, err := zstdDec.DecodeAll(b, nil)
+	if errors.Is(err, zstd.ErrDecoderSizeExceeded) || errors.Is(err, zstd.ErrWindowSizeExceeded) {
+		return nil, ErrTooLarge
+	}
 	if err != nil {
 		return nil, err
 	}

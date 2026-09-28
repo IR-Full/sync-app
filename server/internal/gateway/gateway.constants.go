@@ -7,6 +7,11 @@ const (
 	RoleModerator Role = "moderator"
 )
 
+// preAuthMaxPayload caps a frame before the peer has authenticated. HELLO, AUTH
+// and RESUME are a few hundred bytes; a stranger has no business sending 16 MiB
+// frames, and every open socket may be one.
+const preAuthMaxPayload = 64 << 10
+
 // deliveredQueueDepth bounds the delivery-receipt backlog per node. Deep enough
 // that a normal burst is absorbed, shallow enough that a node which cannot keep
 // up drops decorations instead of growing a queue nobody is draining.

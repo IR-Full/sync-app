@@ -647,6 +647,7 @@ func (s *Store) DeleteMessage(_ context.Context, chatID, id string, at int64, mk
 			m.Deleted = true
 			m.Text = ""
 			m.MediaRef = ""
+			m.Attachment = nil
 			m.EditedAt = at
 			cp := *m
 			s.stageOutboxLocked(mkOb, &cp)
