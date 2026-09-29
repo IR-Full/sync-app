@@ -3,7 +3,7 @@
 
 GO ?= go
 
-.PHONY: build test test-race vet tidy fuzz ci vulncheck sec run-server run-server-infra client-alice client-bob infra-up infra-down test-integration test-integration-up
+.PHONY: build test test-race vet tidy fuzz perf interop ci vulncheck sec run-server run-server-infra client-alice client-bob infra-up infra-down test-integration test-integration-up
 
 build:
 	$(GO) build ./...
@@ -31,6 +31,14 @@ vulncheck:
 # Static security analysis. G115 excluded (see .github/workflows/ci.yml rationale).
 sec:
 	$(GO) run github.com/securego/gosec/v2/cmd/gosec@latest -severity medium -exclude-generated -exclude=G115 ./...
+
+# Performance regression check with thresholds (scripts/perf.sh; nightly in CI).
+perf:
+	bash scripts/perf.sh
+
+# Secret-chat interop, web client ↔ pkg/e2e through a gateway (needs Node).
+interop:
+	bash scripts/secret-interop.sh
 
 # Fuzz the binary protocol parser (Section 16). Ctrl-C to stop.
 fuzz:
