@@ -1544,7 +1544,7 @@ func testChatList(t *testing.T, s store.Stores) {
 		t.Fatalf("top row is %s at %d, want %s at 3000",
 			page[0].Chat.ID, page[0].LastActivityAt, seeds[0].chatID)
 	}
-	// The row carries what a list draws, which it previously did not.
+	// The row carries what a list draws.
 	if page[0].LastMessage == nil {
 		t.Fatal("no last-message preview")
 	}

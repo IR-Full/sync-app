@@ -291,8 +291,7 @@ type SearchHit struct {
 	Seq       uint64 `json:"seq"`
 	Text      string `json:"text"`
 	// CreatedAt is the ranking key a client can show and re-sort by. Seq is a
-	// PER-CHAT counter, so it cannot order results that span chats — which is the
-	// mistake the server's own ranking used to make.
+	// PER-CHAT counter, so it cannot order results that span chats.
 	CreatedAt int64 `json:"created_at,omitempty"`
 }
 
@@ -407,9 +406,7 @@ type SecretMsgBody struct {
 	ToDeviceID   string `json:"to_device_id"`
 	FromUserID   string `json:"from_user_id,omitempty"`   // filled by server on relay
 	FromDeviceID string `json:"from_device_id,omitempty"` // filled by server on relay
-	// The LEGACY text form, and its two halves are encoded DIFFERENTLY — the field
-	// comment used to claim both were base64, which is wrong and would reject every
-	// real message if anyone believed it:
+	// The LEGACY text form, and its two halves are encoded DIFFERENTLY:
 	//
 	//   - RatchetHeader is TEXT. Every client puts a JSON object there (the X3DH
 	//     bootstrap on the first message, the ratchet header after), and the
@@ -419,11 +416,9 @@ type SecretMsgBody struct {
 	// Header + Cipher are the same two values as raw bytes.
 	//
 	// Both exist because only one can be used per connection, and which one is a
-	// property of the PEER rather than of the message. Base64 was the only form,
-	// and it cost 33% on the wire plus an encode and a decode at each end — which
-	// is precisely what this project wrote a binary protocol to avoid. But a client
-	// built against the string fields reads nothing from the binary ones, so the
-	// old form cannot simply go.
+	// property of the PEER rather than of the message. Base64 costs 33% on the
+	// wire plus an encode and a decode at each end, but a client built against the
+	// string fields reads nothing from the binary ones, so the old form stays.
 	//
 	// The decision is made by the handler, which knows what the peer negotiated;
 	// the codec just maps whichever fields are set. That is why this is not a
@@ -445,11 +440,10 @@ type SecretMsgBody struct {
 
 // SecretAckBody reports what the relay did with a SECRET_SEND.
 //
-// Sent because the relay used to answer nothing at all: a client could not tell
-// "the peer has it" from "the peer is offline" from "the server dropped it on
-// the floor", and it drew the same state for all three. Devices is how many of
-// the recipient's live devices the ciphertext reached; Queued says the rest was
-// stored for later.
+// Without it a client cannot tell "the peer has it" from "the peer is offline"
+// from "the server dropped it", and draws the same state for all three. Devices
+// is how many of the recipient's live devices the ciphertext reached; Queued says
+// the rest was stored for later.
 type SecretAckBody struct {
 	ToUserID   string `json:"to_user_id"`
 	ToDeviceID string `json:"to_device_id,omitempty"`
@@ -1006,10 +1000,9 @@ type ChatSummary struct {
 	// has no title, so without this the entry has nothing to be named after.
 	PeerID string `json:"peer_id,omitempty"`
 
-	// The rest is what a chat list actually draws, and none of it used to be sent.
-	// A client that wanted a preview, a badge or a sort order had to call HISTORY
-	// per chat to work it out — so the server's N+1 moved to the client and became
-	// N+1 over the network.
+	// The rest is what a chat list actually draws. Without it a client wanting a
+	// preview, a badge or a sort order has to call HISTORY per chat — an N+1 over
+	// the network.
 	//
 	// LastMessage previews the newest live message (nil for an empty chat).
 	LastMessage *NewMessageBody `json:"last_message,omitempty"`

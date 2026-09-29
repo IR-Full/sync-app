@@ -20,7 +20,7 @@ func directKey(a, b string) string {
 //
 // The direct form stays UNPREFIXED so every entry written before secret chats
 // existed still resolves — prefixing the default would orphan every 1:1 chat to
-// express a distinction nothing needed until now.
+// express a distinction the direct chat does not need.
 func pairKey(typ model.ChatType, a, b string) string {
 	if typ == model.ChatDirect || typ == "" {
 		return directKey(a, b)

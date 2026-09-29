@@ -145,20 +145,18 @@ func (b *postgresBackend) Search(ctx context.Context, q Query) ([]Doc, error) {
 	/*
 	   Membership is a SUBQUERY, not a post-filter, and that is the whole point.
 
-	   This query used to be `WHERE tsv @@ plainto_tsquery(...) ORDER BY seq DESC
-	   LIMIT n` with no mention of who was asking: it returned the globally best
-	   matches and left the service to drop the ones the caller could not see. On
-	   any multi-user system the caller's own matches were not in that global page,
-	   so the search answered "nothing found" for messages it held.
+	   Filtering after LIMIT would return the globally best matches and then drop
+	   the ones the caller cannot see; on any multi-user system the caller's own
+	   matches are not in that global page, and the search answers "nothing found"
+	   for messages it holds.
 
 	   The join is on chat_members in the same database as search_docs, which is how
 	   this backend is wired (one DSN for both). q.ChatIDs carries the same
 	   permission for backends that cannot join — see Query.
 
-	   Ranking changed too. `ORDER BY seq DESC` sorted by the PER-CHAT sequence
-	   number, so a chat with a million messages outranked every other chat by
-	   construction. ts_rank puts the best textual match first and created_at breaks
-	   ties by actual recency.
+	   Ranking is ts_rank, with created_at breaking ties by actual recency — not
+	   the per-chat seq, which would make a chat with a million messages outrank
+	   every other chat by construction.
 	*/
 	args := []any{q.Text, atoi(q.UserID)}
 	sql := `SELECT d.message_id, d.chat_id, d.sender_id, d.seq, d.body, d.created_at

@@ -162,8 +162,8 @@ var (
 	})
 	// SecretQueued counts E2E envelopes held because the addressed device had no
 	// live connection. A rate near zero means secret chats are effectively
-	// synchronous; a sustained one is normal (people are offline) — what matters
-	// is that it used to be the rate at which messages were silently destroyed.
+	// synchronous; a sustained one is normal (people are offline). Each of these
+	// is a message that a relay without the queue would have dropped.
 	SecretQueued = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "SYNCAPP_secret_queued_total",
 		Help: "End-to-end envelopes stored for an offline device.",

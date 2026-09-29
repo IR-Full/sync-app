@@ -11,8 +11,7 @@ is a property of the connection rather than of the message — see the field
 comments.
 
 The two halves of the LEGACY form are encoded differently, and that asymmetry is
-easy to get wrong because the field comment used to claim otherwise. What the
-clients actually do:
+easy to get wrong. What the clients actually do:
 
   - ratchet_header is TEXT, not base64. Every client puts a JSON object there —
     the X3DH bootstrap on the first message, the ratchet header afterwards. Look

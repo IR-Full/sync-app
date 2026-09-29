@@ -313,10 +313,9 @@ func (c *conn) handleSecretSend(ctx context.Context, e wire.Envelope) error {
 	}
 
 	// Ask whether the addressed DEVICE is reachable, not whether its owner is
-	// online somewhere. The two used to be the same question here, and the
-	// user-level answer is wrong for this path: a secret message is encrypted to
-	// one device's ratchet session, so "their phone is connected" says nothing
-	// about the laptop the ciphertext was addressed to.
+	// online somewhere. A secret message is encrypted to one device's ratchet
+	// session, so "their phone is connected" says nothing about the laptop the
+	// ciphertext was addressed to.
 	//
 	// Between nodes the payload travels in ONE canonical form: raw bytes. The
 	// receiving node re-encodes it for the destination socket, which is the only
@@ -340,12 +339,9 @@ func (c *conn) handleSecretSend(ctx context.Context, e wire.Envelope) error {
 			c.gw.pushSecretWake(ctx, body.ToUserID)
 		}
 	}
-	// Answer, but only to a peer that asked for the answer. The relay used to
-	// return nothing at all, so a client could not tell "the peer has it" from
-	// "the peer is offline" from "the server dropped it" and drew the same state
-	// for all three — and a client written against that silence has no handler
-	// for a frame arriving where none ever did. CapSecretQueue is what makes the
-	// new frame safe to send.
+	// Answer, but only to a peer that asked for the answer (CapSecretQueue): an
+	// older client has no handler for a SECRET_ACK and would be handed a frame it
+	// does not expect.
 	if c.peerCaps&wire.CapSecretQueue == 0 {
 		return nil
 	}

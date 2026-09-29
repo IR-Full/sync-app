@@ -11,15 +11,10 @@ import (
 /*
 The production preflight.
 
-`SYNCAPP_REQUIRE_TLS=1` is documented as the switch that says "this is
-production", and it used to enforce exactly one thing: that TLS was configured.
-Everything else that is unsafe to ship stayed a `log.Warn` — the default media
-signing secret, an empty WebSocket origin allow-list, an unset per-IP accept
-guard. A warning does not stop a deploy. Anyone who has watched a startup log
-scroll past knows it does not even get read.
-
-So the switch now means what it says. Every check below is something that is
-fine in development and is a real vulnerability in production:
+`SYNCAPP_REQUIRE_TLS=1` is the switch that says "this is production", and it
+refuses to start rather than warn: a warning does not stop a deploy, and a
+startup log scrolling past does not even get read. Every check below is something
+that is fine in development and is a real vulnerability in production:
 
   - the default media secret is a constant in this repository, so whoever knows
     it can mint valid upload and download URLs for any blob;

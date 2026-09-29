@@ -29,6 +29,9 @@ jobs:
           cache: true
           cache-dependency-path: server/go.sum
 
+      - name: English and Russian docs have the same structure
+        run: bash scripts/check-doc-pairs.sh
+
       - name: Check gofmt
         run: |
           unformatted=$(gofmt -l .)

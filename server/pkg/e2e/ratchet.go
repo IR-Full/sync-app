@@ -45,15 +45,12 @@ type Header struct {
 	// This makes the additional data the AEAD checks literally the bytes on the
 	// wire, in both directions, instead of a re-encoding that merely ought to
 	// match them. Four independent implementations produce this header — Go,
-	// TypeScript, Kotlin, Swift — and until now each receiver parsed the JSON and
-	// then re-serialized it to rebuild the AD. That works only while all four
-	// emit byte-identical canonical JSON: same field order, no whitespace, the
-	// same base64 alphabet and padding. Nothing enforces that, and the day one of
-	// them diverges — a field gains omitempty, a port pretty-prints, a base64
-	// helper drops padding — every message between the two versions fails to
-	// decrypt with ErrDecrypt, which is indistinguishable from a forgery and
-	// points at nothing. Carrying the bytes removes the requirement rather than
-	// documenting it.
+	// TypeScript, Kotlin, Swift — and rebuilding the AD by re-serializing parsed
+	// JSON works only while all four emit byte-identical canonical JSON: same
+	// field order, no whitespace, the same base64 alphabet and padding. The day
+	// one diverges, every message between the two fails with ErrDecrypt, which is
+	// indistinguishable from a forgery and points at nothing. Carrying the bytes
+	// removes the requirement rather than documenting it.
 	//
 	// Unexported, so it is invisible to encoding/json and cannot round-trip into
 	// itself.

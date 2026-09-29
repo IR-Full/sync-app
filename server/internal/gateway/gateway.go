@@ -156,11 +156,11 @@ type Config struct {
 	// unlimited per-IP budget and to attribute traffic to someone else.
 	TrustedProxies []string
 	SendRate       float64 // allowed state-changing msgs/sec per connection
-	// ReadRate/ReadBurst meter the READ side. Reads used to cost nothing at all,
-	// which made HISTORY the cheapest amplifier in the protocol: one small frame
-	// draws a database page and up to a hundred full message frames back. The
-	// budget is deliberately looser than the write one — scrolling a chat is
-	// normal behaviour — but it is not unlimited.
+	// ReadRate/ReadBurst meter the READ side. Unmetered, HISTORY would be the
+	// cheapest amplifier in the protocol: one small frame draws a database page and
+	// up to a hundred full message frames back. The budget is deliberately looser
+	// than the write one — scrolling a chat is normal behaviour — but it is not
+	// unlimited.
 	ReadRate  float64
 	ReadBurst float64
 	SendBurst float64 // burst capacity for the above

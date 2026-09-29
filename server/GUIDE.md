@@ -433,10 +433,9 @@ Files: `internal/search`. The indexer **subscribes to message events** and
 builds an inverted index — a dictionary of `word → which messages contain it`.
 A `SEARCH` query finds the matches and **filters by permission**: you will only
 find messages in chats you belong to. Secret (E2E) chats are not indexed — the
-server sees only ciphertext. (`KEY_FETCH_ALL` used to hand **any** user's device
-list to anyone and ignored blocking — a metadata leak rather than a content one;
-both directory lookups now apply blocking and answer a blocked user exactly as
-they would about an account that published nothing.) With a database, the index
+server sees only ciphertext. (Both key-directory lookups apply blocking and
+answer a blocked user exactly as they would about an account that published
+nothing, so the device list is not a metadata leak.) With a database, the index
 lives in a **shared Postgres tsvector (GIN)** so every node reads and writes one
 index; there is an in-memory variant for single-node development, and the same
 interface will later accept OpenSearch for better ranking.
@@ -504,16 +503,15 @@ The implementation (`pkg/e2e/ratchet.go`) is **covered by tests**:
 - identical text produces **different** ciphertext (the keys are unique).
 
 **Separately — why the order of operations matters here.** The frame header is
-written by whoever sent it, and any user can send you a secret frame. `Decrypt`
-used to advance the ratchet according to that header first and authenticate the
-contents only afterwards — so by the time AEAD said "forgery", the session state
-had already been rewritten, and one forged frame was enough to **irreversibly
-destroy your live session** with a genuine correspondent. Now, as the Double
-Ratchet specification requires, changes are applied to a copy and committed only
+written by whoever sent it, and any user can send you a secret frame. If
+`Decrypt` advanced the ratchet by that header before authenticating the contents,
+the state would be rewritten by the time AEAD said "forgery", and one forged frame
+would **irreversibly destroy your live session** with a genuine correspondent. So,
+as the Double Ratchet specification requires, changes are applied to a copy and committed only
 after a successful decryption; messages that arrive in order take a cheaper
 branch with nothing to copy. The 1000-skipped-key limit applies to one call, and
 above it there is a total limit with oldest-first eviction — without it the map
-grew without bound, because every ratchet step starts the count again.
+would grow without bound, because every ratchet step starts the count again.
 
 ### 13.4 The server's role, and multi-device sync
 

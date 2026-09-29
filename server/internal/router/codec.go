@@ -9,14 +9,12 @@ import (
 /*
 The wire format for a node-targeted delivery.
 
-This path carries EVERY delivered message in the system, and it used to be
-encoding/json. Two costs came with that, and the second is the expensive one:
+This path carries EVERY delivered message in the system, which rules out
+encoding/json on two counts, the second the expensive one:
 
-  - Reflection and a fresh allocation per publish, on the hottest path there is.
-  - `Body []byte` in JSON is base64. Every message body crossing the bus paid
-    +33% in size plus an encode on the way out and a decode on the way in — in a
-    project that wrote its own binary protocol for the client link specifically
-    to avoid exactly this.
+  - reflection and a fresh allocation per publish, on the hottest path there is;
+  - `Body []byte` in JSON is base64: +33% in size for every message body crossing
+    the bus, plus an encode on the way out and a decode on the way in.
 
 The format below is the same shape as pkg/wire's: fixed-width big-endian headers,
 explicit lengths, bounds checked on the way in. It is deliberately NOT a protobuf

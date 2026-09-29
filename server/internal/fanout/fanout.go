@@ -380,10 +380,10 @@ func (s *Service) deliverNew(ctx context.Context, members []string, body wire.Ne
 // broadcast delivers a chat-wide event to every member, optionally skipping one
 // (normally the person who caused it).
 //
-// Every chat-wide event used to walk members one at a time through route, which
-// made a read receipt or a typing indicator in a 200-member group cost 200
-// sequential router round trips. They all reach the same audience a message does
-// and none of them deserves its own machinery, so they share this.
+// Chat-wide events reach the same audience a message does, so they share this
+// rather than walking members one at a time through route — which would make a
+// read receipt or a typing indicator in a 200-member group cost 200 sequential
+// router round trips.
 func (s *Service) broadcast(ctx context.Context, chatID string, typ wire.MsgType, payload []byte, skipUser string) error {
 	batch := make([]string, 0, routeBatchSize)
 	flush := func() {
@@ -567,12 +567,11 @@ func (s *Service) RouteSecret(ctx context.Context, toUser, toDevice string, body
 
 // enqueuePush asks for a notification for one offline recipient.
 //
-// The preview is opt-IN, per recipient, and defaults to absent. It used to be
-// included unconditionally: every notification carried up to 120 runes of the
-// message, and the provider that receives it is Apple or Google. So a third party
-// saw the contents of every conversation on the system — a wider disclosure than
-// anything end-to-end encryption was protecting against, since E2E guards against
-// the server and this was the server handing the text over.
+// The preview is opt-IN, per recipient, and defaults to absent. The provider that
+// receives a notification is Apple or Google, so an unconditional preview would
+// hand a third party the contents of every conversation on the system — a wider
+// disclosure than anything end-to-end encryption protects against, since E2E
+// guards against the server and this would be the server handing the text over.
 //
 // It is the RECIPIENT's setting, not the sender's. The person whose device shows
 // the notification, and whose provider account receives it, is the one making the

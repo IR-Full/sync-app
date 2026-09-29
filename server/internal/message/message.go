@@ -164,11 +164,10 @@ func mediaRefsOf(m *model.Message) []string {
 // Delete tombstones a message. The sender may always delete their own; deleting
 // ANOTHER member's message is a moderation action.
 //
-// The distinction is the whole authorization here, and it used to be missing:
-// the non-sender branch asked CanPost, which in a group is true for every
-// member — so anyone in a group could erase anyone else's messages. It only
-// looked correct because in a channel CanPost is already admin-only, which is
-// the one chat type where the two questions happen to agree.
+// The distinction is the whole authorization here. The non-sender branch asks
+// CanModerate, not CanPost: in a group CanPost is true for every member, so
+// asking it would let anyone erase anyone else's messages. (The two agree only in
+// a channel, where posting is already admin-only.)
 func (s *Service) Delete(ctx context.Context, userID, chatID, msgID string) (*model.Message, error) {
 	cur, err := s.msgs.GetMessage(ctx, chatID, msgID)
 	if err != nil {
@@ -184,7 +183,7 @@ func (s *Service) Delete(ctx context.Context, userID, chatID, msgID string) (*mo
 		}
 	}
 	// Capture the refs BEFORE the tombstone: the store clears them on the way out,
-	// and the returned row no longer knows what it used to point at.
+	// and the returned row no longer knows what it pointed at.
 	refs := mediaRefsOf(cur)
 	m, err := s.msgs.DeleteMessage(ctx, chatID, msgID, nowMs(), s.outboxFor(ctx, eventbus.SubjMessageDeleted))
 	if err != nil {

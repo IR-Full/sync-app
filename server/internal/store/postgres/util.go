@@ -28,8 +28,8 @@ func directKey(a, b string) string {
 //
 // The direct form is left UNPREFIXED so every row written before secret chats
 // existed still resolves — a prefix on the default would orphan every 1:1 chat in
-// the database, which is a migration nobody asked for to express a distinction
-// nothing needed until now.
+// the database — a migration nobody asked for, to express a distinction the
+// direct chat does not need.
 func pairKey(typ model.ChatType, a, b string) string {
 	if typ == model.ChatDirect || typ == "" {
 		return directKey(a, b)

@@ -13,12 +13,9 @@ const (
 	// ChatSecret is a 1:1 conversation whose CONTENT never reaches the server in
 	// readable form.
 	//
-	// It is a chat type rather than a side channel, and that is the whole change.
-	// End-to-end chats used to exist only as a relay with no chat row behind it, so
-	// they had no entry in the chat list, no history, no unread count and no
-	// settings — every client put them in a modal window beside the product, which
-	// is exactly how they were treated. Making it a type means the ordinary screens
-	// work and only the guarantees differ.
+	// It is a chat type rather than a side channel: with a chat row the ordinary
+	// screens work — chat list, history, unread count, settings — and only the
+	// guarantees differ.
 	//
 	// What the row holds and does not hold: membership, title, flags, ordering, and
 	// the per-chat sequence — all the metadata a chat needs. NOT the messages. Those
@@ -65,10 +62,9 @@ type ChatSummary struct {
 	MyRole MemberRole `json:"my_role,omitempty"`
 	PeerID string     `json:"peer_id,omitempty"`
 
-	// Everything below is what a chat list actually shows, and none of it used to
-	// be here. A client that wanted a preview, an unread badge or a sort order had
-	// to fetch history per chat to work it out — so the N+1 the server had just
-	// moved to the client and became N+1 over the network.
+	// Everything below is what a chat list actually shows. Without it a client
+	// wanting a preview, an unread badge or a sort order has to fetch history per
+	// chat — an N+1 over the network.
 	//
 	// LastMessage is the newest live message, or nil for an empty chat.
 	LastMessage *Message `json:"last_message,omitempty"`
@@ -85,10 +81,8 @@ type ChatSummary struct {
 // MemberFlags are one member's private settings for a chat.
 //
 // They live on the membership row, not the chat: muting, pinning and archiving are
-// each one person's opinion about a shared conversation. The `muted` column existed
-// from the first migration and nothing ever read it — there was no protocol message
-// to set it and the notification path never checked it, so muting a chat was
-// impossible while looking like a supported feature.
+// each one person's opinion about a shared conversation. CHAT_FLAGS sets them, and
+// fanout checks Muted before sending a push.
 type MemberFlags struct {
 	// MutedUntil is a unix-millis deadline; 0 means not muted. A deadline rather
 	// than a bool because "for eight hours" is what people want far more often
@@ -129,11 +123,9 @@ type Session struct {
 	// PrevResumeToken is the resume token this session most recently rotated away
 	// from, and it is kept on purpose.
 	//
-	// A resume token used to live unchanged for the session's whole TTL, so one
-	// captured token granted access for a fortnight and its use was
-	// UNDETECTABLE — the real client kept working alongside whoever took it.
-	// Remembering the consumed token turns that into a signal: a resume for a
-	// token that has already been spent means two parties hold the chain.
+	// Resume tokens rotate on every use, and remembering the consumed one turns
+	// theft into a signal: a resume for a token that has already been spent means
+	// two parties hold the chain.
 	PrevResumeToken string `json:"-"`
 	ResumeRotatedAt int64  `json:"resume_rotated_at,omitempty"`
 }
@@ -419,23 +411,19 @@ type InviteLink struct {
 // SecretEnvelope is one end-to-end ciphertext held for a device that was not
 // connected when it was relayed.
 //
-// It exists because SECRET_SEND used to be pure relay: the gateway asked the
-// router which nodes held the recipient, published to each, and DISCARDED the
-// return value. Zero nodes — the recipient offline — meant the ciphertext went
-// nowhere, no push was queued, and the sender was told nothing. A secret chat
-// between two people who are not online at the same moment delivered nothing at
-// all, which is the one mode the whole X3DH/ratchet/pinning stack exists for.
+// Without it a secret message to an offline device goes nowhere, and a secret
+// chat between two people who are not online at the same moment delivers nothing
+// — the one mode the whole X3DH/ratchet/pinning stack exists for.
 //
 // Header and Ciphertext are the Double Ratchet wire bytes, opaque here and
-// unreadable by the server — exactly what it already relayed, now durable.
+// unreadable by the server — the same bytes the relay carries, made durable.
 // They are []byte rather than the base64 strings the wire body carries: this is
 // storage, and re-encoding bytes to text to put them in a BYTEA column would be
 // a third copy of the same bits for no reason.
 //
 // ExpiresAt is not optional. A queue of undelivered ciphertext addressed by
-// user+device is also a record of who messaged whom and when — metadata the
-// relay never persisted — so it has to be collected on a schedule rather than
-// kept until someone remembers to look.
+// user+device is also a record of who messaged whom and when, so it is
+// collected on a schedule rather than kept until someone remembers to look.
 type SecretEnvelope struct {
 	ID           string `json:"id"`
 	ToUserID     string `json:"to_user_id"`
@@ -450,9 +438,8 @@ type SecretEnvelope struct {
 
 // TwoFactor is an account's second authentication factor.
 //
-// It exists because the first factor is interceptable and, until now, was the
-// only one: a leaked password meant a lost account with no way to intervene —
-// and no way to change the password either, since nothing could.
+// The first factor is interceptable; with a second one, a leaked password alone
+// does not open the account.
 //
 // SecretEnc is the TOTP shared secret ENCRYPTED at rest. Storing it in the clear
 // would make a database leak equivalent to a leak of everyone's second factor,

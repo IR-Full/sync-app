@@ -50,14 +50,11 @@ type Doc struct {
 /*
 Query is a permission-SCOPED search request.
 
-The signature used to be `Search(ctx, query string, limit int)`, and the scope was
-applied afterwards, in Go, by the service. That is the bug this type exists to
-make impossible: the backend returned the globally best `limit*5` matches and the
-service then discarded everything the caller could not see, so on any system with
-more than a handful of users a search for a common word returned NOTHING — the
-asker's own messages were simply not in the global top hundred. Filtering after
-the limit is not a slow version of filtering before it; it is a different, wrong
-answer.
+The scope travels INTO the backend so it is applied before the limit. Filtering
+after the limit is not a slow version of filtering before it; it is a different,
+wrong answer: the globally best matches are taken first and everything the caller
+cannot see is then discarded, so on any system with more than a handful of users
+a search for a common word returns nothing.
 
 Both UserID and ChatIDs describe the same permission, because the two backends can
 enforce it in different ways and each should use the strongest one available:

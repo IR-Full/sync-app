@@ -23,7 +23,7 @@ repository, which is the point of it.
 | If you want to | Read |
 |---|---|
 | Understand the design and why it is shaped this way | [`server/ARCHITECTURE.md`](server/ARCHITECTURE.md) ([ru](server/ARCHITECTURE.ru.md)) |
-| Know what is defended, what is not, and what was once claimed and false | [`server/SECURITY.md`](server/SECURITY.md) ([ru](server/SECURITY.ru.md)) |
+| Know what is defended and what is not | [`server/SECURITY.md`](server/SECURITY.md) ([ru](server/SECURITY.ru.md)) |
 | Follow a message from a keypress to a peer's screen | [`server/GUIDE.md`](server/GUIDE.md) ([ru](server/GUIDE.ru.md)) |
 | Run the server | [`server/README.md`](server/README.md) ([ru](server/README.ru.md)) |
 | Run a client | [`client/README.md`](client/README.md), [`android/README.md`](android/README.md), [`ios/README.md`](ios/README.md) ([ru](ios/README.ru.md)) |

@@ -120,18 +120,15 @@ const (
 	MsgChatList MsgType = 123 // C→S: page through the chats I belong to
 	MsgChats    MsgType = 124 // S→C: a page of chat summaries + cursor
 
-	// Profiles. display_name could only be set at registration and was never
-	// readable afterwards; there were no avatars at all. PROFILE_GET also takes
-	// "@handle", which makes it the user lookup — clients previously resolved
-	// handles through unrelated read-only messages.
+	// Profiles: display name and avatar, readable and writable after
+	// registration. PROFILE_GET also takes "@handle", which makes it the user
+	// lookup.
 	MsgProfileGet MsgType = 125 // C→S: read a user's public profile (id or @handle)
 	MsgProfileSet MsgType = 126 // C→S: update MY display name / avatar
 	MsgProfile    MsgType = 127 // S→C: a user's public profile
 
-	// Delivery receipts. A SendAck proves the message is DURABLE, and a ReadUpd
-	// proves it was READ, but nothing reported the step between them: fanout
-	// pushed a message and told the sender nothing, so a client could only ever
-	// draw two states. This is emitted by the gateway that actually wrote the
+	// Delivery receipts: the step between a SendAck (the message is DURABLE) and a
+	// ReadUpd (it was READ). This is emitted by the gateway that actually wrote the
 	// frame to a recipient's socket — not by the one that routed it — so it means
 	// the bytes left the server, not merely that a node was notified.
 	//
@@ -142,9 +139,8 @@ const (
 
 	// Account deletion. An app that lets a user create an account in-app must let
 	// them destroy it in-app (Apple 5.1.1(v), Google Play's account-deletion
-	// policy) — until this existed the protocol could open an account but never
-	// close one, and LOGOUT is not deletion: the row, the messages and the push
-	// tokens all survived it.
+	// policy). LOGOUT is not deletion: the row, the messages and the push tokens
+	// all survive it.
 	MsgAccountDelete  MsgType = 129 // C→S: erase MY account (password re-confirmed)
 	MsgAccountDeleted MsgType = 130 // S→C: erasure done; the session is already dead
 
@@ -158,8 +154,7 @@ const (
 	MsgSessionRevoked MsgType = 134 // S→C: how many sessions the revoke actually killed
 
 	// One backfill page in ONE frame, instead of a hundred NEW frames plus a
-	// terminator. Sent only to peers that negotiated CapBatching — which nothing
-	// advertised until this existed, leaving the capability bit decorative.
+	// terminator. Sent only to peers that negotiated CapBatching.
 	MsgHistoryPage MsgType = 135 // S→C: a page of history as a single frame
 
 	// Privacy. Who may see last-seen, the avatar, and who may add this account to
@@ -179,19 +174,14 @@ const (
 	MsgSecretSynced MsgType = 141 // S→C: end of a sync page + cursor
 	MsgSecretAcked  MsgType = 142 // C→S: I have stored these; drop them
 
-	// Per-member chat settings. The `muted` column shipped in the first migration
-	// and nothing ever read it: there was no message to set it and the
-	// notification path never consulted it, so muting a chat was impossible while
-	// the schema implied it was supported. Pin and archive are the other two
-	// settings a chat list needs and never had.
+	// Per-member chat settings: mute (honoured by the notification path), pin and
+	// archive.
 	MsgChatFlags    MsgType = 143 // C→S: set MY mute/pin/archive for a chat
 	MsgChatFlagsSet MsgType = 144 // S→C: the flags now in effect
 
-	// Account security. The password could not be CHANGED — there was no message,
-	// no service method and no store method — so a leaked one meant a permanently
-	// lost account: revoking sessions does not stop whoever knows the password
-	// from signing in again. And there was no second factor at all, which is the
-	// other half of the same gap.
+	// Account security: changing the password and the second factor. Revoking
+	// sessions does not stop whoever knows a leaked password from signing in
+	// again; these two are what does.
 	MsgPasswordChange  MsgType = 145 // C→S: replace my password (old one re-confirmed)
 	MsgPasswordChanged MsgType = 146 // S→C: done; how many other sessions were killed
 	MsgTOTPSetup       MsgType = 147 // C→S: begin enrolment, get a secret + QR URI
@@ -215,10 +205,9 @@ const (
 
 	// KEY_STATE answers KEY_PUBLISH.
 	//
-	// Publishing used to be fire-and-forget, which left the publisher with nothing to
-	// confirm against and — worse — no way to learn its own one-time prekey balance.
+	// It confirms the publish and reports the device's own one-time prekey balance.
 	// Those keys are consumed one per peer that starts a session, so a device that
-	// runs dry silently drops to the weaker three-DH handshake and nobody finds out.
+	// runs dry silently drops to the weaker three-DH handshake unless it is told.
 	// The count has to come back to the OWNER: the peer who fetches a bundle cannot
 	// top up somebody else's keys.
 	MsgKeyState MsgType = 159 // S→C: prekeys held, and how old the signed prekey is

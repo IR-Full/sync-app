@@ -63,12 +63,10 @@ type Router interface {
 // NodeDelivery is the payload published to a node's deliver subject. Body is the
 // already-encoded envelope body bytes; the receiving node wraps it in a frame.
 //
-// Users is a LIST, and that is the whole point of the type's current shape. It
-// used to name one recipient, so a message to a group produced one publish per
-// member — each carrying a full copy of the body. A thousand-member chat spread
-// over ten nodes sent a thousand copies of the payload across the bus to deliver
-// ten distinct frames' worth of information. One delivery per NODE, naming the
-// recipients that live there, sends the body once per node instead.
+// Users is a LIST: one delivery per NODE, naming the recipients that live there,
+// sends the body once per node. One publish per recipient would carry a full copy
+// of the body each — a thousand-member chat spread over ten nodes would send a
+// thousand copies across the bus to deliver ten nodes' worth of frames.
 //
 // See codec.go for the wire format; it is hand-rolled binary rather than JSON
 // because this path carries every delivered message in the system.

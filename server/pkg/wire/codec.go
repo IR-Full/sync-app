@@ -172,8 +172,7 @@ func (c *Conn) SetCompression(on bool) { c.compress = on }
 // connection policy). Used to replay buffered frames verbatim on session resume.
 //
 // Every post-handshake frame on the gateway goes through here, so this is where
-// the negotiated algorithm has to be honoured: it used to consider only gzip,
-// which left a zstd-negotiated connection uncompressed after WELCOME.
+// the negotiated algorithm — zstd or gzip — has to be honoured.
 func (c *Conn) WriteRaw(payload []byte) error {
 	var flags byte
 	if len(payload) >= c.compressMinLen {

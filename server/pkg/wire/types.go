@@ -238,9 +238,9 @@ func (t MsgType) String() string {
 		return "CALL_SIGNAL"
 	default:
 		// Only MsgReserved (the zero value, which never appears on the wire) and types
-		// a future build adds reach here. TestEveryMsgTypeHasAName keeps the first
-		// list from silently growing back: 70 of 116 types used to land here, so every
-		// log line and metric label for them read "UNKNOWN".
+		// a future build adds reach here. TestEveryMsgTypeHasAName keeps the known
+		// types out of it: a type that lands here reads "UNKNOWN" in every log line
+		// and metric label.
 		return "UNKNOWN"
 	}
 }

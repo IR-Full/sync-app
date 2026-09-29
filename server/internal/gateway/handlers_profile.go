@@ -255,11 +255,8 @@ func validMediaRef(s string) bool {
 /*
 handleChatFlags writes the caller's own mute/pin/archive for a chat.
 
-The `muted` column has existed since the first migration and nothing ever read
-it: there was no message a client could send to set it, and the notification path
-never consulted it. So muting a chat was impossible while the schema, the model and
-the gRPC converters all implied it was supported — the worst kind of missing
-feature, because it looks present from every angle except the one that matters.
+The flags take effect elsewhere: fanout reads `muted` before sending a push
+(fanout.MuteChecker), and the chat list reads pinned and archived.
 
 Authorization is membership, and it is enforced by the store's own predicate
 rather than by a check here: the update names (chat_id, user_id), so a non-member's

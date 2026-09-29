@@ -9,13 +9,10 @@ import (
 	"github.com/SyncApp-chat/SyncApp/internal/store"
 )
 
-// This file is the half of session management that existed only as a store
-// method until now. Revoke and ListSessions were implemented and called from
-// nowhere, so "log out" meant the device forgot its token while the session
-// stayed valid on the server for the rest of its TTL — a lost phone kept access.
-// Everything here exists to close that, and the account-deletion path below is
-// its logical end: the same reasoning applied to the whole account rather than
-// one device.
+// Session management and account deletion. "Log out" has to end the session on
+// the server: a device that only forgets its token leaves the session valid for
+// the rest of its TTL, so a lost phone keeps access. Account deletion is the same
+// reasoning applied to the whole account rather than one device.
 
 // ErrWrongPassword is returned when a re-confirmation fails. Distinct from
 // ErrBadCredentials so a caller can tell "your password is wrong" (the user can

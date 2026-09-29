@@ -41,12 +41,11 @@ func X3DHInitiator(a InitiatorKeys, bundle PreKeyBundle) (sk []byte, ephemeralPu
 	// trusting any of the bundle. This is the MITM defense against a hostile key
 	// directory, and it is UNCONDITIONAL.
 	//
-	// It used to run only when the bundle carried a signature, which made the
-	// whole defense opt-in for the attacker: a hostile directory did not need to
-	// forge anything, it just omitted SigningKey and SignedPreKeySig and X3DH
-	// proceeded against a prekey nobody had vouched for. A missing signature is
-	// not a bundle from an older client to be tolerated — it is the exact shape
-	// of the attack, and the two are indistinguishable from here.
+	// Checking only when the bundle carries a signature would make the defense
+	// opt-in for the attacker: a hostile directory need not forge anything, only
+	// omit SigningKey and SignedPreKeySig. A missing signature is not a bundle
+	// from an older client to be tolerated — it is the exact shape of the attack,
+	// and the two are indistinguishable from here.
 	if !VerifyPreKey(bundle.SigningKey, bundle.SignedPreKey, bundle.SignedPreKeySig) {
 		return nil, nil, ErrBadPreKeySignature
 	}

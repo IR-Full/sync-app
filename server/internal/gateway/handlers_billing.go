@@ -34,17 +34,12 @@ breaking rather than as a plan ending.
 
 // sellsTiers reports whether this deployment has anything to sell.
 //
-// It is the condition every handler in this file used to express as
-// `svc.Billing == nil`, which was the wrong question. The billing service is
-// constructed whenever a BillingStore exists, and one always does — both the
-// Postgres and the in-memory store implement it — while an ACQUIRER is the part
-// that is genuinely optional. So the nil check was never true in any real
-// deployment and the branches behind it were dead code.
-//
-// The visible symptom was the one `model.UngatedEntitlements` warns about in its
-// own comment: a self-hosted instance with no acquirer put every account on the
-// FREE tier, which locks secret chats behind a purchase that the same deployment
-// makes impossible.
+// Not `svc.Billing == nil`: the billing service exists whenever a BillingStore
+// does, and both stores implement one, while an ACQUIRER is the part that is
+// genuinely optional. Asking about the service would put every account of a
+// self-hosted instance with no acquirer on the FREE tier — locking secret chats
+// behind a purchase the same deployment makes impossible (see
+// `model.UngatedEntitlements`).
 func (c *conn) sellsTiers() bool {
 	return c.gw.svc.Billing != nil && c.gw.svc.Billing.SellsTiers()
 }

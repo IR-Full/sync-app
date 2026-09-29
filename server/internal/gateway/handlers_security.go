@@ -12,12 +12,10 @@ import (
 /*
 Account security: changing a password, and the second factor.
 
-Neither existed. The password could not be changed by any code path at all, which
-made a leaked one permanent — revoking every session does not stop whoever knows
-the password from signing in again a minute later, so the account had no owner
-any more, only two claimants with identical credentials. And there was no second
-factor, which is the other half of the same gap: the one credential was
-interceptable and was the only one.
+The two halves of one gap. Without a password change a leaked password is
+permanent — revoking every session does not stop whoever knows it from signing in
+again a minute later. Without a second factor the one credential is interceptable
+and is the only one.
 
 Everything here is metered under the same per-user budget as the other expensive
 writes, because both paths run argon2id — cheap to ask for, memory-hard to serve.

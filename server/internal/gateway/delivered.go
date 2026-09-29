@@ -1,15 +1,12 @@
 // Delivery receipts: telling a sender that a message reached someone's device.
 //
-// A SendAck proves the write was DURABLE and a ReadUpd proves it was READ, but
-// nothing reported the step between them — fanout pushed a message and told the
-// sender nothing, so a client could only ever draw two states. What was missing is
-// not a counter but a *witness*: only the gateway holding the recipient's socket
-// knows whether the bytes left the server.
+// A SendAck proves the write was DURABLE and a ReadUpd proves it was READ; this is
+// the step between. It needs a *witness*, not a counter: only the gateway holding
+// the recipient's socket knows whether the bytes left the server.
 //
-// So the receipt is raised here, from the write path, and nowhere else. `route()`
-// returning a node count would have been the cheap answer, and it would have meant
-// "some node was notified" — which is true even when that node's connection dies
-// with the frame still queued on it.
+// So the receipt is raised here, from the write path, and nowhere else. A node
+// count from `route()` would only mean "some node was notified" — true even when
+// that node's connection dies with the frame still queued on it.
 package gateway
 
 import (
