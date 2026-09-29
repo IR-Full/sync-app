@@ -82,6 +82,7 @@ func (s *Store) DeleteAccount(_ context.Context, userID string) error {
 	}
 	delete(s.usersByName, u.Username)
 	delete(s.users, userID)
+	delete(s.platformRoles, userID)
 
 	for id, d := range s.devices {
 		if d.UserID == userID {

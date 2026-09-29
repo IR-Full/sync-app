@@ -209,7 +209,7 @@ Grafana на http://localhost:3000 (Explore → Prometheus / Tempo). `/metrics` 
 | `SYNCAPP_MEDIA_SECRET`    | dev-значение   | ключ HMAC для подписи медиа-ссылок. **Dev-значение — константа в коде**; кто её знает, подделывает ссылки на загрузку и скачивание. `REQUIRE_TLS=1` не стартует с ним |
 | `SYNCAPP_MEDIA_DIR`       | `./data/media` | каталог блобов; общий для всех реплик шлюза |
 | `SYNCAPP_BANNED_TERMS`    | `spamword,scamlink` | термины, которые помечает модерация |
-| `SYNCAPP_ADMIN_USERS` / `_MODERATOR_USERS` | *(не задано)* | id админов/модераторов (RBAC) |
+| `SYNCAPP_ADMIN_USERS` / `_MODERATOR_USERS` | *(не задано)* | id постоянных админов/модераторов (RBAC); роли, выданные во время работы, хранятся в базе — см. `go run ./cmd/roles` |
 | `SYNCAPP_TRACE` / `SYNCAPP_OTLP_ENDPOINT` | *(не задано)* | трейсинг: stdout / OTLP-коллектор |
 | `SYNCAPP_PPROF`           | *(не задано)*  | `1` монтирует `/debug/pprof/`            |
 | `SYNCAPP_WRITE_BATCH`     | `on`           | `off` отключает групповой коммит записи  |

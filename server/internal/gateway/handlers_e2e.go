@@ -389,7 +389,7 @@ func (c *conn) handleChatExport(ctx context.Context, e wire.Envelope) error {
 		return c.replyForError(e.RequestID, err)
 	}
 	// Authorization: chat owner, or a platform admin/moderator (RBAC).
-	if ch.OwnerID != c.userID && !c.gw.canExportAny(c.userID) {
+	if ch.OwnerID != c.userID && !c.gw.canExportAny(ctx, c.userID) {
 		c.gw.audit(ctx, "chat.export.denied", c.userID, body.ChatID, "not owner/admin/moderator")
 		return c.replyError(e.RequestID, wire.ErrForbidden, "only the chat owner, an admin, or a moderator may export")
 	}

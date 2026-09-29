@@ -48,7 +48,8 @@ type Store struct {
 	// prevResumeIndex maps a CONSUMED resume token to its session, which is how
 	// replay of a rotated token is detected rather than merely rejected.
 	prevResumeIndex map[string]string
-	twoFactor       map[string]*model.TwoFactor // userID -> enrolment
+	twoFactor       map[string]*model.TwoFactor        // userID -> enrolment
+	platformRoles   map[string]model.PlatformRoleGrant // userID -> grant
 
 	subscriptions map[string]*model.Subscription // userID -> subscription
 	payments      map[string]*model.Payment      // paymentID -> payment
@@ -91,6 +92,7 @@ func New() *Store {
 
 		prevResumeIndex: map[string]string{},
 		twoFactor:       map[string]*model.TwoFactor{},
+		platformRoles:   map[string]model.PlatformRoleGrant{},
 
 		subscriptions: map[string]*model.Subscription{},
 		payments:      map[string]*model.Payment{},
@@ -101,5 +103,5 @@ func New() *Store {
 
 // Stores returns a store.Stores bundle backed by this instance.
 func (s *Store) Stores() store.Stores {
-	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s, SecretQ: s, TwoFactor: s, Billing: s}
+	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s, SecretQ: s, TwoFactor: s, Billing: s, Roles: s}
 }

@@ -499,8 +499,12 @@ Uses **only standard, audited primitives** — no home-grown crypto:
   returning true for every origin (P1-3). A warning does not stop a deploy;
   refusing to boot does.
   ⬜ Move to **Vault/KMS** in prod; the default media secret must never ship.
-- ✅ **RBAC** (admin/moderator roles gate privileged ops like chat export) and an
-  **append-only audit log** (`internal/audit`) record login + export events; an
+- ✅ **RBAC** (admin/moderator roles gate privileged ops like chat export). Roles
+  come from `SYNCAPP_ADMIN_USERS`/`SYNCAPP_MODERATOR_USERS` (always held) and from
+  the `platform_roles` table, granted and revoked with `cmd/roles`; a gateway
+  caches a stored role for 30 s and treats a failed lookup as no role. The
+  **append-only audit log** (`internal/audit`) records login, export and every
+  role change; an
   **mTLS helper** (`pkg/mtls`) is ready for service-to-service auth when the
   monolith splits.
 - ⬜ Encrypted backups; wire mTLS into the actual service mesh once split out.

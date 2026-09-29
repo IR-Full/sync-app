@@ -465,3 +465,25 @@ type TwoFactor struct {
 
 // Enabled reports whether this factor is enforced at login.
 func (t *TwoFactor) Enabled() bool { return t != nil && t.ConfirmedAt != 0 }
+
+// PlatformRole is a platform-wide role (RBAC), as opposed to a MemberRole, which
+// is one member's standing in one chat.
+type PlatformRole string
+
+const (
+	PlatformAdmin     PlatformRole = "admin"
+	PlatformModerator PlatformRole = "moderator"
+)
+
+// Valid reports whether r is a role the platform grants.
+func (r PlatformRole) Valid() bool { return r == PlatformAdmin || r == PlatformModerator }
+
+// PlatformRoleGrant is who holds a platform role, and who granted it when.
+type PlatformRoleGrant struct {
+	UserID string
+	Role   PlatformRole
+	// GrantedBy names the grantor: a user id, or "env" for a role seeded from
+	// SYNCAPP_ADMIN_USERS / SYNCAPP_MODERATOR_USERS.
+	GrantedBy string
+	GrantedAt int64
+}

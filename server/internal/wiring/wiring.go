@@ -131,6 +131,7 @@ func NewEdge(ctx context.Context, b *platform.Backends, cfg Config, d EdgeDeps) 
 		Media:      mediaSvc,
 		Search:     searchSvc,
 		Audit:      audit.NewLogSink(b.Log),
+		Roles:      st.Roles,
 		Bus:        b.Bus,
 		Router:     b.Router,
 		Replay:     b.Replay,

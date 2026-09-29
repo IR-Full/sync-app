@@ -124,7 +124,7 @@ func (s *Store) Close() {
 
 // Stores returns a store.Stores bundle backed by this instance.
 func (s *Store) Stores() store.Stores {
-	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s, SecretQ: s, TwoFactor: s, Billing: s}
+	return store.Stores{Users: s, Sessions: s, Chats: s, Messages: s, Reads: s, Reactions: s, Calls: s, Polls: s, Contacts: s, Schedule: s, Pins: s, Drafts: s, Invites: s, Outbox: s, SecretQ: s, TwoFactor: s, Billing: s, Roles: s}
 }
 
 // atoi/itoa convert between the model's string ids and BIGINT columns.

@@ -253,6 +253,21 @@ type Stores struct {
 	SecretQ   SecretQueueStore
 	TwoFactor TwoFactorStore
 	Billing   BillingStore
+	Roles     PlatformRoleStore
+}
+
+// PlatformRoleStore owns platform-wide roles. A role ends with the account:
+// deleting a user removes their grant.
+type PlatformRoleStore interface {
+	// PlatformRole returns the user's role, or "" when they hold none.
+	PlatformRole(ctx context.Context, userID string) (model.PlatformRole, error)
+	ListPlatformRoles(ctx context.Context) ([]model.PlatformRoleGrant, error)
+	// SetPlatformRole grants or replaces a role. ErrNotFound when the user does
+	// not exist.
+	SetPlatformRole(ctx context.Context, g model.PlatformRoleGrant) error
+	// RemovePlatformRole revokes a role; revoking one that is not held is not an
+	// error.
+	RemovePlatformRole(ctx context.Context, userID string) error
 }
 
 // ThreadReader is an optional MessageStore capability: fetching a reply branch

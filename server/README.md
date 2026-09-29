@@ -231,8 +231,8 @@ WiFi↔LTE) and no head-of-line blocking.
 | `SYNCAPP_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs. **The dev default is a hardcoded constant**; anyone who knows it forges upload/download URLs. `REQUIRE_TLS=1` refuses to start with it |
 | `SYNCAPP_MEDIA_DIR`       | `./data/media` | blob directory; must be shared by every gateway replica |
 | `SYNCAPP_BANNED_TERMS`    | `spamword,scamlink` | comma list of terms the moderation filter flags |
-| `SYNCAPP_ADMIN_USERS`     | *(unset)*      | comma list of platform-admin user ids (RBAC) |
-| `SYNCAPP_MODERATOR_USERS` | *(unset)*      | comma list of moderator user ids (RBAC)  |
+| `SYNCAPP_ADMIN_USERS`     | *(unset)*      | comma list of user ids that are always platform admins (RBAC); roles granted at runtime live in the database — see `go run ./cmd/roles` |
+| `SYNCAPP_MODERATOR_USERS` | *(unset)*      | comma list of user ids that are always moderators (RBAC)  |
 | `SYNCAPP_TRACE`           | *(unset)*      | `stdout` prints OpenTelemetry spans      |
 | `SYNCAPP_OTLP_ENDPOINT`   | *(unset)*      | OTLP/HTTP collector (e.g. `localhost:4318`) |
 | `SYNCAPP_PPROF`           | *(unset)*      | `1` mounts `/debug/pprof/`               |

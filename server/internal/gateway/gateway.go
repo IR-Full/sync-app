@@ -122,9 +122,12 @@ type Services struct {
 	Billing BillingService
 	Search  SearchService // full-text search (optional)
 	Audit   audit.Sink    // audit log (optional)
-	Bus     eventbus.Bus  // event bus (for cross-node delivery)
-	Router  router.Router // user→node routing registry
-	Replay  replay.Buffer // per-session resume replay buffer (optional)
+	// Roles holds platform roles granted at runtime (cmd/roles). The users listed
+	// in Config.AdminUsers/ModeratorUsers hold their roles regardless.
+	Roles  store.PlatformRoleStore
+	Bus    eventbus.Bus  // event bus (for cross-node delivery)
+	Router router.Router // user→node routing registry
+	Replay replay.Buffer // per-session resume replay buffer (optional)
 	// UserLimits caps EXPENSIVE per-user actions (media tickets, search, export,
 	// invite links, chat creation) across all of a user's connections — and, with
 	// a Redis-backed implementation, across nodes. The per-connection flood bucket
@@ -220,8 +223,10 @@ type Gateway struct {
 	newChatLimiter *ratelimit.Limiter
 	// conns tracks live connections for graceful drain on shutdown.
 	conns sync.Map // *conn -> struct{}
-	// roles maps user ids to their platform role (RBAC).
+	// roles maps user ids to the platform role the configuration gives them.
 	roles map[string]Role
+	// roleCache holds roles read from Services.Roles.
+	roleCache roleCache
 	// ipg limits per-source-IP accept rate and concurrent connections (may be nil).
 	ipg *ipGuard
 	// reaper: one shared liveness goroutine per node (idle-close + ping).
@@ -245,8 +250,8 @@ func pickUserLimits(s ratelimit.Shared) ratelimit.Shared {
 
 // canExportAny reports whether a user may export ANY chat (admin or moderator).
 // Chat owners can always export their own chat regardless of platform role.
-func (g *Gateway) canExportAny(userID string) bool {
-	r := g.roles[userID]
+func (g *Gateway) canExportAny(ctx context.Context, userID string) bool {
+	r := g.roleOf(ctx, userID)
 	return r == RoleAdmin || r == RoleModerator
 }
 
