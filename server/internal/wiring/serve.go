@@ -12,9 +12,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/SyncApp-chat/SyncApp/internal/billing"
-	"github.com/SyncApp-chat/SyncApp/internal/gateway"
-	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/IR-Full/sync-app/server/internal/billing"
+	"github.com/IR-Full/sync-app/server/internal/gateway"
+	"github.com/IR-Full/sync-app/server/internal/platform"
 )
 
 // shutdownGrace bounds how long in-flight HTTP requests get on shutdown.

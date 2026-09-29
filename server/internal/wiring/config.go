@@ -15,9 +15,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SyncApp-chat/SyncApp/internal/billing"
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
-	"github.com/SyncApp-chat/SyncApp/internal/gateway"
+	"github.com/IR-Full/sync-app/server/internal/billing"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/gateway"
 )
 
 // Config is every setting the service graph reads from the environment, read

@@ -179,7 +179,7 @@ export function SecurityPanel() {
               ? `${t('security.twoFactor.on')} · ${t('security.twoFactor.recoveryLeft', {
                   count: security.twoFactor?.recoveryLeft ?? 0,
                 })}`
-            : t('security.twoFactor.off')}
+              : t('security.twoFactor.off')}
         </p>
 
         {available && enabled && (

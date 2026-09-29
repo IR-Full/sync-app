@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/invite"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/invite"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // Bounds on a create. The title cap keeps a chat name a name; the member cap

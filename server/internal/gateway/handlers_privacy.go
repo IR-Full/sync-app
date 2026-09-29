@@ -9,8 +9,8 @@ package gateway
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 func (c *conn) handlePrivacyGet(ctx context.Context, e wire.Envelope) error {

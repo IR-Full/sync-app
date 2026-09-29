@@ -12,8 +12,8 @@ package gateway
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // deliveryReport is one receipt waiting to be routed back to its sender.

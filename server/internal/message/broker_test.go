@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/chat"
-	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/internal/chat"
+	"github.com/IR-Full/sync-app/server/internal/store/memory"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 func newTestBroker(t *testing.T) (*Broker, string, string) {

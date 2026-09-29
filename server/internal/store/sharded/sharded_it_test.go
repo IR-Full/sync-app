@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/internal/store/postgres"
-	"github.com/SyncApp-chat/SyncApp/internal/store/sharded"
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store/postgres"
+	"github.com/IR-Full/sync-app/server/internal/store/sharded"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 // The unit tests prove the ROUTING with fake shards. What they cannot prove is

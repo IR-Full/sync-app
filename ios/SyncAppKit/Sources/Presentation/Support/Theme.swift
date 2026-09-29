@@ -4,12 +4,12 @@ import UIKit
 
 /// Colours and small shared view pieces.
 ///
-/// Every colour is either a system colour or resolves through the asset
-/// catalogue, so light and dark mode work by construction rather than by a pile
-/// of `colorScheme ==` checks.
+/// Every colour is a system colour, resolves through the asset catalogue, or is a
+/// dynamic colour with its own dark variant, so light and dark mode work by
+/// construction rather than by a pile of `colorScheme ==` checks.
 public enum Theme {
-    public static let accent = Color.accentColor
-    public static let outgoingBubble = Color.accentColor
+    // The accent (and the outgoing bubble, which is painted with it) is the
+    // user's choice, read from the environment as `appAccent`.
     public static let incomingBubble = Color(uiColor: .secondarySystemBackground)
     public static let outgoingText = Color.white
     public static let incomingText = Color.primary
@@ -31,6 +31,77 @@ extension AppSettings.Theme {
         case .light: return .light
         case .dark: return .dark
         }
+    }
+}
+
+extension AppSettings.Accent {
+    /// The palette's colour, with a lighter variant for dark mode — the same
+    /// values as the web client's `data-accent` blocks, so an account looks the
+    /// same on both. `standard` is the asset catalogue's accent.
+    public var color: Color {
+        guard let palette else { return .accentColor }
+        return Self.dynamic(light: palette.light, dark: palette.dark)
+    }
+
+    /// The light- and dark-mode RGB values; nil for the asset catalogue's accent.
+    var palette: (light: UInt32, dark: UInt32)? {
+        switch self {
+        case .standard: return nil
+        case .violet: return (0x7C4DFF, 0x9D78FF)
+        case .emerald: return (0x0F9D6E, 0x2EC38D)
+        case .amber: return (0xC2700C, 0xE8A13C)
+        case .rose: return (0xD6336C, 0xF06595)
+        }
+    }
+
+    public var titleKey: String { "profile.accent." + rawValue }
+
+    private static func dynamic(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            Self.rgb(traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
+
+    private static func rgb(_ hex: UInt32) -> UIColor {
+        UIColor(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+}
+
+private struct AccentKey: EnvironmentKey {
+    static let defaultValue = Color.accentColor
+}
+
+extension EnvironmentValues {
+    /// The accent the user picked. `RootView` sets it together with `.tint`:
+    /// `.tint` recolours controls, and a view that paints with the accent (a
+    /// bubble, a badge) reads it from here. `Color.accentColor` is the asset
+    /// catalogue's colour, so a view painting with it would ignore the choice.
+    public var appAccent: Color {
+        get { self[AccentKey.self] }
+        set { self[AccentKey.self] = newValue }
+    }
+}
+
+/// The pill beside a paying account's name. Text rather than a bare star, so it
+/// reads at a glance and says what it is to VoiceOver.
+public struct PremiumBadge: View {
+    @Environment(\.appAccent) private var accent
+
+    public init() {}
+
+    public var body: some View {
+        Text(l("profile.premium.badge"))
+            .font(.caption2.weight(.semibold))
+            .textCase(.uppercase)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(accent))
     }
 }
 

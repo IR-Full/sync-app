@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // fakeSink is a connection that records what it was handed. `full` makes Send

@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/model"
 )
 
 // redisBackend stores presence in Redis. "online" is a key with a TTL: if the

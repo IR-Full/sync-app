@@ -3,7 +3,7 @@ package gateway
 import (
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // The read side used to cost nothing at all. HISTORY is the clearest case: one

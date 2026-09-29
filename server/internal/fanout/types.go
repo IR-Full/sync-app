@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/router"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/router"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
 )
 
 // Chats is the membership lookup fanout needs. An interface (not *chat.Service)

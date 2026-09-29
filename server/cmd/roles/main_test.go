@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/audit"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
+	"github.com/IR-Full/sync-app/server/internal/audit"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store/memory"
 )
 
 type recordingSink struct{ events []audit.Event }

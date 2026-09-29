@@ -80,7 +80,10 @@ final class PremiumViewModel: ObservableObject {
         }
     }
 
-    var isPremium: Bool { entitlements.plan != "free" && !entitlements.plan.isEmpty }
+    /// Whether the account is paying right now — for the plan label and the cancel
+    /// button only. Features are gated on their entitlement instead, which a
+    /// deployment without a payment provider grants on the `free` plan.
+    var isPremium: Bool { entitlements.isPremiumActive() }
 
     func periodText() -> String? {
         guard let end = entitlements.periodEnd else { return nil }
@@ -93,6 +96,7 @@ final class PremiumViewModel: ObservableObject {
 /// The Premium screen: what the tier grants, what it costs, and how to pay.
 struct PremiumView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appAccent) private var accent
     @StateObject private var model: PremiumViewModel
 
     init(security: any AccountSecurityRepository) {
@@ -144,7 +148,7 @@ struct PremiumView: View {
                 Text(l("premium.current"))
                 Spacer()
                 Text(model.isPremium ? l("premium.plan.premium") : l("premium.plan.free"))
-                    .foregroundStyle(model.isPremium ? Color.accentColor : .secondary)
+                    .foregroundStyle(model.isPremium ? accent : .secondary)
             }
             if let period = model.periodText() {
                 Text(period).font(.caption).foregroundStyle(.secondary)

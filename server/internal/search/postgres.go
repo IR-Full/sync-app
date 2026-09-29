@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
 )
 
 // postgresBackend is the shared, multi-node search index using Postgres

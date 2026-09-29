@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/internal/store/sharded"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store/sharded"
 )
 
 // Sharding is switched on by an environment variable, and everything downstream

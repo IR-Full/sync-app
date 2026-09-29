@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/contact"
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/pin"
-	"github.com/SyncApp-chat/SyncApp/internal/schedule"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/contact"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/pin"
+	"github.com/IR-Full/sync-app/server/internal/schedule"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // --- Contacts & blocking ---

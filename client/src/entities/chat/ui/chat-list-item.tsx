@@ -140,7 +140,10 @@ export function ChatListItem({
           </span>
           <span className="mt-0.5 flex items-center gap-2">
             <span
-              className={cn('truncate text-xs', someoneTyping ? 'text-accent' : 'text-ink-muted')}
+              className={cn(
+                'truncate text-xs',
+                someoneTyping ? 'text-accent' : 'text-ink-muted',
+              )}
             >
               {preview}
             </span>

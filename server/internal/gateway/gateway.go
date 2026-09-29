@@ -16,19 +16,19 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/SyncApp-chat/SyncApp/internal/audit"
-	"github.com/SyncApp-chat/SyncApp/internal/billing"
-	"github.com/SyncApp-chat/SyncApp/internal/delivery"
-	"github.com/SyncApp-chat/SyncApp/internal/keydir"
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/internal/replay"
-	"github.com/SyncApp-chat/SyncApp/internal/router"
-	"github.com/SyncApp-chat/SyncApp/internal/safego"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
-	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/audit"
+	"github.com/IR-Full/sync-app/server/internal/billing"
+	"github.com/IR-Full/sync-app/server/internal/delivery"
+	"github.com/IR-Full/sync-app/server/internal/keydir"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/replay"
+	"github.com/IR-Full/sync-app/server/internal/router"
+	"github.com/IR-Full/sync-app/server/internal/safego"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/id"
+	"github.com/IR-Full/sync-app/server/pkg/ratelimit"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 const (

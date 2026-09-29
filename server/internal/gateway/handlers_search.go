@@ -6,8 +6,8 @@ package gateway
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/search"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/search"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // --- Search: full-text query, permission-filtered to the user's chats. ---

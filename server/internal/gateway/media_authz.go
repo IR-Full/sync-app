@@ -3,8 +3,8 @@ package gateway
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/media"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/media"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 /*

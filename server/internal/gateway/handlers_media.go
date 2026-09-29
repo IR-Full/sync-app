@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/SyncApp-chat/SyncApp/internal/media"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/media"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // --- Media: issue signed upload/download URLs; bytes go over HTTP. ---

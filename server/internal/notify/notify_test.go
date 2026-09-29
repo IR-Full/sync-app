@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
 )
 
 func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

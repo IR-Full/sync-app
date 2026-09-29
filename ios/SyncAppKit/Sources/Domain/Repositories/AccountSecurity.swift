@@ -230,6 +230,8 @@ public struct Entitlements: Equatable, Sendable {
     public var priorityDelivery: Bool
     public var voiceTranscription: Bool
     public var badge: Bool
+    /// The accent palettes beyond the default one.
+    public var customThemes: Bool
 
     public init(
         plan: String = "free",
@@ -243,7 +245,8 @@ public struct Entitlements: Equatable, Sendable {
         advancedSearch: Bool = false,
         priorityDelivery: Bool = false,
         voiceTranscription: Bool = false,
-        badge: Bool = false
+        badge: Bool = false,
+        customThemes: Bool = false
     ) {
         self.plan = plan
         self.status = status
@@ -257,6 +260,7 @@ public struct Entitlements: Equatable, Sendable {
         self.priorityDelivery = priorityDelivery
         self.voiceTranscription = voiceTranscription
         self.badge = badge
+        self.customThemes = customThemes
     }
 
     /// What to draw before the server has answered.
@@ -270,6 +274,23 @@ public struct Entitlements: Equatable, Sendable {
     /// a deployment that does not sell tiers still sends real entitlements on connect.
     /// The only time this value is on screen is the moment before the first reply.
     public static let unknown = Entitlements(plan: "free")
+
+    /// Whether the account is on the paid plan right now.
+    ///
+    /// The plan has to be exactly `premium`: an unknown name from a newer server is
+    /// not proof of payment. The period is checked as well as the plan, because a
+    /// cancelled subscription keeps its access until the paid period ends and loses
+    /// it after — hiding Premium at cancellation would take away what was bought,
+    /// and trusting the plan alone would keep showing it after it lapsed.
+    ///
+    /// This answers "is this account paying", for the plan label and the cancel
+    /// button. Whether a FEATURE is available is the entitlement's question: a
+    /// deployment with no payment provider reports `free` and grants everything.
+    public func isPremiumActive(now: Date = Date()) -> Bool {
+        guard plan == "premium" else { return false }
+        guard let periodEnd else { return true }
+        return periodEnd > now
+    }
 }
 
 /// How a payment is taken. The server decides which are available from the country —

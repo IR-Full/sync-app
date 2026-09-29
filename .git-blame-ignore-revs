@@ -6,3 +6,6 @@
 11cc2ac7448af1fcefacc0a388ff30a757ccedc1
 # store/memory/memory.go split by store
 c98c7408ffe9f28da7945176f841f43413a55e9b
+
+# Go module rename to github.com/IR-Full/sync-app/server
+ff04b237c2b186a89cd9804d544c21e1475b4c08

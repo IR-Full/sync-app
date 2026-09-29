@@ -113,7 +113,9 @@ describe.skipIf(serverWire === null)('MsgType parity with the server', () => {
   it('names every type it declares', () => {
     // A type with no name renders as UNKNOWN(109) in a log, which is exactly the
     // moment somebody is reading the log to find out what arrived.
-    const unnamed = [...clientTypes().keys()].filter((n) => msgTypeName(n).startsWith('UNKNOWN'))
+    const unnamed = [...clientTypes().keys()].filter((n) =>
+      msgTypeName(n).startsWith('UNKNOWN'),
+    )
 
     expect(unnamed).toEqual([])
   })

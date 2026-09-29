@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
 )
 
 // purgeStore records what the janitor asked for and can pretend to hold a

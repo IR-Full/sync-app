@@ -180,6 +180,14 @@ public final class AppModel: ObservableObject {
         phase = .signedIn(updated)
     }
 
+    /// Our own profile as other people see it — which is where the premium badge
+    /// comes from. nil when signed out or when the gateway cannot be reached; the
+    /// badge is decoration, so a failure hides it rather than raising an error.
+    public func ownProfile() async -> Profile? {
+        guard let account else { return nil }
+        return try? await auth.profile(of: account.userID)
+    }
+
     // MARK: - Observation
 
     private func observeSettings() {

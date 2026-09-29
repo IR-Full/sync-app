@@ -3,16 +3,16 @@ package gateway
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/auth"
-	"github.com/SyncApp-chat/SyncApp/internal/billing"
-	"github.com/SyncApp-chat/SyncApp/internal/chat"
-	"github.com/SyncApp-chat/SyncApp/internal/media"
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/poll"
-	"github.com/SyncApp-chat/SyncApp/internal/schedule"
-	"github.com/SyncApp-chat/SyncApp/internal/search"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/auth"
+	"github.com/IR-Full/sync-app/server/internal/billing"
+	"github.com/IR-Full/sync-app/server/internal/chat"
+	"github.com/IR-Full/sync-app/server/internal/media"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/poll"
+	"github.com/IR-Full/sync-app/server/internal/schedule"
+	"github.com/IR-Full/sync-app/server/internal/search"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // These interfaces are the seam between the realtime gateway and the domain

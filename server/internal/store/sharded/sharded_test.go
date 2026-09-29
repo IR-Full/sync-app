@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 // fakeShard is a minimal store.MessageStore that records which chats it received

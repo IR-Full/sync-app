@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
 )
 
 // maxFrames caps how many recent frames a session buffers.

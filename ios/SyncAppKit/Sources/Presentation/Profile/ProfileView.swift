@@ -36,6 +36,8 @@ struct ProfileView: View {
 
     @State private var isPresentingSecurity = false
     @State private var isPresentingPremium = false
+    @State private var entitlements = Entitlements.unknown
+    @State private var isPremium = false
 
     init(account: Account, media: any MediaRepository, security: any AccountSecurityRepository) {
         self.placeholder = account
@@ -66,6 +68,16 @@ struct ProfileView: View {
             .sheet(isPresented: $isPresentingPremium) {
                 PremiumView(security: security)
             }
+            .task {
+                for await current in security.entitlements() {
+                    entitlements = current
+                }
+            }
+            // Re-read whenever the entitlements change, so buying or losing the
+            // tier updates the badge without reopening the screen.
+            .task(id: entitlements) {
+                isPremium = await app.ownProfile()?.premium ?? false
+            }
         }
     }
 
@@ -92,7 +104,10 @@ struct ProfileView: View {
                     imageURL: avatarFile
                 )
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(account.bestName).font(.headline)
+                    HStack(spacing: 6) {
+                        Text(account.bestName).font(.headline)
+                        if isPremium { PremiumBadge() }
+                    }
                     Text("@" + account.username).foregroundStyle(.secondary)
                 }
             }
@@ -212,7 +227,7 @@ struct ProfileView: View {
     }
 
     private var appearanceSection: some View {
-        Section(l("profile.section.appearance")) {
+        Section {
             Picker(l("profile.theme"), selection: Binding(
                 get: { app.settings.theme },
                 set: { value in app.updateSettings { $0.theme = value } }
@@ -229,6 +244,49 @@ struct ProfileView: View {
                 Text(l("profile.language.system")).tag(AppSettings.Language.system)
                 Text("Русский").tag(AppSettings.Language.ru)
                 Text("English").tag(AppSettings.Language.en)
+            }
+
+            accentRow
+        } header: {
+            Text(l("profile.section.appearance"))
+        } footer: {
+            if !entitlements.customThemes {
+                Text(l("profile.accent.premium"))
+            }
+        }
+    }
+
+    /// The accent palettes, offered on the ENTITLEMENT rather than on the plan
+    /// name: a deployment with no payment provider reports `free` and grants the
+    /// palettes, and a name check would lock them on exactly that install.
+    private var accentRow: some View {
+        let locked = !entitlements.customThemes
+        return LabeledContent(l("profile.accent")) {
+            HStack(spacing: 10) {
+                ForEach(AppSettings.Accent.allCases, id: \.self) { accent in
+                    let isSelected = app.settings.accent == accent
+                    Button {
+                        app.updateSettings { $0.accent = accent }
+                    } label: {
+                        Circle()
+                            .fill(accent.color)
+                            .frame(width: 26, height: 26)
+                            .overlay {
+                                if isSelected {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    // The palette in use stays enabled so it still reads as chosen;
+                    // the default is always open, so a lapsed account can go back.
+                    .disabled(locked && accent != .standard && !isSelected)
+                    .opacity(locked && accent != .standard && !isSelected ? 0.35 : 1)
+                    .accessibilityLabel(l(accent.titleKey))
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
             }
         }
     }

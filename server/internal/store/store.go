@@ -10,7 +10,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/model"
 )
 
 // ErrNotFound is returned when a lookup misses.

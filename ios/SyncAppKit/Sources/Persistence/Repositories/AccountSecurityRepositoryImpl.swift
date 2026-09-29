@@ -217,7 +217,8 @@ public final class AccountSecurityRepositoryImpl: AccountSecurityRepository, @un
             advancedSearch: body.advancedSearch,
             priorityDelivery: body.priorityDelivery,
             voiceTranscription: body.voiceTranscription,
-            badge: body.badge
+            badge: body.badge,
+            customThemes: body.customThemes
         )
     }
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/SyncApp-chat/SyncApp/internal/auth"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/auth"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 /*

@@ -141,7 +141,9 @@ export function PremiumPanel() {
     <Section title={t('premium.title')}>
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-ink-muted text-xs">{t('premium.plan')}</span>
-        <span className={isPremium ? 'text-accent text-sm font-semibold' : 'text-ink-muted text-sm'}>
+        <span
+          className={isPremium ? 'text-accent text-sm font-semibold' : 'text-ink-muted text-sm'}
+        >
           {isPremium ? t('premium.plan.premium') : t('premium.plan.free')}
         </span>
       </div>

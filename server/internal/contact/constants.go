@@ -3,7 +3,7 @@ package contact
 import (
 	"errors"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 var (

@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
 )
 
 // errTokenDead marks a token the provider says will never receive again.

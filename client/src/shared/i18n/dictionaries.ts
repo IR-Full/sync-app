@@ -327,7 +327,6 @@ const en = {
   'contacts.manage': 'Contacts',
   'contacts.target': 'Username',
 
-
   'chats.pin': 'Pin',
   'chats.unpin': 'Unpin',
   'chats.pinned': 'Pinned',
@@ -719,7 +718,6 @@ const ru: Record<TranslationKey, string> = {
 
   'contacts.manage': 'Контакты',
   'contacts.target': 'Имя пользователя',
-
 
   'chats.pin': 'Закрепить',
   'chats.unpin': 'Открепить',

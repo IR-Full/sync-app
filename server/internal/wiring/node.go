@@ -5,12 +5,12 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/SyncApp-chat/SyncApp/internal/chat"
-	"github.com/SyncApp-chat/SyncApp/internal/gateway"
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/outbox"
-	"github.com/SyncApp-chat/SyncApp/internal/platform"
-	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/IR-Full/sync-app/server/internal/chat"
+	"github.com/IR-Full/sync-app/server/internal/gateway"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/outbox"
+	"github.com/IR-Full/sync-app/server/internal/platform"
+	"github.com/IR-Full/sync-app/server/internal/rpc"
 )
 
 // Node is an assembled gateway process, ready to Serve.

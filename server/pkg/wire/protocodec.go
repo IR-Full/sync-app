@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	pb "github.com/SyncApp-chat/SyncApp/internal/wirepb"
+	pb "github.com/IR-Full/sync-app/server/internal/wirepb"
 )
 
 // protoCodec is the default BodyCodec: it encodes envelope bodies as protobuf.

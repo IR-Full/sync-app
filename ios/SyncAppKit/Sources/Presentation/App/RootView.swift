@@ -60,6 +60,8 @@ public struct RootView: View {
             }
         }
         .preferredColorScheme(app.settings.theme.colorScheme)
+        .tint(app.settings.accent.color)
+        .environment(\.appAccent, app.settings.accent.color)
         .animation(.default, value: app.phase)
         .task { await app.start() }
         // Coming back to the foreground is the moment a user expects to be online.

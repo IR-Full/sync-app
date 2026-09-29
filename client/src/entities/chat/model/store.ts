@@ -145,7 +145,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
  * of the list, because `updatedAt` is when THIS client last touched the row.
  */
 export function selectOrderedChats(state: ChatState): ChatSummary[] {
-  return Object.values(state.chats).filter((c) => !isArchived(c)).sort(compareChats)
+  return Object.values(state.chats)
+    .filter((c) => !isArchived(c))
+    .sort(compareChats)
 }
 
 /**

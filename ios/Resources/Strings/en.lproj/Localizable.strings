@@ -123,6 +123,14 @@
 "profile.theme.system" = "System";
 "profile.theme.light" = "Light";
 "profile.theme.dark" = "Dark";
+"profile.accent" = "Accent";
+"profile.accent.premium" = "More accent colours come with Premium.";
+"profile.accent.default" = "Default";
+"profile.accent.violet" = "Violet";
+"profile.accent.emerald" = "Emerald";
+"profile.accent.amber" = "Amber";
+"profile.accent.rose" = "Rose";
+"profile.premium.badge" = "Premium";
 "profile.language" = "Language";
 "profile.language.system" = "System";
 "profile.push" = "Push notifications";

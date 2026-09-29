@@ -7,7 +7,7 @@ export const descriptor = {
       "nested": {
         "v1": {
           "options": {
-            "go_package": "github.com/SyncApp-chat/SyncApp/internal/wirepb;wirepb"
+            "go_package": "github.com/IR-Full/sync-app/server/internal/wirepb;wirepb"
           },
           "nested": {
             "Hello": {

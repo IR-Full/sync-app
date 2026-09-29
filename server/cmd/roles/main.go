@@ -24,11 +24,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/audit"
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/internal/store/postgres"
+	"github.com/IR-Full/sync-app/server/internal/audit"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store/postgres"
 )
 
 func main() {

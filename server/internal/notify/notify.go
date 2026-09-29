@@ -11,8 +11,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
 )
 
 // PushJob is the payload fanout publishes on notify.push. Token/Platform are

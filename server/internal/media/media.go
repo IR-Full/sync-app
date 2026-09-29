@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 // ErrExists means the object already exists. Uploads are CREATE-ONLY: a signed

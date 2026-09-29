@@ -78,7 +78,10 @@ describe('compareChats', () => {
   it('is stable for chats with no activity at all', () => {
     const rows = [chat({ id: '1' }), chat({ id: '2' }), chat({ id: '3' })]
     const first = [...rows].sort(compareChats).map((c) => c.id)
-    const second = [...rows].reverse().sort(compareChats).map((c) => c.id)
+    const second = [...rows]
+      .reverse()
+      .sort(compareChats)
+      .map((c) => c.id)
     expect(first).toEqual(second)
   })
 })

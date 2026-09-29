@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 // StoreDevices adapts the user store to the push path's device lookup. It lives

@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/keydir"
-	"github.com/SyncApp-chat/SyncApp/pkg/e2e"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/keydir"
+	"github.com/IR-Full/sync-app/server/pkg/e2e"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // x25519KeyLen is the byte length of an X25519 public key. There is no exported
