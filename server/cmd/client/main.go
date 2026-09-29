@@ -42,7 +42,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 	"github.com/gorilla/websocket"
 	"github.com/quic-go/quic-go"
 )

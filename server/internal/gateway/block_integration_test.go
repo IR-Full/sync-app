@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // blockedPair sets up an existing conversation, then has bob block alice. It

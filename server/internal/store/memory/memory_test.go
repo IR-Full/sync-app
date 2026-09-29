@@ -3,9 +3,9 @@ package memory_test
 import (
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
-	"github.com/SyncApp-chat/SyncApp/internal/store/storetest"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store/memory"
+	"github.com/IR-Full/sync-app/server/internal/store/storetest"
 )
 
 // The in-memory store is what every unit test in the repo runs against, so its

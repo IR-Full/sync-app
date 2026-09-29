@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store/memory"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 // allowChats grants or denies posting; the flag can flip mid-test to simulate a

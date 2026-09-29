@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	pb "github.com/IR-Full/sync-app/server/internal/rpc/pb"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // These mappers are the whole reason a split deployment can behave like the

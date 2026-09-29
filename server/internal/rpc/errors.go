@@ -6,8 +6,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 // gRPC transports error MESSAGES but not Go error IDENTITY: an errors.Is check on

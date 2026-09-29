@@ -64,14 +64,6 @@ Ordered by value per unit of risk, not by number.
 8. **SBP QR codes** render as the payment link's text rather than an image — no
    QR encoder is in any client's dependencies.
 
-9. **Go module path.** `github.com/SyncApp-chat/SyncApp` does not match the
-   repository (`IR-Full/sync-app`). Renaming is mechanical (`go mod edit -module`,
-   imports, `go_package` in the protos, the web client's generated descriptor);
-   which path to use is the owner's decision.
-
-10. **Pre-existing formatting drift in `client/`.** `npx prettier --check .`
-    reports 14 files; CI does not run `format:check`.
-
 ---
 
 ## Premium: what is sold vs what is delivered

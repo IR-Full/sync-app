@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/internal/store/storetest"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/store/storetest"
 )
 
 // The same contract suite the in-memory store runs, against real Postgres.

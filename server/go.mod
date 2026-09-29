@@ -1,4 +1,4 @@
-module github.com/SyncApp-chat/SyncApp
+module github.com/IR-Full/sync-app/server
 
 go 1.26
 

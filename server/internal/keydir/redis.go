@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // redisDir is the shared, multi-node key directory. Per device it stores a hash

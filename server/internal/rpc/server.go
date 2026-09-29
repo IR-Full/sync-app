@@ -5,14 +5,14 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/SyncApp-chat/SyncApp/internal/auth"
-	"github.com/SyncApp-chat/SyncApp/internal/chat"
-	"github.com/SyncApp-chat/SyncApp/internal/keydir"
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/presence"
-	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/auth"
+	"github.com/IR-Full/sync-app/server/internal/chat"
+	"github.com/IR-Full/sync-app/server/internal/keydir"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/presence"
+	pb "github.com/IR-Full/sync-app/server/internal/rpc/pb"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // AuthServer exposes an *auth.Service over gRPC.

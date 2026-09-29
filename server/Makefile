@@ -56,9 +56,9 @@ fuzz:
 # stubs for the microservice split (internal/rpc/pb). The output is checked in as
 # protoc writes it, one file per .proto.
 proto:
-	protoc --go_out=. --go_opt=module=github.com/SyncApp-chat/SyncApp proto/syncapp/v1/body.proto
-	protoc --go_out=. --go_opt=module=github.com/SyncApp-chat/SyncApp \
-	       --go-grpc_out=. --go-grpc_opt=module=github.com/SyncApp-chat/SyncApp \
+	protoc --go_out=. --go_opt=module=github.com/IR-Full/sync-app/server proto/syncapp/v1/body.proto
+	protoc --go_out=. --go_opt=module=github.com/IR-Full/sync-app/server \
+	       --go-grpc_out=. --go-grpc_opt=module=github.com/IR-Full/sync-app/server \
 	       proto/syncapp/v1/services.proto
 	$(GO) build ./...
 

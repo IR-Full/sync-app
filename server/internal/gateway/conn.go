@@ -10,12 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/auth"
-	"github.com/SyncApp-chat/SyncApp/internal/delivery"
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/internal/safego"
-	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/auth"
+	"github.com/IR-Full/sync-app/server/internal/delivery"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/safego"
+	"github.com/IR-Full/sync-app/server/pkg/ratelimit"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // conn is one client connection. It implements delivery.Sink so fanout can push

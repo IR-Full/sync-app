@@ -16,9 +16,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/internal/tracing"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/tracing"
 )
 
 // New builds the contacts service.

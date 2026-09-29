@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // sessionsOf asks for the caller's session list and returns it.

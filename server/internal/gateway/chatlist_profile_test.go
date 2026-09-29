@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // connectWithName registers an account WITH a display name and returns the

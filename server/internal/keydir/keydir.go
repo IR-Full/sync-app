@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // opTimeout bounds one directory round trip when the caller's context carries no

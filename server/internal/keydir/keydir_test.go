@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 func publishBody(prekeys ...string) wire.KeyPublishBody {

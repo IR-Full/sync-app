@@ -20,12 +20,14 @@ package rpcpb
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+// Requires gRPC-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
 
 const (
@@ -48,271 +50,6 @@ const (
 // AuthServiceClient is the client API for AuthService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-var AuthService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "syncapp.rpc.v1.AuthService",
-	HandlerType: (*AuthServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Register",
-			Handler:    _AuthService_Register_Handler,
-		},
-		{
-			MethodName: "Login",
-			Handler:    _AuthService_Login_Handler,
-		},
-		{
-			MethodName: "Authenticate",
-			Handler:    _AuthService_Authenticate_Handler,
-		},
-		{
-			MethodName: "Resume",
-			Handler:    _AuthService_Resume_Handler,
-		},
-		{
-			MethodName: "ListSessions",
-			Handler:    _AuthService_ListSessions_Handler,
-		},
-		{
-			MethodName: "RevokeOwned",
-			Handler:    _AuthService_RevokeOwned_Handler,
-		},
-		{
-			MethodName: "RevokeAll",
-			Handler:    _AuthService_RevokeAll_Handler,
-		},
-		{
-			MethodName: "DeleteAccount",
-			Handler:    _AuthService_DeleteAccount_Handler,
-		},
-		{
-			MethodName: "LoginWithCode",
-			Handler:    _AuthService_LoginWithCode_Handler,
-		},
-		{
-			MethodName: "ChangePassword",
-			Handler:    _AuthService_ChangePassword_Handler,
-		},
-		{
-			MethodName: "BeginTOTP",
-			Handler:    _AuthService_BeginTOTP_Handler,
-		},
-		{
-			MethodName: "ConfirmTOTP",
-			Handler:    _AuthService_ConfirmTOTP_Handler,
-		},
-		{
-			MethodName: "DisableTOTP",
-			Handler:    _AuthService_DisableTOTP_Handler,
-		},
-		{
-			MethodName: "TwoFactorState",
-			Handler:    _AuthService_TwoFactorState_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/syncapp/v1/services.proto",
-}
-
-const (
-	ChatService_EnsureDirect_FullMethodName           = "/syncapp.rpc.v1.ChatService/EnsureDirect"
-	ChatService_EnsureSecret_FullMethodName           = "/syncapp.rpc.v1.ChatService/EnsureSecret"
-	ChatService_FindDirect_FullMethodName             = "/syncapp.rpc.v1.ChatService/FindDirect"
-	ChatService_Get_FullMethodName                    = "/syncapp.rpc.v1.ChatService/Get"
-	ChatService_CreateGroup_FullMethodName            = "/syncapp.rpc.v1.ChatService/CreateGroup"
-	ChatService_Members_FullMethodName                = "/syncapp.rpc.v1.ChatService/Members"
-	ChatService_UserChats_FullMethodName              = "/syncapp.rpc.v1.ChatService/UserChats"
-	ChatService_UserChatPage_FullMethodName           = "/syncapp.rpc.v1.ChatService/UserChatPage"
-	ChatService_SetChatFlags_FullMethodName           = "/syncapp.rpc.v1.ChatService/SetChatFlags"
-	ChatService_UserChatIDs_FullMethodName            = "/syncapp.rpc.v1.ChatService/UserChatIDs"
-	ChatService_MemberIDs_FullMethodName              = "/syncapp.rpc.v1.ChatService/MemberIDs"
-	ChatService_MemberIDsPage_FullMethodName          = "/syncapp.rpc.v1.ChatService/MemberIDsPage"
-	ChatService_CanPost_FullMethodName                = "/syncapp.rpc.v1.ChatService/CanPost"
-	ChatService_IsMember_FullMethodName               = "/syncapp.rpc.v1.ChatService/IsMember"
-	ChatService_CanModerate_FullMethodName            = "/syncapp.rpc.v1.ChatService/CanModerate"
-	ChatService_CountPinnedChatsExcept_FullMethodName = "/syncapp.rpc.v1.ChatService/CountPinnedChatsExcept"
-)
-
-// ChatServiceClient is the client API for ChatService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-var ChatService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "syncapp.rpc.v1.ChatService",
-	HandlerType: (*ChatServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "EnsureDirect",
-			Handler:    _ChatService_EnsureDirect_Handler,
-		},
-		{
-			MethodName: "EnsureSecret",
-			Handler:    _ChatService_EnsureSecret_Handler,
-		},
-		{
-			MethodName: "FindDirect",
-			Handler:    _ChatService_FindDirect_Handler,
-		},
-		{
-			MethodName: "Get",
-			Handler:    _ChatService_Get_Handler,
-		},
-		{
-			MethodName: "CreateGroup",
-			Handler:    _ChatService_CreateGroup_Handler,
-		},
-		{
-			MethodName: "Members",
-			Handler:    _ChatService_Members_Handler,
-		},
-		{
-			MethodName: "UserChats",
-			Handler:    _ChatService_UserChats_Handler,
-		},
-		{
-			MethodName: "UserChatPage",
-			Handler:    _ChatService_UserChatPage_Handler,
-		},
-		{
-			MethodName: "SetChatFlags",
-			Handler:    _ChatService_SetChatFlags_Handler,
-		},
-		{
-			MethodName: "UserChatIDs",
-			Handler:    _ChatService_UserChatIDs_Handler,
-		},
-		{
-			MethodName: "MemberIDs",
-			Handler:    _ChatService_MemberIDs_Handler,
-		},
-		{
-			MethodName: "MemberIDsPage",
-			Handler:    _ChatService_MemberIDsPage_Handler,
-		},
-		{
-			MethodName: "CanPost",
-			Handler:    _ChatService_CanPost_Handler,
-		},
-		{
-			MethodName: "IsMember",
-			Handler:    _ChatService_IsMember_Handler,
-		},
-		{
-			MethodName: "CanModerate",
-			Handler:    _ChatService_CanModerate_Handler,
-		},
-		{
-			MethodName: "CountPinnedChatsExcept",
-			Handler:    _ChatService_CountPinnedChatsExcept_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/syncapp/v1/services.proto",
-}
-
-const (
-	MessageService_Submit_FullMethodName   = "/syncapp.rpc.v1.MessageService/Submit"
-	MessageService_History_FullMethodName  = "/syncapp.rpc.v1.MessageService/History"
-	MessageService_Thread_FullMethodName   = "/syncapp.rpc.v1.MessageService/Thread"
-	MessageService_Forward_FullMethodName  = "/syncapp.rpc.v1.MessageService/Forward"
-	MessageService_MarkRead_FullMethodName = "/syncapp.rpc.v1.MessageService/MarkRead"
-)
-
-// MessageServiceClient is the client API for MessageService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-var MessageService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "syncapp.rpc.v1.MessageService",
-	HandlerType: (*MessageServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Submit",
-			Handler:    _MessageService_Submit_Handler,
-		},
-		{
-			MethodName: "History",
-			Handler:    _MessageService_History_Handler,
-		},
-		{
-			MethodName: "Thread",
-			Handler:    _MessageService_Thread_Handler,
-		},
-		{
-			MethodName: "Forward",
-			Handler:    _MessageService_Forward_Handler,
-		},
-		{
-			MethodName: "MarkRead",
-			Handler:    _MessageService_MarkRead_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/syncapp/v1/services.proto",
-}
-
-const (
-	PresenceService_Online_FullMethodName    = "/syncapp.rpc.v1.PresenceService/Online"
-	PresenceService_Heartbeat_FullMethodName = "/syncapp.rpc.v1.PresenceService/Heartbeat"
-	PresenceService_Offline_FullMethodName   = "/syncapp.rpc.v1.PresenceService/Offline"
-	PresenceService_Typing_FullMethodName    = "/syncapp.rpc.v1.PresenceService/Typing"
-)
-
-// PresenceServiceClient is the client API for PresenceService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-var PresenceService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "syncapp.rpc.v1.PresenceService",
-	HandlerType: (*PresenceServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Online",
-			Handler:    _PresenceService_Online_Handler,
-		},
-		{
-			MethodName: "Heartbeat",
-			Handler:    _PresenceService_Heartbeat_Handler,
-		},
-		{
-			MethodName: "Offline",
-			Handler:    _PresenceService_Offline_Handler,
-		},
-		{
-			MethodName: "Typing",
-			Handler:    _PresenceService_Typing_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/syncapp/v1/services.proto",
-}
-
-const (
-	KeyDirService_Publish_FullMethodName  = "/syncapp.rpc.v1.KeyDirService/Publish"
-	KeyDirService_Fetch_FullMethodName    = "/syncapp.rpc.v1.KeyDirService/Fetch"
-	KeyDirService_FetchAll_FullMethodName = "/syncapp.rpc.v1.KeyDirService/FetchAll"
-)
-
-// KeyDirServiceClient is the client API for KeyDirService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-var KeyDirService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "syncapp.rpc.v1.KeyDirService",
-	HandlerType: (*KeyDirServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Publish",
-			Handler:    _KeyDirService_Publish_Handler,
-		},
-		{
-			MethodName: "Fetch",
-			Handler:    _KeyDirService_Fetch_Handler,
-		},
-		{
-			MethodName: "FetchAll",
-			Handler:    _KeyDirService_FetchAll_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/syncapp/v1/services.proto",
-}
-
 type AuthServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*SessionUser, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*SessionUser, error)
@@ -334,205 +71,6 @@ type AuthServiceClient interface {
 
 type authServiceClient struct {
 	cc grpc.ClientConnInterface
-}
-type AuthServiceServer interface {
-	Register(context.Context, *RegisterRequest) (*SessionUser, error)
-	Login(context.Context, *LoginRequest) (*SessionUser, error)
-	Authenticate(context.Context, *TokenRequest) (*Identity, error)
-	Resume(context.Context, *ResumeRequest) (*Identity, error)
-	ListSessions(context.Context, *UserIDRequest) (*SessionsReply, error)
-	RevokeOwned(context.Context, *RevokeOwnedRequest) (*Empty, error)
-	RevokeAll(context.Context, *RevokeAllRequest) (*RevokeAllReply, error)
-	DeleteAccount(context.Context, *DeleteAccountRequest) (*Empty, error)
-	// Account security. None of this existed: the password could not be changed by
-	// any path, and there was no second factor at all.
-	LoginWithCode(context.Context, *LoginWithCodeRequest) (*SessionUser, error)
-	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error)
-	BeginTOTP(context.Context, *BeginTOTPRequest) (*BeginTOTPReply, error)
-	ConfirmTOTP(context.Context, *ConfirmTOTPRequest) (*ConfirmTOTPReply, error)
-	DisableTOTP(context.Context, *DisableTOTPRequest) (*Empty, error)
-	TwoFactorState(context.Context, *UserIDRequest) (*TwoFactorStateReply, error)
-	mustEmbedUnimplementedAuthServiceServer()
-}
-
-// UnimplementedAuthServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedAuthServiceServer struct{}
-type UnsafeAuthServiceServer interface {
-	mustEmbedUnimplementedAuthServiceServer()
-}
-type ChatServiceClient interface {
-	EnsureDirect(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error)
-	// EnsureSecret is EnsureDirect for the SECRET type. A separate RPC rather than a
-	// type field on DirectRequest, so the existing call keeps its exact meaning.
-	EnsureSecret(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error)
-	FindDirect(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error)
-	Get(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*Chat, error)
-	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*Chat, error)
-	Members(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*MembersReply, error)
-	UserChats(ctx context.Context, in *UserChatsRequest, opts ...grpc.CallOption) (*ChatSummariesReply, error)
-	// UserChatPage is UserChats with the composite cursor and the archived filter.
-	// Separate rather than extra fields on UserChatsRequest so the old call keeps
-	// its exact meaning for any caller that has not moved.
-	UserChatPage(ctx context.Context, in *UserChatPageRequest, opts ...grpc.CallOption) (*ChatSummariesReply, error)
-	// SetChatFlags writes the CALLER's own mute/pin/archive for a chat.
-	SetChatFlags(ctx context.Context, in *SetChatFlagsRequest, opts ...grpc.CallOption) (*ChatFlagsReply, error)
-	// UserChatIDs lists the chats a user belongs to, ids only — what search needs
-	// to bound a query. UserChats cannot serve it: it pages, and it builds full
-	// summaries that the caller throws away.
-	UserChatIDs(ctx context.Context, in *UserIDRequest, opts ...grpc.CallOption) (*MemberIDsReply, error)
-	MemberIDs(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*MemberIDsReply, error)
-	MemberIDsPage(ctx context.Context, in *MemberPageRequest, opts ...grpc.CallOption) (*MemberIDsReply, error)
-	// CanPost/IsMember are used by the message service (messaged is a client of
-	// chatd) to authorize writes and reads.
-	CanPost(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
-	IsMember(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
-	// CanModerate authorizes acting on ANOTHER member's message (deletion). It is
-	// its own call rather than a flag on CanPost because the two answers differ in
-	// exactly the case that matters: in a group every member may post and only
-	// admins may moderate.
-	CanModerate(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
-	// CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
-	// gateway enforces because only the gateway knows the caller's tier. The
-	// exclusion lets it answer "is there room for THIS chat" without tripping over
-	// a client re-sending flags for one that is already pinned.
-	CountPinnedChatsExcept(ctx context.Context, in *PinnedCountRequest, opts ...grpc.CallOption) (*CountReply, error)
-}
-
-type chatServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-type ChatServiceServer interface {
-	EnsureDirect(context.Context, *DirectRequest) (*Chat, error)
-	// EnsureSecret is EnsureDirect for the SECRET type. A separate RPC rather than a
-	// type field on DirectRequest, so the existing call keeps its exact meaning.
-	EnsureSecret(context.Context, *DirectRequest) (*Chat, error)
-	FindDirect(context.Context, *DirectRequest) (*Chat, error)
-	Get(context.Context, *ChatIDRequest) (*Chat, error)
-	CreateGroup(context.Context, *CreateGroupRequest) (*Chat, error)
-	Members(context.Context, *ChatIDRequest) (*MembersReply, error)
-	UserChats(context.Context, *UserChatsRequest) (*ChatSummariesReply, error)
-	// UserChatPage is UserChats with the composite cursor and the archived filter.
-	// Separate rather than extra fields on UserChatsRequest so the old call keeps
-	// its exact meaning for any caller that has not moved.
-	UserChatPage(context.Context, *UserChatPageRequest) (*ChatSummariesReply, error)
-	// SetChatFlags writes the CALLER's own mute/pin/archive for a chat.
-	SetChatFlags(context.Context, *SetChatFlagsRequest) (*ChatFlagsReply, error)
-	// UserChatIDs lists the chats a user belongs to, ids only — what search needs
-	// to bound a query. UserChats cannot serve it: it pages, and it builds full
-	// summaries that the caller throws away.
-	UserChatIDs(context.Context, *UserIDRequest) (*MemberIDsReply, error)
-	MemberIDs(context.Context, *ChatIDRequest) (*MemberIDsReply, error)
-	MemberIDsPage(context.Context, *MemberPageRequest) (*MemberIDsReply, error)
-	// CanPost/IsMember are used by the message service (messaged is a client of
-	// chatd) to authorize writes and reads.
-	CanPost(context.Context, *ChatUserRequest) (*BoolReply, error)
-	IsMember(context.Context, *ChatUserRequest) (*BoolReply, error)
-	// CanModerate authorizes acting on ANOTHER member's message (deletion). It is
-	// its own call rather than a flag on CanPost because the two answers differ in
-	// exactly the case that matters: in a group every member may post and only
-	// admins may moderate.
-	CanModerate(context.Context, *ChatUserRequest) (*BoolReply, error)
-	// CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
-	// gateway enforces because only the gateway knows the caller's tier. The
-	// exclusion lets it answer "is there room for THIS chat" without tripping over
-	// a client re-sending flags for one that is already pinned.
-	CountPinnedChatsExcept(context.Context, *PinnedCountRequest) (*CountReply, error)
-	mustEmbedUnimplementedChatServiceServer()
-}
-
-// UnimplementedChatServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedChatServiceServer struct{}
-type UnsafeChatServiceServer interface {
-	mustEmbedUnimplementedChatServiceServer()
-}
-type MessageServiceClient interface {
-	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitReply, error)
-	History(ctx context.Context, in *HistoryRequest, opts ...grpc.CallOption) (*HistoryReply, error)
-	Thread(ctx context.Context, in *ThreadRequest, opts ...grpc.CallOption) (*HistoryReply, error)
-	Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SubmitReply, error)
-	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*Empty, error)
-}
-
-type messageServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-type MessageServiceServer interface {
-	Submit(context.Context, *SubmitRequest) (*SubmitReply, error)
-	History(context.Context, *HistoryRequest) (*HistoryReply, error)
-	Thread(context.Context, *ThreadRequest) (*HistoryReply, error)
-	Forward(context.Context, *ForwardRequest) (*SubmitReply, error)
-	MarkRead(context.Context, *MarkReadRequest) (*Empty, error)
-	mustEmbedUnimplementedMessageServiceServer()
-}
-
-// UnimplementedMessageServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedMessageServiceServer struct{}
-type UnsafeMessageServiceServer interface {
-	mustEmbedUnimplementedMessageServiceServer()
-}
-type PresenceServiceClient interface {
-	Online(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Empty, error)
-	Heartbeat(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Empty, error)
-	Offline(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Empty, error)
-	Typing(ctx context.Context, in *TypingRequest, opts ...grpc.CallOption) (*Empty, error)
-}
-
-type presenceServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-type PresenceServiceServer interface {
-	Online(context.Context, *UserRequest) (*Empty, error)
-	Heartbeat(context.Context, *UserRequest) (*Empty, error)
-	Offline(context.Context, *UserRequest) (*Empty, error)
-	Typing(context.Context, *TypingRequest) (*Empty, error)
-	mustEmbedUnimplementedPresenceServiceServer()
-}
-
-// UnimplementedPresenceServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedPresenceServiceServer struct{}
-type UnsafePresenceServiceServer interface {
-	mustEmbedUnimplementedPresenceServiceServer()
-}
-type KeyDirServiceClient interface {
-	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishReply, error)
-	Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchReply, error)
-	FetchAll(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*FetchAllReply, error)
-}
-
-type keyDirServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-type KeyDirServiceServer interface {
-	Publish(context.Context, *PublishRequest) (*PublishReply, error)
-	Fetch(context.Context, *FetchRequest) (*FetchReply, error)
-	FetchAll(context.Context, *UserRequest) (*FetchAllReply, error)
-	mustEmbedUnimplementedKeyDirServiceServer()
-}
-
-// UnimplementedKeyDirServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedKeyDirServiceServer struct{}
-type UnsafeKeyDirServiceServer interface {
-	mustEmbedUnimplementedKeyDirServiceServer()
 }
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
@@ -682,6 +220,32 @@ func (c *authServiceClient) TwoFactorState(ctx context.Context, in *UserIDReques
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
+type AuthServiceServer interface {
+	Register(context.Context, *RegisterRequest) (*SessionUser, error)
+	Login(context.Context, *LoginRequest) (*SessionUser, error)
+	Authenticate(context.Context, *TokenRequest) (*Identity, error)
+	Resume(context.Context, *ResumeRequest) (*Identity, error)
+	ListSessions(context.Context, *UserIDRequest) (*SessionsReply, error)
+	RevokeOwned(context.Context, *RevokeOwnedRequest) (*Empty, error)
+	RevokeAll(context.Context, *RevokeAllRequest) (*RevokeAllReply, error)
+	DeleteAccount(context.Context, *DeleteAccountRequest) (*Empty, error)
+	// Account security. None of this existed: the password could not be changed by
+	// any path, and there was no second factor at all.
+	LoginWithCode(context.Context, *LoginWithCodeRequest) (*SessionUser, error)
+	ChangePassword(context.Context, *ChangePasswordRequest) (*ChangePasswordReply, error)
+	BeginTOTP(context.Context, *BeginTOTPRequest) (*BeginTOTPReply, error)
+	ConfirmTOTP(context.Context, *ConfirmTOTPRequest) (*ConfirmTOTPReply, error)
+	DisableTOTP(context.Context, *DisableTOTPRequest) (*Empty, error)
+	TwoFactorState(context.Context, *UserIDRequest) (*TwoFactorStateReply, error)
+	mustEmbedUnimplementedAuthServiceServer()
+}
+
+// UnimplementedAuthServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedAuthServiceServer struct{}
 
 func (UnimplementedAuthServiceServer) Register(context.Context, *RegisterRequest) (*SessionUser, error) {
 	return nil, status.Error(codes.Unimplemented, "method Register not implemented")
@@ -731,6 +295,9 @@ func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     
 // UnsafeAuthServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AuthServiceServer will
 // result in compilation errors.
+type UnsafeAuthServiceServer interface {
+	mustEmbedUnimplementedAuthServiceServer()
+}
 
 func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 	// If the following call panics, it indicates UnimplementedAuthServiceServer was
@@ -998,6 +565,134 @@ func _AuthService_TwoFactorState_Handler(srv interface{}, ctx context.Context, d
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
+var AuthService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "syncapp.rpc.v1.AuthService",
+	HandlerType: (*AuthServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Register",
+			Handler:    _AuthService_Register_Handler,
+		},
+		{
+			MethodName: "Login",
+			Handler:    _AuthService_Login_Handler,
+		},
+		{
+			MethodName: "Authenticate",
+			Handler:    _AuthService_Authenticate_Handler,
+		},
+		{
+			MethodName: "Resume",
+			Handler:    _AuthService_Resume_Handler,
+		},
+		{
+			MethodName: "ListSessions",
+			Handler:    _AuthService_ListSessions_Handler,
+		},
+		{
+			MethodName: "RevokeOwned",
+			Handler:    _AuthService_RevokeOwned_Handler,
+		},
+		{
+			MethodName: "RevokeAll",
+			Handler:    _AuthService_RevokeAll_Handler,
+		},
+		{
+			MethodName: "DeleteAccount",
+			Handler:    _AuthService_DeleteAccount_Handler,
+		},
+		{
+			MethodName: "LoginWithCode",
+			Handler:    _AuthService_LoginWithCode_Handler,
+		},
+		{
+			MethodName: "ChangePassword",
+			Handler:    _AuthService_ChangePassword_Handler,
+		},
+		{
+			MethodName: "BeginTOTP",
+			Handler:    _AuthService_BeginTOTP_Handler,
+		},
+		{
+			MethodName: "ConfirmTOTP",
+			Handler:    _AuthService_ConfirmTOTP_Handler,
+		},
+		{
+			MethodName: "DisableTOTP",
+			Handler:    _AuthService_DisableTOTP_Handler,
+		},
+		{
+			MethodName: "TwoFactorState",
+			Handler:    _AuthService_TwoFactorState_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/syncapp/v1/services.proto",
+}
+
+const (
+	ChatService_EnsureDirect_FullMethodName           = "/syncapp.rpc.v1.ChatService/EnsureDirect"
+	ChatService_EnsureSecret_FullMethodName           = "/syncapp.rpc.v1.ChatService/EnsureSecret"
+	ChatService_FindDirect_FullMethodName             = "/syncapp.rpc.v1.ChatService/FindDirect"
+	ChatService_Get_FullMethodName                    = "/syncapp.rpc.v1.ChatService/Get"
+	ChatService_CreateGroup_FullMethodName            = "/syncapp.rpc.v1.ChatService/CreateGroup"
+	ChatService_Members_FullMethodName                = "/syncapp.rpc.v1.ChatService/Members"
+	ChatService_UserChats_FullMethodName              = "/syncapp.rpc.v1.ChatService/UserChats"
+	ChatService_UserChatPage_FullMethodName           = "/syncapp.rpc.v1.ChatService/UserChatPage"
+	ChatService_SetChatFlags_FullMethodName           = "/syncapp.rpc.v1.ChatService/SetChatFlags"
+	ChatService_UserChatIDs_FullMethodName            = "/syncapp.rpc.v1.ChatService/UserChatIDs"
+	ChatService_MemberIDs_FullMethodName              = "/syncapp.rpc.v1.ChatService/MemberIDs"
+	ChatService_MemberIDsPage_FullMethodName          = "/syncapp.rpc.v1.ChatService/MemberIDsPage"
+	ChatService_CanPost_FullMethodName                = "/syncapp.rpc.v1.ChatService/CanPost"
+	ChatService_IsMember_FullMethodName               = "/syncapp.rpc.v1.ChatService/IsMember"
+	ChatService_CanModerate_FullMethodName            = "/syncapp.rpc.v1.ChatService/CanModerate"
+	ChatService_CountPinnedChatsExcept_FullMethodName = "/syncapp.rpc.v1.ChatService/CountPinnedChatsExcept"
+)
+
+// ChatServiceClient is the client API for ChatService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ChatServiceClient interface {
+	EnsureDirect(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error)
+	// EnsureSecret is EnsureDirect for the SECRET type. A separate RPC rather than a
+	// type field on DirectRequest, so the existing call keeps its exact meaning.
+	EnsureSecret(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error)
+	FindDirect(ctx context.Context, in *DirectRequest, opts ...grpc.CallOption) (*Chat, error)
+	Get(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*Chat, error)
+	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*Chat, error)
+	Members(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*MembersReply, error)
+	UserChats(ctx context.Context, in *UserChatsRequest, opts ...grpc.CallOption) (*ChatSummariesReply, error)
+	// UserChatPage is UserChats with the composite cursor and the archived filter.
+	// Separate rather than extra fields on UserChatsRequest so the old call keeps
+	// its exact meaning for any caller that has not moved.
+	UserChatPage(ctx context.Context, in *UserChatPageRequest, opts ...grpc.CallOption) (*ChatSummariesReply, error)
+	// SetChatFlags writes the CALLER's own mute/pin/archive for a chat.
+	SetChatFlags(ctx context.Context, in *SetChatFlagsRequest, opts ...grpc.CallOption) (*ChatFlagsReply, error)
+	// UserChatIDs lists the chats a user belongs to, ids only — what search needs
+	// to bound a query. UserChats cannot serve it: it pages, and it builds full
+	// summaries that the caller throws away.
+	UserChatIDs(ctx context.Context, in *UserIDRequest, opts ...grpc.CallOption) (*MemberIDsReply, error)
+	MemberIDs(ctx context.Context, in *ChatIDRequest, opts ...grpc.CallOption) (*MemberIDsReply, error)
+	MemberIDsPage(ctx context.Context, in *MemberPageRequest, opts ...grpc.CallOption) (*MemberIDsReply, error)
+	// CanPost/IsMember are used by the message service (messaged is a client of
+	// chatd) to authorize writes and reads.
+	CanPost(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
+	IsMember(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
+	// CanModerate authorizes acting on ANOTHER member's message (deletion). It is
+	// its own call rather than a flag on CanPost because the two answers differ in
+	// exactly the case that matters: in a group every member may post and only
+	// admins may moderate.
+	CanModerate(ctx context.Context, in *ChatUserRequest, opts ...grpc.CallOption) (*BoolReply, error)
+	// CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
+	// gateway enforces because only the gateway knows the caller's tier. The
+	// exclusion lets it answer "is there room for THIS chat" without tripping over
+	// a client re-sending flags for one that is already pinned.
+	CountPinnedChatsExcept(ctx context.Context, in *PinnedCountRequest, opts ...grpc.CallOption) (*CountReply, error)
+}
+
+type chatServiceClient struct {
+	cc grpc.ClientConnInterface
+}
 
 func NewChatServiceClient(cc grpc.ClientConnInterface) ChatServiceClient {
 	return &chatServiceClient{cc}
@@ -1166,6 +861,51 @@ func (c *chatServiceClient) CountPinnedChatsExcept(ctx context.Context, in *Pinn
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
+type ChatServiceServer interface {
+	EnsureDirect(context.Context, *DirectRequest) (*Chat, error)
+	// EnsureSecret is EnsureDirect for the SECRET type. A separate RPC rather than a
+	// type field on DirectRequest, so the existing call keeps its exact meaning.
+	EnsureSecret(context.Context, *DirectRequest) (*Chat, error)
+	FindDirect(context.Context, *DirectRequest) (*Chat, error)
+	Get(context.Context, *ChatIDRequest) (*Chat, error)
+	CreateGroup(context.Context, *CreateGroupRequest) (*Chat, error)
+	Members(context.Context, *ChatIDRequest) (*MembersReply, error)
+	UserChats(context.Context, *UserChatsRequest) (*ChatSummariesReply, error)
+	// UserChatPage is UserChats with the composite cursor and the archived filter.
+	// Separate rather than extra fields on UserChatsRequest so the old call keeps
+	// its exact meaning for any caller that has not moved.
+	UserChatPage(context.Context, *UserChatPageRequest) (*ChatSummariesReply, error)
+	// SetChatFlags writes the CALLER's own mute/pin/archive for a chat.
+	SetChatFlags(context.Context, *SetChatFlagsRequest) (*ChatFlagsReply, error)
+	// UserChatIDs lists the chats a user belongs to, ids only — what search needs
+	// to bound a query. UserChats cannot serve it: it pages, and it builds full
+	// summaries that the caller throws away.
+	UserChatIDs(context.Context, *UserIDRequest) (*MemberIDsReply, error)
+	MemberIDs(context.Context, *ChatIDRequest) (*MemberIDsReply, error)
+	MemberIDsPage(context.Context, *MemberPageRequest) (*MemberIDsReply, error)
+	// CanPost/IsMember are used by the message service (messaged is a client of
+	// chatd) to authorize writes and reads.
+	CanPost(context.Context, *ChatUserRequest) (*BoolReply, error)
+	IsMember(context.Context, *ChatUserRequest) (*BoolReply, error)
+	// CanModerate authorizes acting on ANOTHER member's message (deletion). It is
+	// its own call rather than a flag on CanPost because the two answers differ in
+	// exactly the case that matters: in a group every member may post and only
+	// admins may moderate.
+	CanModerate(context.Context, *ChatUserRequest) (*BoolReply, error)
+	// CountPinnedChatsExcept backs the MaxPinnedChats entitlement, which the
+	// gateway enforces because only the gateway knows the caller's tier. The
+	// exclusion lets it answer "is there room for THIS chat" without tripping over
+	// a client re-sending flags for one that is already pinned.
+	CountPinnedChatsExcept(context.Context, *PinnedCountRequest) (*CountReply, error)
+	mustEmbedUnimplementedChatServiceServer()
+}
+
+// UnimplementedChatServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedChatServiceServer struct{}
 
 func (UnimplementedChatServiceServer) EnsureDirect(context.Context, *DirectRequest) (*Chat, error) {
 	return nil, status.Error(codes.Unimplemented, "method EnsureDirect not implemented")
@@ -1221,6 +961,9 @@ func (UnimplementedChatServiceServer) testEmbeddedByValue()                     
 // UnsafeChatServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ChatServiceServer will
 // result in compilation errors.
+type UnsafeChatServiceServer interface {
+	mustEmbedUnimplementedChatServiceServer()
+}
 
 func RegisterChatServiceServer(s grpc.ServiceRegistrar, srv ChatServiceServer) {
 	// If the following call panics, it indicates UnimplementedChatServiceServer was
@@ -1524,6 +1267,101 @@ func _ChatService_CountPinnedChatsExcept_Handler(srv interface{}, ctx context.Co
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
+var ChatService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "syncapp.rpc.v1.ChatService",
+	HandlerType: (*ChatServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "EnsureDirect",
+			Handler:    _ChatService_EnsureDirect_Handler,
+		},
+		{
+			MethodName: "EnsureSecret",
+			Handler:    _ChatService_EnsureSecret_Handler,
+		},
+		{
+			MethodName: "FindDirect",
+			Handler:    _ChatService_FindDirect_Handler,
+		},
+		{
+			MethodName: "Get",
+			Handler:    _ChatService_Get_Handler,
+		},
+		{
+			MethodName: "CreateGroup",
+			Handler:    _ChatService_CreateGroup_Handler,
+		},
+		{
+			MethodName: "Members",
+			Handler:    _ChatService_Members_Handler,
+		},
+		{
+			MethodName: "UserChats",
+			Handler:    _ChatService_UserChats_Handler,
+		},
+		{
+			MethodName: "UserChatPage",
+			Handler:    _ChatService_UserChatPage_Handler,
+		},
+		{
+			MethodName: "SetChatFlags",
+			Handler:    _ChatService_SetChatFlags_Handler,
+		},
+		{
+			MethodName: "UserChatIDs",
+			Handler:    _ChatService_UserChatIDs_Handler,
+		},
+		{
+			MethodName: "MemberIDs",
+			Handler:    _ChatService_MemberIDs_Handler,
+		},
+		{
+			MethodName: "MemberIDsPage",
+			Handler:    _ChatService_MemberIDsPage_Handler,
+		},
+		{
+			MethodName: "CanPost",
+			Handler:    _ChatService_CanPost_Handler,
+		},
+		{
+			MethodName: "IsMember",
+			Handler:    _ChatService_IsMember_Handler,
+		},
+		{
+			MethodName: "CanModerate",
+			Handler:    _ChatService_CanModerate_Handler,
+		},
+		{
+			MethodName: "CountPinnedChatsExcept",
+			Handler:    _ChatService_CountPinnedChatsExcept_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/syncapp/v1/services.proto",
+}
+
+const (
+	MessageService_Submit_FullMethodName   = "/syncapp.rpc.v1.MessageService/Submit"
+	MessageService_History_FullMethodName  = "/syncapp.rpc.v1.MessageService/History"
+	MessageService_Thread_FullMethodName   = "/syncapp.rpc.v1.MessageService/Thread"
+	MessageService_Forward_FullMethodName  = "/syncapp.rpc.v1.MessageService/Forward"
+	MessageService_MarkRead_FullMethodName = "/syncapp.rpc.v1.MessageService/MarkRead"
+)
+
+// MessageServiceClient is the client API for MessageService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type MessageServiceClient interface {
+	Submit(ctx context.Context, in *SubmitRequest, opts ...grpc.CallOption) (*SubmitReply, error)
+	History(ctx context.Context, in *HistoryRequest, opts ...grpc.CallOption) (*HistoryReply, error)
+	Thread(ctx context.Context, in *ThreadRequest, opts ...grpc.CallOption) (*HistoryReply, error)
+	Forward(ctx context.Context, in *ForwardRequest, opts ...grpc.CallOption) (*SubmitReply, error)
+	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*Empty, error)
+}
+
+type messageServiceClient struct {
+	cc grpc.ClientConnInterface
+}
 
 func NewMessageServiceClient(cc grpc.ClientConnInterface) MessageServiceClient {
 	return &messageServiceClient{cc}
@@ -1582,6 +1420,21 @@ func (c *messageServiceClient) MarkRead(ctx context.Context, in *MarkReadRequest
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
+type MessageServiceServer interface {
+	Submit(context.Context, *SubmitRequest) (*SubmitReply, error)
+	History(context.Context, *HistoryRequest) (*HistoryReply, error)
+	Thread(context.Context, *ThreadRequest) (*HistoryReply, error)
+	Forward(context.Context, *ForwardRequest) (*SubmitReply, error)
+	MarkRead(context.Context, *MarkReadRequest) (*Empty, error)
+	mustEmbedUnimplementedMessageServiceServer()
+}
+
+// UnimplementedMessageServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedMessageServiceServer struct{}
 
 func (UnimplementedMessageServiceServer) Submit(context.Context, *SubmitRequest) (*SubmitReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Submit not implemented")
@@ -1604,6 +1457,9 @@ func (UnimplementedMessageServiceServer) testEmbeddedByValue()                  
 // UnsafeMessageServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MessageServiceServer will
 // result in compilation errors.
+type UnsafeMessageServiceServer interface {
+	mustEmbedUnimplementedMessageServiceServer()
+}
 
 func RegisterMessageServiceServer(s grpc.ServiceRegistrar, srv MessageServiceServer) {
 	// If the following call panics, it indicates UnimplementedMessageServiceServer was
@@ -1709,6 +1565,55 @@ func _MessageService_MarkRead_Handler(srv interface{}, ctx context.Context, dec 
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
+var MessageService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "syncapp.rpc.v1.MessageService",
+	HandlerType: (*MessageServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Submit",
+			Handler:    _MessageService_Submit_Handler,
+		},
+		{
+			MethodName: "History",
+			Handler:    _MessageService_History_Handler,
+		},
+		{
+			MethodName: "Thread",
+			Handler:    _MessageService_Thread_Handler,
+		},
+		{
+			MethodName: "Forward",
+			Handler:    _MessageService_Forward_Handler,
+		},
+		{
+			MethodName: "MarkRead",
+			Handler:    _MessageService_MarkRead_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/syncapp/v1/services.proto",
+}
+
+const (
+	PresenceService_Online_FullMethodName    = "/syncapp.rpc.v1.PresenceService/Online"
+	PresenceService_Heartbeat_FullMethodName = "/syncapp.rpc.v1.PresenceService/Heartbeat"
+	PresenceService_Offline_FullMethodName   = "/syncapp.rpc.v1.PresenceService/Offline"
+	PresenceService_Typing_FullMethodName    = "/syncapp.rpc.v1.PresenceService/Typing"
+)
+
+// PresenceServiceClient is the client API for PresenceService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type PresenceServiceClient interface {
+	Online(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Empty, error)
+	Heartbeat(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Empty, error)
+	Offline(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*Empty, error)
+	Typing(ctx context.Context, in *TypingRequest, opts ...grpc.CallOption) (*Empty, error)
+}
+
+type presenceServiceClient struct {
+	cc grpc.ClientConnInterface
+}
 
 func NewPresenceServiceClient(cc grpc.ClientConnInterface) PresenceServiceClient {
 	return &presenceServiceClient{cc}
@@ -1757,6 +1662,20 @@ func (c *presenceServiceClient) Typing(ctx context.Context, in *TypingRequest, o
 // PresenceServiceServer is the server API for PresenceService service.
 // All implementations must embed UnimplementedPresenceServiceServer
 // for forward compatibility.
+type PresenceServiceServer interface {
+	Online(context.Context, *UserRequest) (*Empty, error)
+	Heartbeat(context.Context, *UserRequest) (*Empty, error)
+	Offline(context.Context, *UserRequest) (*Empty, error)
+	Typing(context.Context, *TypingRequest) (*Empty, error)
+	mustEmbedUnimplementedPresenceServiceServer()
+}
+
+// UnimplementedPresenceServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedPresenceServiceServer struct{}
 
 func (UnimplementedPresenceServiceServer) Online(context.Context, *UserRequest) (*Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Online not implemented")
@@ -1776,6 +1695,9 @@ func (UnimplementedPresenceServiceServer) testEmbeddedByValue()                 
 // UnsafePresenceServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to PresenceServiceServer will
 // result in compilation errors.
+type UnsafePresenceServiceServer interface {
+	mustEmbedUnimplementedPresenceServiceServer()
+}
 
 func RegisterPresenceServiceServer(s grpc.ServiceRegistrar, srv PresenceServiceServer) {
 	// If the following call panics, it indicates UnimplementedPresenceServiceServer was
@@ -1863,6 +1785,49 @@ func _PresenceService_Typing_Handler(srv interface{}, ctx context.Context, dec f
 // PresenceService_ServiceDesc is the grpc.ServiceDesc for PresenceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
+var PresenceService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "syncapp.rpc.v1.PresenceService",
+	HandlerType: (*PresenceServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Online",
+			Handler:    _PresenceService_Online_Handler,
+		},
+		{
+			MethodName: "Heartbeat",
+			Handler:    _PresenceService_Heartbeat_Handler,
+		},
+		{
+			MethodName: "Offline",
+			Handler:    _PresenceService_Offline_Handler,
+		},
+		{
+			MethodName: "Typing",
+			Handler:    _PresenceService_Typing_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/syncapp/v1/services.proto",
+}
+
+const (
+	KeyDirService_Publish_FullMethodName  = "/syncapp.rpc.v1.KeyDirService/Publish"
+	KeyDirService_Fetch_FullMethodName    = "/syncapp.rpc.v1.KeyDirService/Fetch"
+	KeyDirService_FetchAll_FullMethodName = "/syncapp.rpc.v1.KeyDirService/FetchAll"
+)
+
+// KeyDirServiceClient is the client API for KeyDirService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type KeyDirServiceClient interface {
+	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishReply, error)
+	Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchReply, error)
+	FetchAll(ctx context.Context, in *UserRequest, opts ...grpc.CallOption) (*FetchAllReply, error)
+}
+
+type keyDirServiceClient struct {
+	cc grpc.ClientConnInterface
+}
 
 func NewKeyDirServiceClient(cc grpc.ClientConnInterface) KeyDirServiceClient {
 	return &keyDirServiceClient{cc}
@@ -1901,6 +1866,19 @@ func (c *keyDirServiceClient) FetchAll(ctx context.Context, in *UserRequest, opt
 // KeyDirServiceServer is the server API for KeyDirService service.
 // All implementations must embed UnimplementedKeyDirServiceServer
 // for forward compatibility.
+type KeyDirServiceServer interface {
+	Publish(context.Context, *PublishRequest) (*PublishReply, error)
+	Fetch(context.Context, *FetchRequest) (*FetchReply, error)
+	FetchAll(context.Context, *UserRequest) (*FetchAllReply, error)
+	mustEmbedUnimplementedKeyDirServiceServer()
+}
+
+// UnimplementedKeyDirServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedKeyDirServiceServer struct{}
 
 func (UnimplementedKeyDirServiceServer) Publish(context.Context, *PublishRequest) (*PublishReply, error) {
 	return nil, status.Error(codes.Unimplemented, "method Publish not implemented")
@@ -1917,6 +1895,9 @@ func (UnimplementedKeyDirServiceServer) testEmbeddedByValue()                   
 // UnsafeKeyDirServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to KeyDirServiceServer will
 // result in compilation errors.
+type UnsafeKeyDirServiceServer interface {
+	mustEmbedUnimplementedKeyDirServiceServer()
+}
 
 func RegisterKeyDirServiceServer(s grpc.ServiceRegistrar, srv KeyDirServiceServer) {
 	// If the following call panics, it indicates UnimplementedKeyDirServiceServer was
@@ -1986,3 +1967,23 @@ func _KeyDirService_FetchAll_Handler(srv interface{}, ctx context.Context, dec f
 // KeyDirService_ServiceDesc is the grpc.ServiceDesc for KeyDirService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
+var KeyDirService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "syncapp.rpc.v1.KeyDirService",
+	HandlerType: (*KeyDirServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Publish",
+			Handler:    _KeyDirService_Publish_Handler,
+		},
+		{
+			MethodName: "Fetch",
+			Handler:    _KeyDirService_Fetch_Handler,
+		},
+		{
+			MethodName: "FetchAll",
+			Handler:    _KeyDirService_FetchAll_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/syncapp/v1/services.proto",
+}

@@ -11,13 +11,13 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/SyncApp-chat/SyncApp/internal/chat"
-	"github.com/SyncApp-chat/SyncApp/internal/message"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/rpc"
-	"github.com/SyncApp-chat/SyncApp/internal/store/memory"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/internal/chat"
+	"github.com/IR-Full/sync-app/server/internal/message"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/rpc"
+	"github.com/IR-Full/sync-app/server/internal/store/memory"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 // startMessageService serves the message broker + reader over an in-process gRPC

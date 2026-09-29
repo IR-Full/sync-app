@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/e2e"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/e2e"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 const oneTimePreKeys = 8

@@ -13,8 +13,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // errNewChatThrottled signals the new-conversation rate limit was hit.

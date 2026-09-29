@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
 )
 
 func discardLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

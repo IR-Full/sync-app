@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 func TestMediaUploadDownloadRoundTrip(t *testing.T) {

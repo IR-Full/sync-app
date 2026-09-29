@@ -9,9 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 // The batcher implements GROUP COMMIT for message writes. Load testing showed the

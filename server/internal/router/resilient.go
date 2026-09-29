@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/breaker"
+	"github.com/IR-Full/sync-app/server/pkg/breaker"
 )
 
 // resilientRouter wraps a shared (Redis) router with a circuit breaker and a

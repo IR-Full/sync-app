@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 // seqBumpSQL atomically allocates a chat's next per-chat sequence from the

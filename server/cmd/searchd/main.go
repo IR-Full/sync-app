@@ -11,10 +11,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/SyncApp-chat/SyncApp/internal/platform"
-	"github.com/SyncApp-chat/SyncApp/internal/rpc"
-	"github.com/SyncApp-chat/SyncApp/internal/search"
-	"github.com/SyncApp-chat/SyncApp/internal/wiring"
+	"github.com/IR-Full/sync-app/server/internal/platform"
+	"github.com/IR-Full/sync-app/server/internal/rpc"
+	"github.com/IR-Full/sync-app/server/internal/search"
+	"github.com/IR-Full/sync-app/server/internal/wiring"
 )
 
 func main() {

@@ -11,8 +11,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // Result-set bounds. The limit is what the caller may see, not what the index may

@@ -14,7 +14,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
 )
 
 // Recover contains a panic at a goroutine boundary. Use as the first deferred

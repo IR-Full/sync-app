@@ -19,7 +19,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
 )
 
 const serviceName = "SyncApp-gateway"

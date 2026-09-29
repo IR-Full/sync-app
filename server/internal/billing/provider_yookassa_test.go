@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/model"
 )
 
 // fakeYooAPI serves GET /v3/payments/{id} with whatever status and amount the

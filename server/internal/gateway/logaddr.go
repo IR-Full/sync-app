@@ -4,7 +4,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
 )
 
 /*

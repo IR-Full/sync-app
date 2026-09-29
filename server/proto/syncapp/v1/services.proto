@@ -12,7 +12,7 @@ syntax = "proto3";
 // in the global protobuf registry at init.
 package syncapp.rpc.v1;
 
-option go_package = "github.com/SyncApp-chat/SyncApp/internal/rpc/pb;rpcpb";
+option go_package = "github.com/IR-Full/sync-app/server/internal/rpc/pb;rpcpb";
 
 // ---- domain messages (mirror internal/model) ----
 

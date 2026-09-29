@@ -3,7 +3,7 @@ package memory
 import (
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/model"
 )
 
 func nowMs() int64 { return time.Now().UnixMilli() }

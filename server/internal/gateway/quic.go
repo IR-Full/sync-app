@@ -6,9 +6,9 @@ import (
 
 	"github.com/quic-go/quic-go"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/internal/safego"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/safego"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // QUICALPN is the ALPN token negotiated for the SyncApp QUIC transport

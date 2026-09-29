@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
+	"github.com/IR-Full/sync-app/server/internal/model"
+	"github.com/IR-Full/sync-app/server/internal/store"
 )
 
 // Session management and account deletion. "Log out" has to end the session on

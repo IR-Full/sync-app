@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/ratelimit"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // AbuseEvent is a recorded detection (would persist to abuse_events + audit_logs).

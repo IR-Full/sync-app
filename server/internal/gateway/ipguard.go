@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
+	"github.com/IR-Full/sync-app/server/pkg/ratelimit"
 )
 
 // ipGuard blunts connection-flood and reconnect-storm attacks at the accept

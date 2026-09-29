@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/keydir"
-	"github.com/SyncApp-chat/SyncApp/pkg/e2e"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/internal/keydir"
+	"github.com/IR-Full/sync-app/server/pkg/e2e"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // e2eInit is the X3DH bootstrap the initiator sends with its first secret

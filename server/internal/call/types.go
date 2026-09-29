@@ -3,9 +3,9 @@ package call
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/id"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/id"
 )
 
 // Chats supplies membership and the participant roster for a chat.

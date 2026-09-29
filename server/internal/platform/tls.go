@@ -12,7 +12,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
+	"github.com/IR-Full/sync-app/server/internal/envcfg"
 )
 
 // BuildTLSConfig returns a TLS config for the client-facing listeners, or nil for

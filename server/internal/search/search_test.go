@@ -9,8 +9,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
-	"github.com/SyncApp-chat/SyncApp/pkg/wire"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/pkg/wire"
 )
 
 // memberChats answers membership from a fixed set of (chat, user) pairs.

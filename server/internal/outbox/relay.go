@@ -14,9 +14,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/metrics"
-	"github.com/SyncApp-chat/SyncApp/internal/store"
-	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/IR-Full/sync-app/server/internal/metrics"
+	"github.com/IR-Full/sync-app/server/internal/store"
+	"github.com/IR-Full/sync-app/server/pkg/eventbus"
 )
 
 // Retention. The outbox is a HANDOFF table, not an archive: each row carries a
