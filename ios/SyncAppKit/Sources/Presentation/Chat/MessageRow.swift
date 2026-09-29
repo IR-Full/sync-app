@@ -25,6 +25,9 @@ struct MessageRow: View {
     let onDelete: () -> Void
     let onReact: (String) -> Void
     let onReply: () -> Void
+    // Not private: a private stored property would make the memberwise
+    // initialiser private too.
+    @Environment(\.appAccent) var accent
 
     private static let quickReactions = ["👍", "❤️", "😂", "🔥", "🎉"]
 
@@ -115,7 +118,7 @@ struct MessageRow: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(isOutgoing ? Theme.outgoingBubble : Theme.incomingBubble)
+                .fill(isOutgoing ? accent : Theme.incomingBubble)
         )
     }
 

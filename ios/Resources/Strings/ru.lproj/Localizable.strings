@@ -123,6 +123,14 @@
 "profile.theme.system" = "Как в системе";
 "profile.theme.light" = "Светлая";
 "profile.theme.dark" = "Тёмная";
+"profile.accent" = "Акцент";
+"profile.accent.premium" = "Другие цвета акцента доступны с Premium.";
+"profile.accent.default" = "Стандартный";
+"profile.accent.violet" = "Фиолетовый";
+"profile.accent.emerald" = "Изумрудный";
+"profile.accent.amber" = "Янтарный";
+"profile.accent.rose" = "Розовый";
+"profile.premium.badge" = "Premium";
 "profile.language" = "Язык";
 "profile.language.system" = "Как в системе";
 "profile.push" = "Push-уведомления";

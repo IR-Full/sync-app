@@ -427,6 +427,7 @@ final class ChatViewModel: ObservableObject {
 struct ChatView: View {
     @EnvironmentObject private var app: AppModel
     @StateObject private var model: ChatViewModel
+    @Environment(\.appAccent) private var accent
     @FocusState private var isComposerFocused: Bool
     @State private var photoItem: PhotosPickerItem?
     @State private var isImportingFile = false
@@ -461,7 +462,7 @@ struct ChatView: View {
                     if let status = model.statusLine() {
                         Text(status)
                             .font(.caption2)
-                            .foregroundStyle(model.typingUserIDs.isEmpty ? .secondary : Color.accentColor)
+                            .foregroundStyle(model.typingUserIDs.isEmpty ? .secondary : accent)
                     }
                 }
             }

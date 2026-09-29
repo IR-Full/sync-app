@@ -39,10 +39,11 @@ Ordered by value per unit of risk, not by number.
    worse than refusing. Add the explicit client-side refusal along with the
    feature.
 
-2. **iOS: the premium badge and custom themes.** Both now arrive on iOS
+2. **Android: the premium badge and accent palettes.** Both arrive
    (`ProfileBody.premium`, `SubscriptionBody.customThemes`) and nothing renders
-   them; `PremiumView.isPremium` decides "paying" by the plan name, which the
-   entitlement exists to avoid.
+   them; `Entitlements.isPremium` accepts any plan name but `free` and ignores
+   the period end. Web and iOS show how: `isPremiumActive`, the `ProfileView`
+   badge, and the accent row gated on `customThemes`.
 
 3. **Admin API.** Platform roles live in the database and are managed with
    `cmd/roles`; a protocol surface for them (and for the rest of administration)
@@ -77,10 +78,10 @@ model and the wire mapping:
 | Entitlement | Enforced? | Where |
 |---|---|---|
 | `SecretChats` | ✅ | `handlers_secretchat.go` refuses without it |
-| `CustomThemes` | ✅ | client-side, the accent picker (web, Android); not yet on iOS |
+| `CustomThemes` | ✅ | client-side, the accent picker (web, iOS); not yet on Android |
 | `MaxUploadBytes` | ✅ | `handlers_media.go` passes it to `media.InitUpload` |
 | `MaxPinnedChats` | ✅ | `handlers_profile.go` refuses past it |
-| `Badge` | ✅ | `ProfileBody.premium`; web and Android render it, iOS not yet |
+| `Badge` | ✅ | `ProfileBody.premium`; web and iOS render it, Android not yet |
 | `Folders` | ❌ | nothing reads it; there are no folders |
 | `AdvancedSearch` | ❌ | nothing reads it; search has no filters to gate |
 | `PriorityDelivery` | ❌ | nothing reads it, though the QoS lanes it needs exist |

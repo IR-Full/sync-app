@@ -39,6 +39,25 @@ final class ThemeTests: XCTestCase {
         let colours = Set(["1", "2", "3"].map { String(describing: Theme.avatarColor(for: $0)) })
         XCTAssertGreaterThan(colours.count, 1)
     }
+
+    /// The palettes are the web client's `data-accent` values, so an account
+    /// looks the same on both, and each has its own dark-mode variant.
+    func testAccentPalettesMatchTheWebClient() {
+        XCTAssertNil(AppSettings.Accent.standard.palette)
+        XCTAssertEqual(AppSettings.Accent.violet.palette?.light, 0x7C4DFF)
+        XCTAssertEqual(AppSettings.Accent.violet.palette?.dark, 0x9D78FF)
+        XCTAssertEqual(AppSettings.Accent.emerald.palette?.light, 0x0F9D6E)
+        XCTAssertEqual(AppSettings.Accent.emerald.palette?.dark, 0x2EC38D)
+        XCTAssertEqual(AppSettings.Accent.amber.palette?.light, 0xC2700C)
+        XCTAssertEqual(AppSettings.Accent.amber.palette?.dark, 0xE8A13C)
+        XCTAssertEqual(AppSettings.Accent.rose.palette?.light, 0xD6336C)
+        XCTAssertEqual(AppSettings.Accent.rose.palette?.dark, 0xF06595)
+    }
+
+    func testEveryAccentHasATitleKey() {
+        XCTAssertEqual(AppSettings.Accent.standard.titleKey, "profile.accent.default")
+        XCTAssertEqual(Set(AppSettings.Accent.allCases.map(\.titleKey)).count, AppSettings.Accent.allCases.count)
+    }
 }
 
 final class LocalizationTests: XCTestCase {

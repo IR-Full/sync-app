@@ -61,6 +61,7 @@ final class AuthViewModel: ObservableObject {
 struct AuthView: View {
     @EnvironmentObject private var app: AppModel
     @StateObject private var model: AuthViewModel
+    @Environment(\.appAccent) private var accent
     @FocusState private var focus: Field?
 
     private enum Field { case username, password }
@@ -76,7 +77,7 @@ struct AuthView: View {
             VStack(spacing: 8) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .font(.system(size: 56))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(accent)
                 Text(l("app.name")).font(.largeTitle.bold())
                 Text(l("auth.subtitle"))
                     .font(.subheadline)

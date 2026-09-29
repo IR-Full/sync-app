@@ -233,8 +233,19 @@ public struct AppSettings: Equatable, Sendable, Codable {
         case system, ru, en
     }
 
+    /// Accent palettes, orthogonal to light and dark; the same set as the web
+    /// client. `standard` is the only one a free account is offered, the rest are
+    /// the `customThemes` entitlement. The gate is in the picker rather than here,
+    /// because this is also what restores a stored accent: a lapsed subscription
+    /// stops being offered the picker without its colour changing mid-session.
+    public enum Accent: String, Sendable, Codable, CaseIterable {
+        case standard = "default"
+        case violet, emerald, amber, rose
+    }
+
     public var theme: Theme
     public var language: Language
+    public var accent: Accent
     public var pushEnabled: Bool
     public var showTypingIndicators: Bool
     public var localDisplayName: String
@@ -243,6 +254,7 @@ public struct AppSettings: Equatable, Sendable, Codable {
     public init(
         theme: Theme = .system,
         language: Language = .system,
+        accent: Accent = .standard,
         pushEnabled: Bool = true,
         showTypingIndicators: Bool = true,
         localDisplayName: String = "",
@@ -250,10 +262,34 @@ public struct AppSettings: Equatable, Sendable, Codable {
     ) {
         self.theme = theme
         self.language = language
+        self.accent = accent
         self.pushEnabled = pushEnabled
         self.showTypingIndicators = showTypingIndicators
         self.localDisplayName = localDisplayName
         self.avatarSymbol = avatarSymbol
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case theme, language, accent, pushEnabled, showTypingIndicators, localDisplayName, avatarSymbol
+    }
+
+    /// Every field falls back to its default when it is missing or unreadable.
+    ///
+    /// Without this, settings stored by a build that did not have a field fail to
+    /// decode as a whole, and the user's theme, language and notification choices
+    /// all reset the first time a new field ships.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = AppSettings()
+        theme = (try? container.decodeIfPresent(Theme.self, forKey: .theme)) ?? defaults.theme
+        language = (try? container.decodeIfPresent(Language.self, forKey: .language)) ?? defaults.language
+        accent = (try? container.decodeIfPresent(Accent.self, forKey: .accent)) ?? defaults.accent
+        pushEnabled = (try? container.decodeIfPresent(Bool.self, forKey: .pushEnabled)) ?? defaults.pushEnabled
+        showTypingIndicators = (try? container.decodeIfPresent(Bool.self, forKey: .showTypingIndicators))
+            ?? defaults.showTypingIndicators
+        localDisplayName = (try? container.decodeIfPresent(String.self, forKey: .localDisplayName))
+            ?? defaults.localDisplayName
+        avatarSymbol = (try? container.decodeIfPresent(String.self, forKey: .avatarSymbol)) ?? defaults.avatarSymbol
     }
 }
 

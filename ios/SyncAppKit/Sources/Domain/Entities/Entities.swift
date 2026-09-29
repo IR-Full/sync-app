@@ -359,12 +359,23 @@ public struct Profile: Hashable, Sendable {
     public var username: String
     public var displayName: String
     public var avatarRef: String
+    /// A paying account, for the badge beside the name. Decided by the server,
+    /// which reports false where the deployment sells nothing: there every account
+    /// is entitled to everything, and a badge everybody has is not a badge.
+    public var premium: Bool
 
-    public init(userID: String, username: String, displayName: String = "", avatarRef: String = "") {
+    public init(
+        userID: String,
+        username: String,
+        displayName: String = "",
+        avatarRef: String = "",
+        premium: Bool = false
+    ) {
         self.userID = userID
         self.username = username
         self.displayName = displayName
         self.avatarRef = avatarRef
+        self.premium = premium
     }
 
     public var bestName: String {

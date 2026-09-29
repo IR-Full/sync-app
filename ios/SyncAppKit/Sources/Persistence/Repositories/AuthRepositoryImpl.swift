@@ -185,7 +185,8 @@ public final class AuthRepositoryImpl: AuthRepository, @unchecked Sendable {
                 userID: body.userID,
                 username: body.username,
                 displayName: body.displayName,
-                avatarRef: body.avatarRef
+                avatarRef: body.avatarRef,
+                premium: body.premium
             )
         }
     }

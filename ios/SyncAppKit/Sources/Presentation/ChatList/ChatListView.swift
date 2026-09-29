@@ -329,6 +329,9 @@ private struct ChatRow: View {
     let summary: ChatSummary
     let title: String
     let subtitle: String
+    // Not private: a private stored property would make the memberwise
+    // initialiser private too.
+    @Environment(\.appAccent) var accent
 
     var body: some View {
         HStack(spacing: 12) {
@@ -374,7 +377,7 @@ private struct ChatRow: View {
                 HStack {
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(summary.typingUserIDs.isEmpty ? .secondary : Color.accentColor)
+                        .foregroundStyle(summary.typingUserIDs.isEmpty ? .secondary : accent)
                         .lineLimit(1)
                     Spacer()
                     if summary.unreadCount > 0 {
@@ -383,7 +386,7 @@ private struct ChatRow: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(summary.chat.isMuted ? Color.secondary : Color.accentColor))
+                            .background(Capsule().fill(summary.chat.isMuted ? Color.secondary : accent))
                     }
                 }
             }
@@ -438,6 +441,7 @@ private final class ArchivedChatsViewModel: ObservableObject {
 
 struct ArchivedChatsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appAccent) private var accent
     @StateObject private var model: ArchivedChatsViewModel
     private let onOpen: (String) -> Void
 
@@ -466,7 +470,7 @@ struct ArchivedChatsView: View {
                             Button { model.unarchive(summary) } label: {
                                 Label(l("chats.unarchive"), systemImage: "tray.and.arrow.up")
                             }
-                            .tint(.accentColor)
+                            .tint(accent)
                         }
                     }
                     .listStyle(.plain)
