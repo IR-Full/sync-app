@@ -207,8 +207,8 @@ func New(svc Services, cfg Config, log *slog.Logger) *Gateway {
 		// ~1 new chat/sec sustained, burst of 10 per user.
 		newChatLimiter: ratelimit.NewLimiter(1, 10),
 		// Node-local by default so a single-process run still charges limits to the
-		// user rather than the socket; cmd/server swaps in the Redis-backed one when
-		// there is more than one node to share the budget across.
+		// user rather than the socket; internal/wiring passes the Redis-backed one
+		// when there is more than one node to share the budget across.
 		userLimits: pickUserLimits(svc.UserLimits),
 		roles:      make(map[string]Role),
 		reaperDone: make(chan struct{}),
@@ -284,8 +284,8 @@ func (g *Gateway) ServeTCP(ctx context.Context, ln net.Listener) error {
 	}()
 	// Run several accept goroutines so accepting new connections is not a single
 	// serialized bottleneck under connection storms (the OS load-balances Accept
-	// across them). For multi-PROCESS scaling, bind the listener with SO_REUSEPORT
-	// (see cmd/server) so each process gets its own accept queue on the same port.
+	// across them). For multi-process scaling on one host, bind the listener with
+	// SO_REUSEPORT so each process gets its own accept queue on the same port.
 	n := g.cfg.AcceptLoops
 	if n < 1 {
 		n = 1
@@ -309,6 +309,12 @@ func (g *Gateway) acceptLoop(ctx context.Context, ln net.Listener) error {
 				continue
 			}
 		}
+		if behindProxy(c) {
+			// The client address is in a PROXY header that has not been read yet;
+			// reading it here would let one slow proxy connection stall accepts.
+			safego.Go(g.log, "gateway.serveTCP", func() { g.guardAndServeTCP(ctx, c) })
+			continue
+		}
 		remote := c.RemoteAddr().String()
 		host, ok := g.ipg.acquire(remote)
 		if !ok {
@@ -323,6 +329,27 @@ func (g *Gateway) acceptLoop(ctx context.Context, ln net.Listener) error {
 			g.serve(ctx, wire.NewTCPTransport(c), remote)
 		})
 	}
+}
+
+// guardAndServeTCP applies the per-IP guard to a connection from a trusted
+// proxy. RemoteAddr reads the PROXY header, so it runs before any handshake
+// deadline is set.
+func (g *Gateway) guardAndServeTCP(ctx context.Context, c net.Conn) {
+	if err := proxyHeaderErr(c); err != nil {
+		// Debug: a balancer health check connects without a header every few seconds.
+		g.log.Debug("closing a proxied connection", "err", err)
+		_ = c.Close()
+		return
+	}
+	remote := c.RemoteAddr().String()
+	host, ok := g.ipg.acquire(remote)
+	if !ok {
+		metrics.ConnRejected.Inc()
+		_ = c.Close()
+		return
+	}
+	defer g.ipg.release(host)
+	g.serve(ctx, wire.NewTCPTransport(c), remote)
 }
 
 // ServeWS is an http.Handler that upgrades to WebSocket and serves the client.

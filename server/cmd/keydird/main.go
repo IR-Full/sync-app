@@ -12,9 +12,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/SyncApp-chat/SyncApp/internal/keydir"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -29,19 +29,10 @@ func main() {
 	}
 	defer b.Close()
 
-	// Shared Redis directory across nodes when available, else in-memory.
-	var dir keydir.Directory
-	if b.Redis != nil {
-		dir = keydir.NewRedis(b.Redis, b.Log)
-		b.Log.Info("keydir: redis")
-	} else {
-		dir = keydir.NewMemory()
-		b.Log.Info("keydir: in-memory")
-	}
-
+	svc := wiring.NewKeyDir(b)
 	addr := platform.Env("SYNCAPP_KEYDIRD_ADDR", ":9005")
 	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_KEYDIRD_METRICS", ":9105"), b.Log,
-		func(s *grpc.Server) { rpc.RegisterKeyDir(s, dir) }); err != nil {
+		func(s *grpc.Server) { rpc.RegisterKeyDir(s, svc) }); err != nil {
 		b.Log.Error("serve", "err", err)
 		os.Exit(1)
 	}

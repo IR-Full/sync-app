@@ -20,8 +20,8 @@ import (
 // each service can run EITHER in-process (a *auth.Service, *chat.Service, …) OR as
 // a separate process behind a gRPC client that satisfies the same interface. This
 // is what turns the modular monolith into a microservice fleet without touching
-// the gateway's handler code — cmd/server wires local impls, cmd/gatewayd wires
-// gRPC clients, both satisfy these.
+// the gateway's handler code — internal/wiring builds local impls for cmd/server
+// and gRPC clients for cmd/gatewayd, and both satisfy these.
 
 // AuthService is the identity/session API the gateway calls.
 //

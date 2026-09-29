@@ -10,9 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
-	"github.com/SyncApp-chat/SyncApp/internal/notify"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -20,6 +19,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	cfg, err := wiring.FromEnv()
+	if err != nil {
+		log.Error("fatal", "err", err)
+		os.Exit(1)
+	}
 	b, err := platform.Load(ctx, log)
 	if err != nil {
 		log.Error("fatal", "err", err)
@@ -27,10 +31,7 @@ func main() {
 	}
 	defer b.Close()
 
-	svc := notify.New(b.Bus,
-		notify.ProviderFor(envcfg.Get("SYNCAPP_PUSH_ENDPOINT"), envcfg.Get("SYNCAPP_PUSH_KEY"), b.Log), b.Log).
-		WithDevices(notify.StoreDevices{Users: b.Stores.Users})
-	if err := svc.Start(); err != nil {
+	if err := wiring.NewNotify(cfg, b.Stores, b.Bus, b.Log).Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}

@@ -12,9 +12,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/SyncApp-chat/SyncApp/internal/auth"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	}
 	defer b.Close()
 
-	svc := auth.New(b.Stores.Users, b.Stores.Sessions, b.IDs)
+	svc := wiring.NewAuth(b.Stores, b.IDs)
 	addr := platform.Env("SYNCAPP_AUTHD_ADDR", ":9001")
 	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_AUTHD_METRICS", ":9101"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterAuth(s, svc) }); err != nil {

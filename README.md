@@ -69,11 +69,12 @@ The same protocol rides TCP, WebSocket (one frame per binary message) and QUIC.
 
 `cmd/server` runs everything in one process. `cmd/gatewayd` plus nine service
 daemons (`authd`, `chatd`, `messaged`, `presenced`, `keydird`, `fanoutd`,
-`searchd`, `notifyd`, `moderationd`) run the same code split behind gRPC. The
-gateway builds the identical `gateway.Services` interfaces, satisfied either by
-local service structs or by RPC clients. The split is a wiring choice, not a fork,
-which is what keeps it honest: both paths compile against the same domain packages
-and run the same tests.
+`searchd`, `notifyd`, `moderationd`) run the same code split behind gRPC. Both are
+assembled by one package, `server/internal/wiring`: `Monolith` and `Fleet` build
+the same `gateway.Services` and differ only in whether the domain half is local
+structs or gRPC clients. A test holds every field of it set in both topologies,
+and another boots the split in-process and exercises the features the edge
+serves.
 
 With no infrastructure configured, everything falls back to in-memory stores, so
 `go run ./cmd/server` works with nothing installed. Postgres, Redis and NATS are

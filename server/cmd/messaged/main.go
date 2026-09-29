@@ -3,6 +3,8 @@
 // (history, read receipts). It authorizes writes by calling chatd (CanPost/
 // IsMember) and co-locates the transactional-outbox relay, which drains staged
 // events to the bus — keeping "commit + publish" on the process that owns the DB.
+// It also runs the scheduled-send dispatcher and the self-destruct reaper, which
+// both write messages.
 package main
 
 import (
@@ -14,10 +16,12 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/message"
 	"github.com/SyncApp-chat/SyncApp/internal/outbox"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -51,6 +55,13 @@ func main() {
 	for _, ob := range b.MsgOutbox {
 		go outbox.New(ob, b.Bus, b.Log).Run(ctx)
 	}
+
+	// Due scheduled sends and self-destruct deadlines. Claims are atomic, so any
+	// number of messaged replicas may run it. The block check needs the direct-chat
+	// peer, which chatd does not expose, so it is read from the shared store.
+	sched := wiring.NewScheduler(b.Stores.Schedule, chats, svc,
+		chat.New(b.Stores.Chats, b.IDs), wiring.NewContacts(b.Stores), b.IDs, b.Log)
+	go sched.Run(ctx, 0)
 
 	addr := platform.Env("SYNCAPP_MESSAGED_ADDR", ":9003")
 	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_MESSAGED_METRICS", ":9103"), b.Log,

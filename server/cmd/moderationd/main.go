@@ -8,11 +8,10 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"github.com/SyncApp-chat/SyncApp/internal/moderation"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -20,6 +19,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	cfg, err := wiring.FromEnv()
+	if err != nil {
+		log.Error("fatal", "err", err)
+		os.Exit(1)
+	}
 	b, err := platform.Load(ctx, log)
 	if err != nil {
 		log.Error("fatal", "err", err)
@@ -27,9 +31,7 @@ func main() {
 	}
 	defer b.Close()
 
-	banned := strings.Split(platform.Env("SYNCAPP_BANNED_TERMS", "spamword,scamlink"), ",")
-	svc := moderation.New(b.Bus, banned, b.Log)
-	if err := svc.Start(); err != nil {
+	if err := wiring.NewModeration(cfg, b.Bus, b.Log).Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)
 	}
