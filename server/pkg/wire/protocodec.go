@@ -2,6 +2,7 @@ package wire
 
 import (
 	"fmt"
+	"reflect"
 
 	pb "github.com/SyncApp-chat/SyncApp/internal/wirepb"
 	"google.golang.org/protobuf/proto"
@@ -12,6 +13,13 @@ func init() { bodyCodec = protoCodec{} }
 // Marshal converts a wire.*Body value to protobuf bytes.
 func (protoCodec) Marshal(v any) ([]byte, error) {
 	m := toProto(v)
+	if m == nil {
+		// toProto switches on values; a pointer to a mapped body encodes the same
+		// bytes instead of silently encoding nothing.
+		if rv := reflect.ValueOf(v); rv.Kind() == reflect.Pointer && !rv.IsNil() {
+			m = toProto(rv.Elem().Interface())
+		}
+	}
 	if m == nil {
 		return nil, fmt.Errorf("wire: no protobuf mapping for %T", v)
 	}

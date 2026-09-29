@@ -238,41 +238,39 @@ jobs:
             psql -h localhost -U syncapp -d syncapp -c "CREATE DATABASE $db"
           done
 
-      # -count=1 because a cached PASS from a run where these tests skipped
-      # would defeat the entire purpose of the job.
+      # One run with every dependency wired in. -count=1 because a cached PASS
+      # from a run where these tests skipped would defeat the purpose of the job.
+      #
+      # An integration test skips with a message naming the SYNCAPP_TEST_* variable
+      # it needs. Any such skip here means a variable stopped reaching the tests,
+      # and the job would otherwise go green while exercising nothing. Matching on
+      # the message rather than a list of packages covers tests added later.
       - name: Run the suite against live dependencies
         env:
           SYNCAPP_TEST_REDIS_ADDR: localhost:6379
           SYNCAPP_TEST_NATS_URL: nats://localhost:4222
           SYNCAPP_TEST_PG_DSN: postgres://syncapp:syncapp@localhost:5432/syncapp?sslmode=disable
           SYNCAPP_TEST_SHARD_DSNS: postgres://syncapp:syncapp@localhost:5432/syncapp_shard_1?sslmode=disable,postgres://syncapp:syncapp@localhost:5432/syncapp_shard_2?sslmode=disable
-        run: go test -count=1 ./...
-
-      # A guard against the job going quietly hollow again: if the variables stop
-      # reaching the tests, every one of them skips and the job still passes.
-      - name: Assert the integration tests actually ran
-        env:
-          SYNCAPP_TEST_REDIS_ADDR: localhost:6379
-          SYNCAPP_TEST_NATS_URL: nats://localhost:4222
-          SYNCAPP_TEST_PG_DSN: postgres://syncapp:syncapp@localhost:5432/syncapp?sslmode=disable
         run: |
           set -o pipefail
+          # -json for the checks below; the jq stage prints the ordinary -v output.
+          go test -count=1 -json ./... | tee run.json | jq -rj 'select(.Action == "output") | .Output'
 
-          go test -count=1 -v -run 'Redis|NATS|Postgres|Shard' \
-            ./internal/keydir/... ./internal/router/... \
-            ./internal/presence/... ./pkg/eventbus/... \
-            ./internal/store/postgres/... 2>&1 | tee run.log
-
-          if grep -q -- "--- SKIP" run.log; then
+          skipped=$(jq -rs '
+            (map(select(.Action == "skip" and .Test != null) | "\(.Package) \(.Test)")) as $skipped
+            | .[]
+            | select(.Action == "output" and .Test != null and (.Output | test("SYNCAPP_TEST_")))
+            | select(("\(.Package) \(.Test)") as $k | $skipped | index($k))
+            | "\(.Package) \(.Test): \(.Output | gsub("^\\s+|\\n$"; ""))"' run.json)
+          if [ -n "$skipped" ]; then
             echo "::error::An integration test skipped, which means its dependency was not wired in:"
-            grep -- "--- SKIP" run.log
+            echo "$skipped"
             exit 1
           fi
 
-          passed=$(grep -c -- "--- PASS" run.log || true)
-          echo "integration tests that ran: $passed"
-
-          if [ "$passed" -eq 0 ]; then
+          ran=$(jq -s '[.[] | select(.Action == "pass" and .Test != null and (.Test | test("Redis|NATS|Postgres|Shard")))] | length' run.json)
+          echo "integration tests that ran: $ran"
+          if [ "$ran" -eq 0 ]; then
             echo "::error::No integration test ran at all"
             exit 1
           fi
