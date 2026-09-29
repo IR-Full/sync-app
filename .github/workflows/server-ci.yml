@@ -162,6 +162,39 @@ jobs:
       - name: Fuzz the node-delivery decoder
         run: go test ./internal/router -run=xxx -fuzz=FuzzDecodeNodeDelivery -fuzztime=60s
 
+  # The web client's X3DH and Double Ratchet against pkg/e2e through a real
+  # gateway, both directions. The per-port vector tests (server/testdata/e2e)
+  # pin the bytes; this pins the rest of the path — the bundle a client
+  # publishes, the envelope it sends, and the payload shape the relay delivers.
+  secret-interop:
+    name: Secret-chat interop (web ↔ Go)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Run both directions
+        run: bash server/scripts/secret-interop.sh
+
   integration:
     name: Integration (Postgres · Redis · NATS)
     runs-on: ubuntu-latest

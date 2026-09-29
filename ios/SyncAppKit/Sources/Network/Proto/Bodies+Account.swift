@@ -478,6 +478,9 @@ public struct SubscriptionBody: ProtoMessage, Sendable, Equatable {
     public var priorityDelivery = false
     public var voiceTranscription = false
     public var badge = false
+    /// Unlocks the accent palettes in appearance settings. An entitlement like the
+    /// rest: the client must not decide who is paying by reading the plan name.
+    public var customThemes = false
 
     public init() {}
 
@@ -494,6 +497,7 @@ public struct SubscriptionBody: ProtoMessage, Sendable, Equatable {
         w.bool(10, priorityDelivery)
         w.bool(11, voiceTranscription)
         w.bool(12, badge)
+        w.bool(13, customThemes)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -512,6 +516,7 @@ public struct SubscriptionBody: ProtoMessage, Sendable, Equatable {
             case 10: priorityDelivery = try r.bool()
             case 11: voiceTranscription = try r.bool()
             case 12: badge = try r.bool()
+            case 13: customThemes = try r.bool()
             default: try r.skip(f)
             }
         }

@@ -29,9 +29,9 @@ default and the reason. Deviations are called out as tradeoffs.
 > the bypass fails. What remains is coverage, not correctness: **Android and iOS
 > now implement E2E** — the ratchet, X3DH, safety numbers and TOFU pinning are
 > ported to web, Android and iOS — but **iOS has no screen that shows a safety
-> number**, so pinning protects nobody there yet. The cross-language interop
-> scripts still cannot run, because the `e2epeer` binary they drive is not in the
-> repository. See [`SECURITY.md`](SECURITY.md) §6.
+> number**, so pinning protects nobody there yet. Every port replays the Go
+> implementation's vectors (`server/testdata/e2e`) byte for byte, and CI runs the
+> web client against `cmd/e2epeer` through a gateway. See [`SECURITY.md`](SECURITY.md) §6.
 
 **Explicitly NOT in the first version** (dangerous complexity to defer):
 E2E encryption, multi-region replication, a bespoke wide-column store, exactly-once
@@ -264,12 +264,8 @@ naming rather than quietly closing):
 
 **Still open in this mode:**
 
-- The client half is web-only. Android and iOS carry the capability bit (
-  correctly un-advertised) and nothing behind it.
-- No shipped client pins identity keys (`pkg/e2e/trust.go` is server-side Go) or
-  surfaces a safety number.
-- The cross-language interop scripts in `client/scripts/` need a Go `e2epeer`
-  binary that does not exist, and CI does not run them.
+- iOS pins identity keys but has no screen that shows a safety number (P2-1).
+- Media cannot be sent in a secret chat yet (NEXT.md).
 
 **Ratcheting vs cloud-sync tradeoff:** cloud sync gives multi-device history,
 server search, and instant new-device onboarding, at the cost of server-readable

@@ -234,6 +234,9 @@ public struct ProfileBody: ProtoMessage, Sendable, Equatable {
     public var username = ""
     public var displayName = ""
     public var avatarRef = ""
+    /// A paying account, for the badge beside the name. False where the deployment
+    /// sells nothing.
+    public var premium = false
 
     public init() {}
 
@@ -242,6 +245,7 @@ public struct ProfileBody: ProtoMessage, Sendable, Equatable {
         w.string(2, username)
         w.string(3, displayName)
         w.string(4, avatarRef)
+        w.bool(5, premium)
     }
 
     public init(from r: inout ProtoReader) throws {
@@ -252,6 +256,7 @@ public struct ProfileBody: ProtoMessage, Sendable, Equatable {
             case 2: username = try r.string()
             case 3: displayName = try r.string()
             case 4: avatarRef = try r.string()
+            case 5: premium = try r.bool()
             default: try r.skip(f)
             }
         }

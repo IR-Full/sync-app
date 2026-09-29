@@ -47,4 +47,7 @@ type Session struct {
 	// "drop an arbitrary one" would sometimes drop the key that was about to be
 	// used. Entries may name a key already consumed; storeSkipped tolerates that.
 	skippedOrder []string
+
+	// keys supplies new ratchet key pairs; nil means GenerateKeyPair.
+	keys func() (*KeyPair, error)
 }

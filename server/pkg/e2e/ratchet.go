@@ -15,15 +15,21 @@ import (
 // NewInitiatorSession starts Alice's session after X3DH. sk is the shared secret;
 // theirSignedPreKey is Bob's signed prekey public (Alice's initial DHr).
 func NewInitiatorSession(sk, theirSignedPreKey []byte) (*Session, error) {
+	return newInitiatorSession(sk, theirSignedPreKey, GenerateKeyPair)
+}
+
+// newInitiatorSession takes the source of ratchet keys, so the cross-language
+// vectors (testdata/e2e) can replay a conversation with recorded keys.
+func newInitiatorSession(sk, theirSignedPreKey []byte, keys func() (*KeyPair, error)) (*Session, error) {
 	dhr, err := PublicKeyFromBytes(theirSignedPreKey)
 	if err != nil {
 		return nil, err
 	}
-	dhs, err := GenerateKeyPair()
+	dhs, err := keys()
 	if err != nil {
 		return nil, err
 	}
-	s := &Session{dhs: dhs, dhr: dhr, rk: sk, skipped: map[string][]byte{}}
+	s := &Session{dhs: dhs, dhr: dhr, rk: sk, skipped: map[string][]byte{}, keys: keys}
 	// Perform the initial DH ratchet so Alice has a sending chain.
 	dhOut, err := dh(s.dhs.Priv, s.dhr)
 	if err != nil {
@@ -37,7 +43,11 @@ func NewInitiatorSession(sk, theirSignedPreKey []byte) (*Session, error) {
 // is Bob's signed prekey key pair (his initial DHs). Bob has no sending chain
 // until he receives Alice's first message and ratchets.
 func NewResponderSession(sk []byte, signedPreKey *KeyPair) (*Session, error) {
-	return &Session{dhs: signedPreKey, rk: sk, skipped: map[string][]byte{}}, nil
+	return newResponderSession(sk, signedPreKey, GenerateKeyPair), nil
+}
+
+func newResponderSession(sk []byte, signedPreKey *KeyPair, keys func() (*KeyPair, error)) *Session {
+	return &Session{dhs: signedPreKey, rk: sk, skipped: map[string][]byte{}, keys: keys}
 }
 
 // Encrypt ratchet-encrypts plaintext, returning the header and ciphertext.
@@ -156,6 +166,15 @@ func (s *Session) clone() *Session {
 	return &c
 }
 
+// newKey draws the next ratchet key pair. A session restored without a source
+// (the zero value) uses fresh random keys.
+func (s *Session) newKey() (*KeyPair, error) {
+	if s.keys == nil {
+		return GenerateKeyPair()
+	}
+	return s.keys()
+}
+
 func (s *Session) sameDHr(dhPub []byte) bool {
 	return s.dhr != nil && string(s.dhr.Bytes()) == string(dhPub)
 }
@@ -179,7 +198,7 @@ func (s *Session) dhRatchet(hdr Header) error {
 	s.rk, s.ckr = kdfRK(s.rk, dhOut)
 
 	// Generate a new local ratchet key pair and derive the new sending chain.
-	s.dhs, err = GenerateKeyPair()
+	s.dhs, err = s.newKey()
 	if err != nil {
 		return err
 	}

@@ -536,7 +536,7 @@ Uses **only standard, audited primitives** — no home-grown crypto:
 | E2E ratchet state handling (commit-after-authenticate, bounded skipped keys) | ✅ staged and bounded |
 | E2E directory hygiene (block check, key-length validation, entry TTL) | ✅ good |
 | E2E coverage across clients | ✅ web, Android, iOS and `cmd/client`; iOS lacks the safety-number screen (P2-1) |
-| E2E cross-language interop proof | ❌ scripts exist; the `e2epeer` binary they need does not, and CI never runs them |
+| E2E cross-language interop proof | ✅ every port replays `server/testdata/e2e/vectors.json` byte for byte; CI runs web ↔ Go through a gateway (`server/scripts/secret-interop.sh`) |
 | Media (signed URLs, unguessable refs, size caps, AV scan, nosniff) | ✅ strong |
 | Transport encryption (TLS 1.3 on TCP/WS/QUIC) | ✅ optional, or enforced via `SYNCAPP_REQUIRE_TLS` |
 | Observability (histograms, pprof, OTLP tracing) | ✅ good |
@@ -565,13 +565,14 @@ What remains on the crypto side is coverage rather than correctness, and it is
 now a narrower gap than this paragraph used to describe. All three clients
 implement the ratchet, X3DH, safety numbers and pinning; **iOS is missing the
 screen that shows a safety number**, so pinning there protects nobody until P2-1
-is closed. The cross-language interop scripts still cannot run, because the Go
-peer binary they drive (`e2epeer`) does not exist in the repository — so what
-holds the four ratchets compatible is shared constants and checked test vectors
-per port, not a test that runs one against another. The header is at least no
-longer part of that risk: each port authenticates the bytes the header travelled
-as rather than a re-encoding of them, so a serialisation difference between two
-implementations can no longer break decryption.
+is closed. Compatibility between the four implementations is now tested rather
+than assumed: the Go implementation generates `server/testdata/e2e/vectors.json`
+(X3DH, a whole conversation with out-of-order delivery and a forged frame, safety
+numbers, with every ratchet key recorded), and web, Android and iOS each replay
+it and must produce the same bytes. CI also runs the web client against
+`cmd/e2epeer` through a real gateway in both directions. Each port authenticates
+the bytes the header travelled as rather than a re-encoding of them, so a
+serialisation difference cannot break decryption either.
 
 Below the crypto, the lesson that produced this section was the same one twice:
 session revocation and account deletion were both fully implemented in the store

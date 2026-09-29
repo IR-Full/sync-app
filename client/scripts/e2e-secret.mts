@@ -7,11 +7,12 @@
  * direction is the only convincing evidence — the two implementations agree on
  * DH ordering, HKDF info strings, the header's JSON bytes and the AEAD.
  *
- * Usage:
+ * Usage (server/scripts/secret-interop.sh does all three):
  *   1. start the gateway
- *   2. start the Go peer:  e2epeer.exe -user gopeerN
- *   3. npm run test:secret -- <gopeer-user-id> <gopeer-device-id>
+ *   2. start the Go peer: go run ./cmd/e2epeer   (prints READY <user-id>:<device-id>)
+ *   3. npm run test:secret -- <ws-url> <user-id> <device-id>
  */
+import { readSecretPayload } from '../src/features/secret-chats/model/payload.ts'
 import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
 import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
 import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
@@ -123,7 +124,9 @@ async function main() {
     process.exit(1)
   }
 
-  const reply = inbox[0]
+  // Read as the app reads it: this client negotiated the binary payload, so the
+  // reply arrives in ratchetHeaderBin/ciphertextBin rather than the text fields.
+  const reply = readSecretPayload(inbox[0])
   const replyInit = JSON.parse(reply.ratchetHeader) as { rh: string }
   const replyHeader = unmarshalHeader(fromBase64(replyInit.rh))
   const plaintext = fromUtf8(session.decrypt(replyHeader, fromBase64(reply.ciphertext)))

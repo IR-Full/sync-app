@@ -170,6 +170,9 @@ export interface SerializedSession {
  * Not safe for concurrent use — callers serialise per session, exactly as the
  * Go implementation requires.
  */
+/** Supplies the key pairs a session ratchets to. Tests pass recorded keys. */
+export type KeySource = () => KeyPair
+
 export class RatchetSession {
   private dhs: KeyPair
   private dhr: Uint8Array | null
@@ -181,6 +184,7 @@ export class RatchetSession {
   private previousSent = 0
   private skipped = new Map<string, Uint8Array>()
   private skippedOrder: string[] = []
+  private keySource: KeySource = generateKeyPair
 
   private constructor(dhs: KeyPair, dhr: Uint8Array | null, rootKey: Uint8Array) {
     this.dhs = dhs
@@ -192,8 +196,13 @@ export class RatchetSession {
    * Initiator's session. The peer's signed prekey is the first DHr, and one DH
    * ratchet runs immediately so the initiator can send straight away.
    */
-  static initiator(sharedSecret: Uint8Array, theirSignedPreKey: Uint8Array): RatchetSession {
-    const session = new RatchetSession(generateKeyPair(), theirSignedPreKey, sharedSecret)
+  static initiator(
+    sharedSecret: Uint8Array,
+    theirSignedPreKey: Uint8Array,
+    keySource: KeySource = generateKeyPair,
+  ): RatchetSession {
+    const session = new RatchetSession(keySource(), theirSignedPreKey, sharedSecret)
+    session.keySource = keySource
     const dhOut = diffieHellman(session.dhs.privateKey, theirSignedPreKey)
     const [rootKey, chainKey] = kdfRootKey(session.rootKey, dhOut)
     session.rootKey = rootKey
@@ -205,8 +214,14 @@ export class RatchetSession {
    * Responder's session. It has no sending chain until the first message
    * arrives and triggers a ratchet step.
    */
-  static responder(sharedSecret: Uint8Array, signedPreKey: KeyPair): RatchetSession {
-    return new RatchetSession(signedPreKey, null, sharedSecret)
+  static responder(
+    sharedSecret: Uint8Array,
+    signedPreKey: KeyPair,
+    keySource: KeySource = generateKeyPair,
+  ): RatchetSession {
+    const session = new RatchetSession(signedPreKey, null, sharedSecret)
+    session.keySource = keySource
+    return session
   }
 
   encrypt(plaintext: Uint8Array): { header: RatchetHeader; ciphertext: Uint8Array } {
@@ -266,6 +281,7 @@ export class RatchetSession {
     //    COPY, adopted only if the frame authenticates. A forgery costs one
     //    discarded copy.
     const trial = RatchetSession.deserialize(this.serialize())
+    trial.keySource = this.keySource
     const plaintext = trial.advance(header, ciphertext)
     this.adopt(trial)
     return plaintext
@@ -327,7 +343,7 @@ export class RatchetSession {
     this.rootKey = rootKey
     this.receivingChainKey = receivingChainKey
 
-    this.dhs = generateKeyPair()
+    this.dhs = this.keySource()
     const [nextRootKey, sendingChainKey] = kdfRootKey(
       this.rootKey,
       diffieHellman(this.dhs.privateKey, this.dhr),

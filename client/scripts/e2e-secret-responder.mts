@@ -9,11 +9,14 @@
  *
  * Usage:
  *   1. start the gateway
- *   2. npm run test:secret-responder
- *      (it prints its own user/device id, then start the Go peer with
- *       -initiate-to <user>:<device>)
+ *   2. npm run test:secret-responder -- <ws-url>
+ *      (it prints READY <user-id>:<device-id>; then start the Go peer with
+ *       go run ./cmd/e2epeer -initiate-to <user-id>:<device-id>)
+ *
+ * server/scripts/secret-interop.sh does all of it.
  */
 import { openSecretMessage } from '../src/features/secret-chats/model/decrypt.ts'
+import { readSecretPayload } from '../src/features/secret-chats/model/payload.ts'
 import { SyncAppClient } from '../src/shared/api/protocol/client.ts'
 import type * as Body from '../src/shared/api/protocol/generated/bodies.ts'
 import { MsgType } from '../src/shared/api/protocol/msg-type.ts'
@@ -72,16 +75,16 @@ async function main() {
 
   console.log(`READY ${session.userId}:${session.deviceId}`)
   console.log(
-    '(now run: e2epeer.exe -user <name> -initiate-to ' +
-      `${session.userId}:${session.deviceId})`,
+    '(now run: go run ./cmd/e2epeer -initiate-to ' + `${session.userId}:${session.deviceId})`,
   )
 
   for (let attempt = 0; attempt < 120 && inbox.length === 0; attempt++) await sleep(500)
   check('received a Go-initiated secret message', inbox.length > 0)
   if (inbox.length === 0) process.exit(1)
 
-  const message = inbox[0]
-  const opened = openSecretMessage(identity, undefined, message)
+  // Read as the app reads it: the payload arrives in whichever form this client
+  // negotiated.
+  const opened = openSecretMessage(identity, undefined, readSecretPayload(inbox[0]))
 
   check('X3DH responder found the consumed one-time prekey', !!opened?.consumedOneTimePreKey, {
     consumed: opened?.consumedOneTimePreKey?.slice(0, 12),
