@@ -28,7 +28,7 @@ and lends its credibility to whatever is still broken.
 
 | # | Defect | Where | Impact |
 |---|--------|-------|--------|
-| ❌ P2-1 | iOS has the safety-number and trust-pinning primitives but no screen that shows them. `Safety` and `TrustStore` are compiled and `SecretChatService.localIdentity` returns an identity; nothing calls `TrustStore.verify`, and there is no UI. | `ios/SyncAppKit/Sources/Crypto/{Safety,Trust}.swift`, `ios/.../Presentation` | The §6 MITM defense is only as good as the comparison a person can actually perform. On iOS a silently substituted peer identity key produces no warning and no screen to check against, so secret chats there rest on trusting the key directory. Web and Android both ship the screen. |
+| — | None open. | | |
 
 **Closed, with what holds them closed** (kept rather than deleted, because the
 claims they falsified were in this file and a reader deserves to know what was
@@ -50,6 +50,7 @@ once wrong here, not only what is right now):
 | ✅ P2-2 | Deleting a message cleared its text and `media_ref` but not its `attachment`: file name, size and media/thumbnail refs stayed in history and stayed downloadable, and the blob was never collected because the row still referenced it. | Both stores clear the attachment; `message.Redacted` strips content from any tombstone at every wire conversion; migration 000019 clears rows deleted before the fix. | `storetest` `DeleteClearsAttachment` (memory and Postgres). |
 | ✅ P2-3 | Read receipts in a channel were broadcast to the whole audience: every subscriber learned who else was subscribed (channel membership is not public), at O(members) per read — O(members²) as the audience reads a post. Edits and deletions were pushed to offline members as notifications; a deletion's push announced the message its sender had just withdrawn. | Receipts stay with the reader in channels and in chats large enough to shard (`fanout.receiptsArePrivate`; chat kind from `chat.Service.ChatType`, cached). Push is sent only for new messages. `fanoutd` gets the kind from chatd (`rpc.ChatClient.ChatType`); fanout remembers each chat's kind, since it never changes, so that is one lookup per chat rather than per receipt. | `internal/fanout` `TestReadReceiptsStayPrivateInChannels`, `TestChatKindIsLookedUpOncePerChat`, `TestEditAndDeleteAreDeliveredButNotPushed`; `internal/rpc` `TestChatTypeOverRPC`. |
 | ✅ P1-7 | YooKassa notifications were "verified" by an HMAC header YooKassa does not send, so in production every genuine notification would have been rejected (no payment ever applied) — and the defence the HMAC stood for was absent. Refunds were posted to `/v3/payments/refunds` instead of `/v3/refunds`. | `YooKassa.Verify` uses the notification only for the payment id and believes `GET /v3/payments/{id}` with the shop's credentials; a forged body can at most trigger a re-read of a real payment. An unreachable API is `ErrProviderUnavailable` → HTTP 500 so the acquirer retries. The HMAC stays as an optional layer for a signing proxy. Before any of that, a notification from outside YooKassa's published address ranges is refused with 403 (`YooKassa.AllowedSources`, default `billing.YooKassaNotificationSources`, override or `off` via `SYNCAPP_YOOKASSA_ALLOWED_IPS`); the source is resolved through `SYNCAPP_TRUSTED_PROXIES` like the gateway's, so behind an ingress that variable must list it. | `internal/billing/provider_yookassa_test.go`, `internal/billing/source_test.go`. |
+| ✅ P2-1 | iOS had the safety-number and trust-pinning primitives and nothing calling them: no screen, and no `TrustStore.verify` anywhere, so a substituted identity key went unnoticed. | `SecretChatService` checks every peer device against its pin before encrypting anything and refuses the whole send on a changed key (`SecretChatError.identityChanged`); first use pins once a session exists; pins live in the Keychain. `SafetyView` shows each device's safety number and pin status and is where a changed key is accepted (which also drops the old session). A refused send opens it. | `ios/.../PresentationTests/SafetyViewModelTests.swift`, `PersistenceTests` `SafetyMappingTests`; the numbers themselves by `CryptoTests/VectorsTests.swift` against the Go vectors. |
 | ✅ P0-6 | `authd` built the auth service without the second factor, so in the split deployment an account with TOTP enabled signed in with the password alone. | Both topologies build it with `wiring.NewAuth`, which always attaches the factor store. | `internal/wiring` `TestNewAuthEnforcesTheSecondFactor`. |
 | ✅ P1-8 | The membership gate on media downloads (`media_authz.go`) was wired in neither binary: `Services.MediaChats` was never set, so every download fell back to the signed ref alone. | `wiring.NewEdge` sets it from the message store. | `internal/wiring` `TestEdgeServicesAreComplete`. |
 | ✅ P1-9 | The split deployment was assembled by hand and had drifted from the monolith. `gatewayd` had no secret queue (a secret message to an offline device was dropped), no pins, drafts, scheduled sends, invites or billing, and did not read `SYNCAPP_TRUSTED_PROXIES` (so P1-4 did not apply to it). Nothing in the split ran the scheduled-send dispatcher or the self-destruct reaper. `fanoutd` announced presence to everyone regardless of privacy settings and pushed muted chats. | One assembly for both, `internal/wiring`: `Monolith` and `Fleet` differ only in the domain clients; `messaged` runs the dispatcher and reaper; `fanoutd` gets every fanout policy from `wiring.NewFanout`; all settings come from `wiring.FromEnv`, which also refuses a malformed value instead of ignoring it. | `internal/wiring` `TestEdgeServicesAreComplete` (every `gateway.Services` field set in both topologies), `TestFleetServesEveryEdgeFeature`, `TestFromEnvRefusesMalformedValues`. |
@@ -75,8 +76,8 @@ and exactly what nothing else was going to report.
 **End-to-end encryption now ships on all three clients.** The ratchet, X3DH,
 safety numbers and trust pinning are ported to `client/src/shared/lib/e2e`,
 `android/.../crypto` and `ios/SyncAppKit/Sources/Crypto`, each pinned against
-`pkg/e2e` with fixed vectors. The one remaining gap is P2-1 above: iOS has the
-primitives and no screen.
+`pkg/e2e` with the shared vectors in `server/testdata/e2e`. All three show a
+safety number and refuse to send to a changed identity until a person accepts it.
 
 ---
 
@@ -168,9 +169,8 @@ Sections below reflect the new state:
   and the human chooses.
   🟡 *Ported to all three clients (`client/src/entities/secret-chat/trust.ts`,
   `android/.../crypto/Trust.kt`, `ios/SyncAppKit/Sources/Crypto/Trust.swift`). Web
-  and Android each show a safety number and refuse to send to a changed identity
-  until a human accepts it. On iOS the primitives compile and nothing calls them —
-  see P2-1 — so there it protects nobody yet.*
+  Android and iOS each show a safety number and refuse to send to a changed identity
+  until a human accepts it.*
 
 ---
 
@@ -437,8 +437,7 @@ Uses **only standard, audited primitives** — no home-grown crypto:
   keeps the identity in the Keychain. Everything else in this section describes
   all three plus `cmd/client`.
 
-  What is still unfinished on iOS is the *screen*, not the crypto: P2-1. And the
-  Swift `Sources/Crypto` directory was for a while not declared as a target in
+  The Swift `Sources/Crypto` directory was for a while not declared as a target in
   `Package.swift`, which means SPM silently compiled none of it — worth recording,
   because `swift build` was green throughout and the E2E implementation was dead
   code that read as shipped.
@@ -535,7 +534,7 @@ Uses **only standard, audited primitives** — no home-grown crypto:
 | E2E key authentication (prekey signature enforcement) | ✅ mandatory, enforced at publish and at use |
 | E2E ratchet state handling (commit-after-authenticate, bounded skipped keys) | ✅ staged and bounded |
 | E2E directory hygiene (block check, key-length validation, entry TTL) | ✅ good |
-| E2E coverage across clients | ✅ web, Android, iOS and `cmd/client`; iOS lacks the safety-number screen (P2-1) |
+| E2E coverage across clients | ✅ web, Android, iOS and `cmd/client`, each with a safety-number screen and pinning |
 | E2E cross-language interop proof | ✅ every port replays `server/testdata/e2e/vectors.json` byte for byte; CI runs web ↔ Go through a gateway (`server/scripts/secret-interop.sh`) |
 | Media (signed URLs, unguessable refs, size caps, AV scan, nosniff) | ✅ strong |
 | Transport encryption (TLS 1.3 on TCP/WS/QUIC) | ✅ optional, or enforced via `SYNCAPP_REQUIRE_TLS` |
@@ -563,9 +562,8 @@ the bypass fails; the damage was the claim, not the code size.
 
 What remains on the crypto side is coverage rather than correctness, and it is
 now a narrower gap than this paragraph used to describe. All three clients
-implement the ratchet, X3DH, safety numbers and pinning; **iOS is missing the
-screen that shows a safety number**, so pinning there protects nobody until P2-1
-is closed. Compatibility between the four implementations is now tested rather
+implement the ratchet, X3DH, safety numbers and pinning, and each shows the number
+and blocks a send to a changed key. Compatibility between the four implementations is now tested rather
 than assumed: the Go implementation generates `server/testdata/e2e/vectors.json`
 (X3DH, a whole conversation with out-of-order delivery and a forged frame, safety
 numbers, with every ratchet key recorded), and web, Android and iOS each replay

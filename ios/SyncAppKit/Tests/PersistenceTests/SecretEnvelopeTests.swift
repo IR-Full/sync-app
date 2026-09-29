@@ -1,5 +1,6 @@
 import XCTest
 @testable import SyncAppCrypto
+@testable import SyncAppDomain
 @testable import SyncAppPersistence
 
 /// The JSON envelope that carries the X3DH bootstrap inside the ratchet-header slot.
@@ -89,5 +90,23 @@ final class SecretEnvelopeTests: XCTestCase {
     func testAnUnparseableRatchetHeaderIsNil() {
         let envelope = SecretEnvelope(identityKey: nil, ephemeralKey: nil, ratchetHeader: "!!!")
         XCTAssertNil(envelope.header)
+    }
+}
+
+/// The safety screen must show a changed key as changed: the pin verdict is the only
+/// thing between a substituted key and a send.
+final class SafetyMappingTests: XCTestCase {
+
+    func testEveryVerdictMapsToItsStatus() {
+        let pin = PinnedIdentity(userID: "1", deviceID: "d", identityKey: "a", signingKey: "b", firstSeen: 0)
+        let cases: [(TrustVerdict, IdentityStatus)] = [
+            (.firstUse, .firstUse), (.known, .known), (.changed(pin), .changed),
+        ]
+        for (verdict, status) in cases {
+            let info = SecretChatService.DeviceSafetyInfo(
+                userID: "1", deviceID: "d", number: "n", verdict: verdict, identityKey: "a", signingKey: "b"
+            )
+            XCTAssertEqual(SecretSafetyRepositoryImpl.device(info).status, status)
+        }
     }
 }

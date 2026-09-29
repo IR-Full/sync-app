@@ -156,6 +156,14 @@
 "chat.secret.noDevices" = "They have no device set up for secret chats yet.";
 "chat.secret.safety" = "Safety number";
 "chat.secret.safety.hint" = "Compare this number with the one on their device. If the two match, nobody is between you. If it changes, the conversation has a new key — ask why before continuing.";
+"chat.secret.safety.changed" = "A device's key has changed. Messages to this chat are paused until you compare the number and accept the new key.";
+"chat.secret.safety.device" = "Device %@";
+"chat.secret.safety.known" = "Key matches the one first seen";
+"chat.secret.safety.firstUse" = "Not compared yet";
+"chat.secret.safety.keyChanged" = "Key changed";
+"chat.secret.safety.acceptChanged" = "I compared it — accept the new key";
+"chat.secret.safety.markVerified" = "Numbers match — mark as verified";
+"chat.secret.safety.open" = "Verify encryption";
 
 /* Account security */
 "security.title" = "Password & security";

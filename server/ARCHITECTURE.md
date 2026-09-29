@@ -28,8 +28,8 @@ default and the reason. Deviations are called out as tradeoffs.
 > authenticated the message — and **both are now fixed**, with tests asserting
 > the bypass fails. What remains is coverage, not correctness: **Android and iOS
 > now implement E2E** — the ratchet, X3DH, safety numbers and TOFU pinning are
-> ported to web, Android and iOS — but **iOS has no screen that shows a safety
-> number**, so pinning protects nobody there yet. Every port replays the Go
+> ported to web, Android and iOS, and each shows a safety number and blocks a send
+> to a changed key. Every port replays the Go
 > implementation's vectors (`server/testdata/e2e`) byte for byte, and CI runs the
 > web client against `cmd/e2epeer` through a gateway. See [`SECURITY.md`](SECURITY.md) §6.
 
@@ -264,7 +264,6 @@ naming rather than quietly closing):
 
 **Still open in this mode:**
 
-- iOS pins identity keys but has no screen that shows a safety number (P2-1).
 - Media cannot be sent in a secret chat yet (NEXT.md).
 
 **Ratcheting vs cloud-sync tradeoff:** cloud sync gives multi-device history,
@@ -617,8 +616,8 @@ the production config now fails closed (`platform.EnforceProduction`, in the
 monolith and in `gatewayd`); the per-IP guard resolves a forwarded address from
 configured trusted proxies only; session revocation and account deletion are
 reachable from every client. What remains is listed in
-[`SECURITY.md`](SECURITY.md) — as of 2026-09-27 that is the missing iOS
-safety-number screen, plus deployment-layer work.
+[`SECURITY.md`](SECURITY.md) — as of 2026-09-29 no open defect, and
+deployment-layer work.
 
 **Designed:** hard brute-force lockout, device fingerprint / IP reputation
 signals, upstream L4 DDoS scrubber, secret management (Vault/KMS), TOFU
