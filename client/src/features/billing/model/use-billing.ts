@@ -87,7 +87,11 @@ export interface Checkout {
 
 export function useBilling(): {
   loadPlans: (country: string) => Promise<PlanOffer[]>
-  checkout: (opts: { country: string; method?: string; returnUrl?: string }) => Promise<Checkout>
+  checkout: (opts: {
+    country: string
+    method?: string
+    returnUrl?: string
+  }) => Promise<Checkout>
   cancel: () => Promise<void>
 } {
   const client = useSyncAppClient()

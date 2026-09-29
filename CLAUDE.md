@@ -30,7 +30,7 @@ to one binary protocol.
 
 ```bash
 cd server  && gofmt -l . && go vet ./... && go test ./...
-cd client  && npx tsc --noEmit && npx eslint src && npx vitest run
+cd client  && npx tsc --noEmit && npx eslint src && npx prettier --check . && npx vitest run
 cd android && ./gradlew :app:testDevelopmentDebugUnitTest
 cd ios/SyncAppKit && swift test        # macOS only
 ```

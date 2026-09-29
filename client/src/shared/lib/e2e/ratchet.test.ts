@@ -109,7 +109,9 @@ describe('marshalHeader / unmarshalHeader', () => {
     // The sending side of a first message, and the one case where matching Go's
     // encoder is still what carries compatibility.
     const dh = new Uint8Array([1, 2, 3])
-    expect(fromUtf8(marshalHeader({ dh, pn: 4, n: 7 }))).toBe(`{"dh":"${toBase64(dh)}","pn":4,"n":7}`)
+    expect(fromUtf8(marshalHeader({ dh, pn: 4, n: 7 }))).toBe(
+      `{"dh":"${toBase64(dh)}","pn":4,"n":7}`,
+    )
   })
 
   it('survives a base64 hop, which is how the header reaches the peer', () => {
@@ -498,26 +500,22 @@ describe('a forged frame', () => {
   // discarded copy. It ran at ~4s against the 5s default, so it failed by
   // timeout on a loaded machine and passed on an idle one, which reads as a
   // flaky crypto test rather than as what it is.
-  it(
-    'stores no skipped keys',
-    () => {
-      const { alice, bob } = handshake()
-      receive(bob, send(alice, 'first'))
-      const before = Object.keys(bob.serialize().skipped).length
+  it('stores no skipped keys', () => {
+    const { alice, bob } = handshake()
+    receive(bob, send(alice, 'first'))
+    const before = Object.keys(bob.serialize().skipped).length
 
-      for (let i = 0; i < 20; i++) {
-        const attacker = generateKeyPair()
-        try {
-          bob.decrypt({ dh: attacker.publicKey, pn: 999, n: 999 }, toUtf8('junk'))
-        } catch {
-          // expected
-        }
+    for (let i = 0; i < 20; i++) {
+      const attacker = generateKeyPair()
+      try {
+        bob.decrypt({ dh: attacker.publicKey, pn: 999, n: 999 }, toUtf8('junk'))
+      } catch {
+        // expected
       }
+    }
 
-      expect(Object.keys(bob.serialize().skipped).length).toBe(before)
-    },
-    20_000,
-  )
+    expect(Object.keys(bob.serialize().skipped).length).toBe(before)
+  }, 20_000)
 
   it('does not advance the receive counter', () => {
     const { alice, bob } = handshake()

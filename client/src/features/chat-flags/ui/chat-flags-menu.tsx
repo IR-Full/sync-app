@@ -26,13 +26,7 @@ const MUTE_PRESETS: { key: TranslationKey; ms: number }[] = [
 ]
 
 /** One row of the popover. */
-function Item({
-  children,
-  onSelect,
-}: {
-  children: React.ReactNode
-  onSelect: () => void
-}) {
+function Item({ children, onSelect }: { children: React.ReactNode; onSelect: () => void }) {
   return (
     <button
       type="button"

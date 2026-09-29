@@ -154,7 +154,9 @@ export function useAccountSecurity(): {
  *     field to highlight.
  *   - BAD_ARG is a rule the new password broke.
  */
-export function describeSecurityError(error: unknown): 'code' | 'password' | 'weak' | 'unknown' {
+export function describeSecurityError(
+  error: unknown,
+): 'code' | 'password' | 'weak' | 'unknown' {
   if (!(error instanceof ProtocolError)) return 'unknown'
   switch (error.code) {
     case ErrorCode.TWO_FACTOR_INVALID:
