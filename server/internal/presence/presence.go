@@ -7,6 +7,7 @@ package presence
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
@@ -15,6 +16,27 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+// Backend stores ephemeral presence. Implementations: memoryBackend, redisBackend.
+type Backend interface {
+	SetOnline(ctx context.Context, userID string, ttl time.Duration) error
+	SetOffline(ctx context.Context, userID string, lastSeenMs int64) error
+	Get(ctx context.Context, userID string) (model.Presence, error)
+}
+
+// Service tracks presence and relays typing.
+type Service struct {
+	backend Backend
+	bus     eventbus.Bus
+	ttl     time.Duration
+}
+
+// --- in-memory backend ---
+
+type memoryBackend struct {
+	mu   sync.RWMutex
+	data map[string]model.Presence
+}
 
 // New builds the presence service. ttl is how long an "online" marker survives
 // without a heartbeat (the gateway refreshes it on each ping).

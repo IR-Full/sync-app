@@ -18,6 +18,12 @@ import (
 	"crypto/rand"
 )
 
+// KeyPair is an X25519 key pair.
+type KeyPair struct {
+	Priv *ecdh.PrivateKey
+	Pub  *ecdh.PublicKey
+}
+
 // GenerateKeyPair creates a fresh X25519 key pair.
 func GenerateKeyPair() (*KeyPair, error) {
 	priv, err := ecdh.X25519().GenerateKey(rand.Reader)

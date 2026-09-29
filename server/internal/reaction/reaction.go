@@ -7,6 +7,7 @@ package reaction
 
 import (
 	"context"
+	"errors"
 	"unicode/utf8"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
@@ -15,6 +16,30 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+// ErrForbidden means the user is not a member of the chat.
+var ErrForbidden = errors.New("reaction: forbidden")
+
+// ErrBadEmoji means the emoji failed validation.
+var ErrBadEmoji = errors.New("reaction: invalid emoji")
+
+// maxEmojiRunes bounds the reaction token. Emoji are multi-rune (ZWJ sequences,
+// skin-tone modifiers), so a few runes are legitimate — but this must never be a
+// free-text field, or reactions become an unmoderated message channel.
+const maxEmojiRunes = 8
+
+// Chats is the membership check the service needs (interface so it works against
+// the local chat service or a gRPC chat client).
+type Chats interface {
+	IsMember(ctx context.Context, chatID, userID string) (bool, error)
+}
+
+// Service applies and broadcasts reactions.
+type Service struct {
+	store store.ReactionStore
+	chats Chats
+	bus   eventbus.Bus
+}
 
 // New builds the reaction service.
 func New(st store.ReactionStore, chats Chats, bus eventbus.Bus) *Service {

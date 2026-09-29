@@ -211,10 +211,7 @@ Swift should say plainly that CI is the first compiler to see it.
 ### Environment notes worth not rediscovering
 
 * **`make` is not in PATH** — run the `Makefile` target's commands by hand. The
-  `proto` target in particular must keep its `scripts/split-pb.py` calls: the
-  generated files are checked in already split by declaration kind, and skipping
-  the split leaves the same declarations in two files and the package stops
-  compiling.
+  generated protobuf is checked in exactly as `protoc` writes it.
 * **Regenerating protobuf is idempotent** — a clean regenerate against the current
   `.proto` produces no diff, so any diff it does produce is yours. Worth
   confirming before an edit rather than after.

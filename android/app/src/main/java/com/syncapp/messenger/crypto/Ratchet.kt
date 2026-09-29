@@ -66,7 +66,7 @@ data class RatchetHeader(
      * values nobody authenticated. `copy()` calls the primary constructor, so a
      * header derived with `copy(pn = 99)` starts with no bytes of its own and is
      * encoded from the counters it actually carries — and the AEAD rejects it.
-     * `Header.raw` in `server/pkg/e2e/ratchet.types.go` gets the same guarantee
+     * `Header.raw` in `server/pkg/e2e/ratchet.go` gets the same guarantee
      * from being unexported.
      */
     internal var wireBytes: ByteArray? = null

@@ -2,11 +2,39 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+// errLoginThrottled signals too many auth attempts for a username.
+var errLoginThrottled = errors.New("login throttled")
+
+// errBadDisplayName rejects a registration whose display name is not a name.
+var errBadDisplayName = errors.New("invalid display name")
+
+// maxIdempotencyKeyLen bounds a checkout idempotency key.
+//
+// It is stored, indexed and compared, so an unbounded one is a way to put arbitrary
+// bytes in a unique index. 128 is far more than any client needs for a UUID.
+const maxIdempotencyKeyLen = 128
+
+// authIdentity is the gateway's flattened view of a resolved principal.
+type authIdentity struct {
+	userID      string
+	deviceID    string
+	sessionID   string
+	token       string
+	resumeToken string
+	// The account behind the session, echoed in AUTH_OK. A client that logs in
+	// with a stored token never sent a username and has no other way to learn
+	// its own.
+	username    string
+	displayName string
+	avatarRef   string
+}
 
 func (c *conn) authByToken(ctx context.Context, token string) (*authIdentity, error) {
 	id, err := c.gw.svc.Auth.Authenticate(ctx, token)

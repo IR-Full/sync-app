@@ -15,6 +15,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const slots = 1024
+
 // Lease claims a unique node id from Redis and keeps it renewed until the
 // returned release func is called. The value stored is a per-process owner tag so
 // the renewer only refreshes a slot it still owns.

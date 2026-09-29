@@ -2,8 +2,32 @@ package e2e
 
 import (
 	"crypto/subtle"
+	"errors"
+	"sync"
 	"time"
 )
+
+// ErrIdentityChanged means a peer device presented a different identity key than
+// the one pinned for it. It carries both keys so a client can show the safety
+// numbers side by side.
+var ErrIdentityChanged = errors.New("e2e: peer identity key changed since it was pinned")
+
+// TrustStore records the identity key first seen for each peer device. A client
+// persists it; losing it is not fatal, it only means every peer is trusted on
+// first use again.
+type TrustStore struct {
+	mu     sync.RWMutex
+	pinned map[string]PinnedIdentity
+}
+
+// PinnedIdentity is what was recorded for one peer device.
+type PinnedIdentity struct {
+	UserID      string
+	DeviceID    string
+	IdentityKey []byte
+	SigningKey  []byte
+	FirstSeen   time.Time
+}
 
 // A safety number lets two people DETECT a swapped identity key — if they think
 // to compare it. Pinning is the half that does not depend on anyone remembering

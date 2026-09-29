@@ -8,6 +8,35 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// bindLua increments a node's refcount and (re)sets the TTL on every key it is
+// given — the user-level index, and the per-device one when a device was named.
+// Both in ONE script so a connection can never be registered in one index and
+// missing from the other.
+var bindLua = redis.NewScript(`
+for i = 1, #KEYS do
+  redis.call("HINCRBY", KEYS[i], ARGV[1], 1)
+  redis.call("PEXPIRE", KEYS[i], ARGV[2])
+end
+return 1`)
+
+// unbindLua decrements; removes the field at zero and the key when empty.
+var unbindLua = redis.NewScript(`
+for i = 1, #KEYS do
+  local n = redis.call("HINCRBY", KEYS[i], ARGV[1], -1)
+  if n <= 0 then redis.call("HDEL", KEYS[i], ARGV[1]) end
+  if redis.call("HLEN", KEYS[i]) == 0 then redis.call("DEL", KEYS[i]) end
+end
+return 1`)
+
+// redisRouter is the multi-node routing table. For each user it keeps a Redis
+// hash route:<user> mapping nodeID → device refcount, with a TTL so a crashed
+// node's bindings self-expire (refreshed by the gateway heartbeat). All ops are
+// atomic Lua so concurrent bind/unbind across nodes stay consistent.
+type redisRouter struct {
+	rdb *redis.Client
+	ttl time.Duration
+}
+
 // NewRedis builds a Redis-backed router.
 func NewRedis(rdb *redis.Client, ttl time.Duration) Router {
 	if ttl == 0 {

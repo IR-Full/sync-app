@@ -43,7 +43,7 @@ const MAX_SKIP = 1000
  * `MAX_SKIP` only ever bounded a single call: every DH ratchet step restarts the
  * count, so the map grew without limit — and this class serialises that map into
  * localStorage, so the growth outlived the tab. Mirrors `maxSkippedKeys` in
- * `server/pkg/e2e/ratchet.constants.go`.
+ * `server/pkg/e2e/ratchet.go`.
  */
 const MAX_SKIPPED_KEYS = 2 * MAX_SKIP
 
@@ -68,7 +68,7 @@ const MAX_SKIPPED_KEYS = 2 * MAX_SKIP
  * `{ ...header, pn: 99 }` copies the bytes and changes the counter. An entry
  * here cannot: that spread produces a NEW object, which has no association, so
  * it falls back to encoding the counters it actually carries and the AEAD
- * rejects it. `Header.raw` in `server/pkg/e2e/ratchet.types.go` gets the same
+ * rejects it. `Header.raw` in `server/pkg/e2e/ratchet.go` gets the same
  * guarantee from being unexported.
  *
  * Weak, so a header pins no bytes once it is unreachable.

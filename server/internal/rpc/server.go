@@ -3,6 +3,8 @@ package rpc
 import (
 	"context"
 
+	"google.golang.org/grpc"
+
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
 	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/keydir"
@@ -11,8 +13,38 @@ import (
 	"github.com/SyncApp-chat/SyncApp/internal/presence"
 	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
-	"google.golang.org/grpc"
 )
+
+// AuthServer exposes an *auth.Service over gRPC.
+type AuthServer struct {
+	pb.UnimplementedAuthServiceServer
+	svc *auth.Service
+}
+
+// ChatServer exposes a *chat.Service over gRPC.
+type ChatServer struct {
+	pb.UnimplementedChatServiceServer
+	svc *chat.Service
+}
+
+// MessageServer exposes the message broker (writes) and read service over gRPC.
+type MessageServer struct {
+	pb.UnimplementedMessageServiceServer
+	broker *message.Broker
+	reader *message.Service
+}
+
+// PresenceServer exposes a *presence.Service over gRPC.
+type PresenceServer struct {
+	pb.UnimplementedPresenceServiceServer
+	svc *presence.Service
+}
+
+// KeyDirServer exposes a keydir.Directory over gRPC.
+type KeyDirServer struct {
+	pb.UnimplementedKeyDirServiceServer
+	dir keydir.Directory
+}
 
 // ---- Auth ----
 

@@ -7,8 +7,30 @@
 package breaker
 
 import (
+	"sync"
 	"time"
 )
+
+const (
+	Closed   State = iota // healthy: calls allowed
+	Open                  // failing: calls rejected until cooldown
+	HalfOpen              // probing: limited calls allowed to test recovery
+)
+
+// State is the breaker's state.
+type State int
+
+// Breaker is a thread-safe circuit breaker.
+type Breaker struct {
+	mu          sync.Mutex
+	state       State
+	failures    int
+	threshold   int
+	cooldown    time.Duration
+	openedAt    time.Time
+	halfOpenMax int
+	halfOpen    int
+}
 
 // New builds a breaker that opens after `threshold` consecutive failures and
 // stays open for `cooldown` before probing.

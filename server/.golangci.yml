@@ -37,8 +37,8 @@ linters:
     staticcheck:
       checks:
         - all
-        # ST1000: package comments. Most packages here have one; the generated
-        # and split *.types.go / *.constants.go files by construction cannot.
+        # ST1000: package comments. Most packages here have one; generated code
+        # does not.
         - -ST1000
         # QF1001: De Morgan's law. A refactoring suggestion, not a defect — and
         # `!(a && b)` often reads closer to the rule being expressed than the

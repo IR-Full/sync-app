@@ -423,7 +423,7 @@ separate repos) and it runs on every push. Four suites:
 
 The client side is complete: APNs registration, `PUSH_TOKEN` on connect, and a
 deep link from a notification tap into the chat (the server's payload carries
-`chat_id` — `internal/notify/notify.types.go`). Turning notifications off sends
+`chat_id` — `internal/notify/notify.go`). Turning notifications off sends
 an **empty** token, which clears it server-side and stops the push at the source
 rather than at the device.
 

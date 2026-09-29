@@ -58,7 +58,7 @@ public struct RatchetHeader: Equatable, Sendable {
     /// header rebuilt as `RatchetHeader(dh: h.dh, pn: 99, n: h.n)` therefore
     /// starts with no bytes of its own and is encoded from the counters it
     /// actually carries — and the AEAD rejects it. `Header.raw` in
-    /// `server/pkg/e2e/ratchet.types.go` gets the same guarantee from being
+    /// `server/pkg/e2e/ratchet.go` gets the same guarantee from being
     /// unexported.
     public fileprivate(set) var wireBytes: Data?
 

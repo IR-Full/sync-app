@@ -589,10 +589,8 @@ with nothing but a warning in the log.
 
 ## 15. A map of the code: which file does what
 
-Packages follow one convention: `<name>.go` is behaviour, `<name>.types.go` is
-structures and interfaces, `<name>.constants.go` is constants. So "what this is"
-and "what it does" read separately, and you find things by filename rather than
-by scrolling.
+Each file holds one concern — its constants, types and functions together — and
+is named for it, so you find things by filename rather than by scrolling.
 
 ```
 pkg/wire/            ← THE CUSTOM PROTOCOL (start here)
@@ -600,7 +598,7 @@ pkg/wire/            ← THE CUSTOM PROTOCOL (start here)
   envelope.go          the envelope: type, seq, ack, requestID, body
   constants.go         message type numbers, capabilities (Cap), error codes
   types.go             the types themselves (MsgType and its String)
-  messages.types.go    the body structures per message
+  messages.go          the body structures per message
   protocodec.go        protobuf body codec (the default; JSON for debugging)
   compress.go          zstd + the shared dictionary (gzip as a fallback)
   codec.go, wsconn.go  reading/writing over TCP, WebSocket and QUIC

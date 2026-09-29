@@ -13,17 +13,56 @@
 package invite
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"regexp"
 	"strings"
-
-	"context"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/SyncApp-chat/SyncApp/internal/tracing"
 )
+
+var (
+	// ErrForbidden means the actor lacks the required chat rights.
+	ErrForbidden = errors.New("invite: forbidden")
+	// ErrBadUsername means the handle failed validation.
+	ErrBadUsername = errors.New("invite: invalid username")
+	// ErrTaken means the handle is already claimed.
+	ErrTaken = errors.New("invite: username taken")
+	// ErrInvalidLink means the link is missing, revoked, expired, or exhausted.
+	ErrInvalidLink = errors.New("invite: link is not usable")
+	// ErrLastOwner means demoting this user would leave the chat ownerless.
+	ErrLastOwner = errors.New("invite: cannot demote the last owner")
+)
+
+// usernameRe bounds handles to a safe, unambiguous alphabet: mixing scripts or
+// punctuation into public handles invites look-alike impersonation.
+var usernameRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]{4,31}$`)
+
+// Chats supplies role information and membership mutation.
+type Chats interface {
+	Get(ctx context.Context, chatID string) (*model.Chat, error)
+	AddMember(ctx context.Context, m *model.ChatMember) error
+	IsMember(ctx context.Context, chatID, userID string) (bool, error)
+	// MemberRole answers "what may this ONE person do here?". Rights checks used
+	// to list every member and scan for the actor, which made the cost of an admin
+	// action depend on how popular the chat is — worst in exactly the channels
+	// where admin actions matter most.
+	MemberRole(ctx context.Context, chatID, userID string) (model.MemberRole, bool, error)
+	// CountMembersWithRole makes "is this the last owner?" a count instead of an
+	// enumeration.
+	CountMembersWithRole(ctx context.Context, chatID string, role model.MemberRole) (int, error)
+}
+
+// Service manages handles, links, and admin rights.
+type Service struct {
+	store store.InviteStore
+	roles store.MemberRoleStore
+	chats Chats
+}
 
 // New builds the invite service.
 func New(st store.InviteStore, roles store.MemberRoleStore, chats Chats) *Service {

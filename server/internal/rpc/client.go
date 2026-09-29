@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/SyncApp-chat/SyncApp/internal/auth"
 	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/keydir"
@@ -12,8 +14,29 @@ import (
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
-	"google.golang.org/grpc"
 )
+
+// AuthClient satisfies gateway.AuthService against a remote auth service.
+type AuthClient struct{ c pb.AuthServiceClient }
+
+// ChatClient satisfies gateway.ChatService and the message/search chat
+// dependency (CanPost/IsMember) against a remote chat service.
+type ChatClient struct{ c pb.ChatServiceClient }
+
+// MessageClient satisfies gateway.MessageBroker and gateway.MessageReader
+// against a remote message service.
+type MessageClient struct{ c pb.MessageServiceClient }
+
+// PresenceClient satisfies gateway.PresenceService against a remote service.
+type PresenceClient struct{ c pb.PresenceServiceClient }
+
+// KeyDirClient satisfies keydir.Directory against a remote key directory. The
+// interface carries a context but no error, so a failure is logged and reported
+// as "no bundle" — which is what the E2E path already has to handle.
+type KeyDirClient struct {
+	c   pb.KeyDirServiceClient
+	log *slog.Logger
+}
 
 // The client adapters below satisfy the gateway's service interfaces
 // (internal/gateway/services.go) and the message/search chat dependency and

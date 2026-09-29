@@ -11,19 +11,227 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/SyncApp-chat/SyncApp/internal/audit"
 	"github.com/SyncApp-chat/SyncApp/internal/billing"
 	"github.com/SyncApp-chat/SyncApp/internal/delivery"
+	"github.com/SyncApp-chat/SyncApp/internal/keydir"
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
+	"github.com/SyncApp-chat/SyncApp/internal/replay"
 	"github.com/SyncApp-chat/SyncApp/internal/router"
 	"github.com/SyncApp-chat/SyncApp/internal/safego"
+	"github.com/SyncApp-chat/SyncApp/internal/store"
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
+	"github.com/SyncApp-chat/SyncApp/pkg/id"
 	"github.com/SyncApp-chat/SyncApp/pkg/ratelimit"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
-	"github.com/gorilla/websocket"
 )
+
+const (
+	RoleAdmin     Role = "admin"
+	RoleModerator Role = "moderator"
+)
+
+// preAuthMaxPayload caps a frame before the peer has authenticated. HELLO, AUTH
+// and RESUME are a few hundred bytes; a stranger has no business sending 16 MiB
+// frames, and every open socket may be one.
+const preAuthMaxPayload = 64 << 10
+
+// deliveredQueueDepth bounds the delivery-receipt backlog per node. Deep enough
+// that a normal burst is absorbed, shallow enough that a node which cannot keep
+// up drops decorations instead of growing a queue nobody is draining.
+const deliveredQueueDepth = 4096
+
+// DefaultConfig returns sensible defaults.
+func DefaultConfig() Config {
+	return Config{
+		ServerVersion: "SyncApp/0.1",
+		// The name an authenticator app shows next to the account. A default rather
+		// than a required setting, because an empty issuer produces an entry called
+		// nothing, and a user with three of those cannot tell them apart.
+		TOTPIssuer:       "SyncApp",
+		Heartbeat:        20 * time.Second,
+		IdleTimeout:      60 * time.Second,
+		HandshakeTimeout: 10 * time.Second,
+		WriteTimeout:     15 * time.Second,
+		MaxInflight:      256,
+		SendRate:         20,
+		SendBurst:        40,
+		// Reads are cheaper per request than writes but amplify far more, so the
+		// sustained rate is generous and the burst is what actually bounds a
+		// scroll: opening a chat fires a handful of pages back to back, then goes
+		// quiet. 60/120 lets a client page through six thousand messages a minute
+		// and still refuses a loop.
+		ReadRate:        60,
+		ReadBurst:       120,
+		TypingRate:      2,
+		TypingBurst:     5,
+		TypingChatRate:  0.5,
+		TypingChatBurst: 2,
+		SignalRate:      20,
+		SignalBurst:     60,
+		AcceptLoops:     4,
+	}
+}
+
+// Services bundles the domain dependencies the gateway routes to. Every domain
+// field is an INTERFACE (see services.go), so cmd/server can wire in-process
+// implementations and cmd/gatewayd can wire gRPC clients — the gateway code is
+// identical either way. Hub is concrete because in-node connection delivery is
+// inherently per-gateway-node, not a separable service.
+type Services struct {
+	Auth     AuthService
+	Chat     ChatService
+	Msg      MessageReader // read path (history, read receipts)
+	Broker   MessageBroker // write path (create/edit/delete)
+	Presence PresenceService
+	Reactor  ReactionService // emoji reactions (optional)
+	Calls    CallService     // voice/video call signaling (optional)
+	Polls    PollService     // polls (optional)
+	Contacts ContactService  // address book + block list (optional)
+	Schedule ScheduleService // deferred sends (optional)
+	Pins     PinService      // pinned messages + drafts (optional)
+	Invites  InviteService   // public handles, invite links, admin rights (optional)
+	Users    store.UserStore // for @username → user resolution
+	// MediaChats answers which chats a blob is reachable from, so a download can
+	// be gated on membership rather than on possession of the ref alone. Optional:
+	// without it the media service keeps its previous behaviour (signed,
+	// unguessable ref and nothing more).
+	MediaChats store.MediaChatResolver
+	Hub        *delivery.Hub
+	KeyDir     keydir.Directory // E2E prekey directory (optional)
+	// SecretQ holds end-to-end ciphertext for devices that were offline when it
+	// was relayed. Optional, and its absence is a real degradation rather than a
+	// missing extra: without it SECRET_SEND falls back to pure relay, which
+	// discards the message when the recipient has no live connection. The
+	// handler says so in the SECRET_ACK it returns instead of letting the sender
+	// believe otherwise.
+	SecretQ store.SecretQueueStore
+	// IDs mints queue ids. Only the secret queue needs one here — every other id
+	// the gateway hands out was minted by the service that owns the row. Nil is
+	// tolerated the same way SecretQ is: no generator, no queue.
+	IDs   *id.Generator
+	Media MediaService // media upload/download tickets (optional)
+	// Billing owns subscriptions and entitlements. Optional: without it every
+	// account is on the free tier, which is a coherent deployment rather than a
+	// broken one.
+	Billing BillingService
+	Search  SearchService // full-text search (optional)
+	Audit   audit.Sink    // audit log (optional)
+	Bus     eventbus.Bus  // event bus (for cross-node delivery)
+	Router  router.Router // user→node routing registry
+	Replay  replay.Buffer // per-session resume replay buffer (optional)
+	// UserLimits caps EXPENSIVE per-user actions (media tickets, search, export,
+	// invite links, chat creation) across all of a user's connections — and, with
+	// a Redis-backed implementation, across nodes. The per-connection flood bucket
+	// answers "is this socket abusive?", which a client sidesteps by opening more
+	// sockets; the cost these guard is paid once per request either way.
+	// Optional: nil falls back to a node-local shared limiter.
+	UserLimits ratelimit.Shared
+}
+
+// Config tunes connection behavior.
+type Config struct {
+	NodeID        string // this gateway's node id (for cross-node routing)
+	ServerVersion string
+	// TOTPIssuer is the name an authenticator app shows next to the account.
+	//
+	// Configurable because it is branding, and wrong branding is how a user ends up
+	// with three entries called "Unknown" and no idea which is which. Defaults to
+	// the product name in DefaultConfig.
+	TOTPIssuer       string
+	Heartbeat        time.Duration // interval between server pings
+	IdleTimeout      time.Duration // close if no client traffic for this long
+	HandshakeTimeout time.Duration // max time to complete HELLO + AUTH
+	WriteTimeout     time.Duration // max time a single frame write may block
+	MaxInflight      int           // outbound queue depth (backpressure window)
+	// TrustedProxies lists the hops allowed to speak for a client via
+	// X-Forwarded-For, as CIDRs or bare addresses. Empty (the default) means the
+	// header is ignored entirely and the peer address is used — which is the safe
+	// default, because an unvalidated forwarded address is a way to get an
+	// unlimited per-IP budget and to attribute traffic to someone else.
+	TrustedProxies []string
+	SendRate       float64 // allowed state-changing msgs/sec per connection
+	// ReadRate/ReadBurst meter the READ side. Reads used to cost nothing at all,
+	// which made HISTORY the cheapest amplifier in the protocol: one small frame
+	// draws a database page and up to a hundred full message frames back. The
+	// budget is deliberately looser than the write one — scrolling a chat is
+	// normal behaviour — but it is not unlimited.
+	ReadRate  float64
+	ReadBurst float64
+	SendBurst float64 // burst capacity for the above
+	// Typing indicators are cheap to send and expensive to deliver: one frame in
+	// becomes one delivery per chat member, through the bus, on every node. They
+	// are exempt from the send bucket (they are not state-changing), so they get
+	// their own ceiling: TypingRate/Burst bound a single connection overall, and
+	// TypingChatRate/Burst bound it per chat. A real client refreshes "typing…"
+	// every few seconds, so this is invisible in normal use.
+	TypingRate      float64
+	TypingBurst     float64
+	TypingChatRate  float64
+	TypingChatBurst float64
+	// Call signaling is relayed between participants without passing the send
+	// bucket (SDP/ICE is chatty and must not compete with messages for it), so it
+	// carries its own generous ceiling — enough for ICE gathering, not enough to
+	// use the relay as an unmetered message channel.
+	SignalRate  float64
+	SignalBurst float64
+	AcceptLoops int // concurrent TCP accept goroutines (0 = 1)
+	// MaxConnsPerIP caps concurrent connections from one source IP (0 = unlimited).
+	// AcceptRatePerIP caps new connections/sec from one source IP (0 = unlimited).
+	// Together they blunt connection floods / reconnect storms at the accept edge.
+	MaxConnsPerIP   int
+	AcceptRatePerIP float64
+	// AllowedOrigins restricts WebSocket upgrades (CSWSH defense). Empty = allow
+	// any origin (dev only). In production set your web app origins.
+	AllowedOrigins []string
+	// AdminUsers / ModeratorUsers assign platform roles (RBAC). Admins may perform
+	// any privileged action; moderators may export/inspect for support but not
+	// change platform config.
+	AdminUsers     []string
+	ModeratorUsers []string
+}
+
+// Role is a platform-level RBAC role.
+type Role string
+
+// Gateway accepts and serves client connections.
+type Gateway struct {
+	svc Services
+	cfg Config
+	log *slog.Logger
+	up  websocket.Upgrader
+	// loginLimiter throttles password auth attempts per username across ALL
+	// connections, so an attacker cannot brute-force by opening a new connection
+	// per guess. A token bucket (not a hard lockout) means a legitimate user is
+	// never permanently locked out by someone spamming their username.
+	loginLimiter *ratelimit.Limiter
+	// userLimits caps expensive per-user actions across connections (see Services).
+	userLimits ratelimit.Shared
+	// trustedProxies is Config.TrustedProxies parsed once at construction. Parsing
+	// per connection would put a CIDR parse on the accept path.
+	trustedProxies []*net.IPNet
+	// newChatLimiter throttles how fast one user may start NEW direct chats,
+	// capping mass-DM spam without affecting messaging in existing chats.
+	newChatLimiter *ratelimit.Limiter
+	// conns tracks live connections for graceful drain on shutdown.
+	conns sync.Map // *conn -> struct{}
+	// roles maps user ids to their platform role (RBAC).
+	roles map[string]Role
+	// ipg limits per-source-IP accept rate and concurrent connections (may be nil).
+	ipg *ipGuard
+	// reaper: one shared liveness goroutine per node (idle-close + ping).
+	reaperOnce sync.Once
+	reaperDone chan struct{}
+	// delivered queues delivery receipts raised by connection writers, drained by
+	// one reporter goroutine (see delivered.go). Buffered and droppable: a writer
+	// must never wait on the routing registry to hand off a receipt.
+	delivered chan deliveryReport
+}
 
 // pickUserLimits falls back to a node-local shared limiter. Node-local is still
 // a real limit: it charges every connection of a user to one budget, which is

@@ -9,7 +9,6 @@ package tracing
 import (
 	"context"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
@@ -19,7 +18,11 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
+
+	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 )
+
+const serviceName = "SyncApp-gateway"
 
 // Init installs the global tracer provider and returns a shutdown function.
 // Exporter selection by env:
