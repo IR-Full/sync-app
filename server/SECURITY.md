@@ -10,46 +10,47 @@ defect**.
 
 ---
 
-## ⚠️ Open defects (last verified 2026-09-27)
+## ⚠️ Open defects (last verified 2026-09-29)
 
 This section is the first thing in the document on purpose. Everything below it
 describes defenses that are built; this is where the ones that are **not** go, so
 a reader meets them before the feature list rather than after it.
 
-A note on how to read the dates. Every line here has been checked against the
-code on the date in the heading, and each closed item names the thing that now
-holds it closed — a test, not a commit. That is deliberate: the previous version
-of this section listed four open P1 defects, three of which had already been
-fixed, and it is hard to overstate how bad that is. A stale security document is
-worse than none, because it spends a reader's attention re-fixing what is fixed
+Every line here is checked against the code on the date in the heading, and each
+closed item names the test that holds it closed, not a commit. A stale security
+document is worse than none: it spends a reader's attention re-fixing what is fixed
 and lends its credibility to whatever is still broken.
 
 **Still open:**
 
 | # | Defect | Where | Impact |
 |---|--------|-------|--------|
-| ❌ P2-1 | iOS has the safety-number and trust-pinning primitives but no screen that shows them. `Safety` and `TrustStore` are compiled and `SecretChatService.localIdentity` returns an identity; nothing calls `TrustStore.verify`, and there is no UI. | `ios/SyncAppKit/Sources/Crypto/{Safety,Trust}.swift`, `ios/.../Presentation` | The §6 MITM defense is only as good as the comparison a person can actually perform. On iOS a silently substituted peer identity key produces no warning and no screen to check against, so secret chats there rest on trusting the key directory. Web and Android both ship the screen. |
+| — | None open. | | |
 
-**Closed, with what holds them closed** (kept rather than deleted, because the
-claims they falsified were in this file and a reader deserves to know what was
-once wrong here, not only what is right now):
+**Closed.** One line on what was wrong; the fix is in the code the test covers,
+and the commit that closed it says how.
 
-| # | Defect | Fix | Held by |
-|---|--------|-----|---------|
-| ✅ P0-1 | The signed-prekey signature was verified only when the bundle carried one, so a hostile directory bypassed the §6 MITM defense by *deleting* two fields. | Verification is unconditional in `pkg/e2e/x3dh.go` and every port; `KEY_PUBLISH` rejects a bundle whose signature is absent or does not verify. | Tests assert an unsigned bundle is refused. |
-| ✅ P0-2 | `Session.Decrypt` committed ratchet state before `aeadOpen` authenticated the frame, so one forged `SECRET_SEND` permanently destroyed a live session; `skipped` had no total bound. | `Decrypt` stages the ratchet on a copy and adopts it only on success (in-order messages take a cheap branch that stages nothing but two locals); `maxSkippedKeys` bounds retained keys with oldest-first eviction. | `pkg/e2e` "a forged frame" tests, mirrored in all three ports. |
-| ✅ P0-3 | `KEY_PUBLISH` bounded the *number* of prekeys but not their *length*, in a directory with no expiry. | `validateKeyBundle` enforces exact key lengths (32/32/32/64) and base64 validity; entries carry `EntryTTL` (90 days), refreshed on republish, in both backends. | `internal/keydir` tests. |
-| ✅ P0-4 | `KEY_FETCH`/`KEY_FETCH_ALL` ignored blocking, so a blocked user could enumerate a target's devices. | Both apply `BlocksBetween`. A blocked fetch reads exactly as an account with nothing published reads, so neither is an oracle. Own devices stay readable for multi-device sync. | `internal/gateway` E2E integration tests. |
-| ✅ P1-1 | Session revocation and account deletion were implemented in the store and reachable from no message: "log out" discarded the token locally while the session stayed valid for its full TTL. | `SESSION_LIST`/`SESSIONS`/`SESSION_REVOKE`/`SESSION_REVOKED` (131–134) and `ACCOUNT_DELETE`/`ACCOUNT_DELETED` (129–130) are dispatched, and all three clients speak them. | `internal/gateway/session_integration_test.go`; the per-platform protocol parity tests below. |
-| ✅ P1-2 | `HISTORY`, `CHAT_LIST`, `THREAD`, `READ`, `*_SYNC` and `*_LIST` were outside flood control, so a read that costs a database page and up to a hundred frames to answer cost nothing to ask. | `amplifying()` meters them on a second bucket, kept separate from `stateChanging` because writes and reads want different numbers. Handle resolution is metered where it happens (`resolve.go`), not per handler. | `internal/gateway/readbudget_test.go`. |
-| ✅ P1-3 | `SYNCAPP_REQUIRE_TLS=1` was documented as the production switch while still permitting the default media secret, an empty origin allow-list and a disabled per-IP guard. | `platform.EnforceProduction` refuses the boot, reporting every violation at once. It lives in `internal/platform` and runs in **both** `cmd/server` and `cmd/gatewayd` — it was in `package main` next to the monolith, so the split deployment, which is the one that actually gets rolled out, had no preflight at all. | `internal/platform/prodcheck_test.go`, one case per setting. |
-| ✅ P1-4 | The per-IP accept guard keyed on `RemoteAddr` with no forwarded-header handling, so behind a load balancer it either never fired or rejected everyone. | `clientip.go` consults `X-Forwarded-For` **only** from a configured trusted proxy, and takes the rightmost entry that is not itself trusted. `SYNCAPP_TRUSTED_PROXIES` configures it, and the production preflight requires the per-IP caps that make the guard exist. | `internal/gateway/clientip_test.go`. |
-| ✅ P0-5 | A zstd frame was decompressed in full before its size was checked, and the compression flag was taken from the frame itself — so the very first frame of an unauthenticated connection could be a bomb: 112 KB of compressed zeros cost 1 GiB, a 16 MiB frame would take the process down. | The decoder is built with `WithDecoderMaxMemory`/`WithDecoderMaxWindow` (bounded to ~6× `MaxPayloadSize` in total, independent of the bomb's size). `wire.Conn.SetInboundPolicy` refuses any compression the peer did not negotiate: none before authentication, exactly the negotiated algorithms after. | `pkg/wire/limits_test.go` (a 256 MiB bomb is refused); `internal/gateway/wirepolicy_integration_test.go` (compressed HELLO, un-negotiated compression after auth). |
-| ✅ P1-5 | Frame size was checked only after the whole frame was in memory: WebSocket had no read limit at all, and a stranger could send 16 MiB frames before authenticating. | WebSocket messages are capped at one maximal frame; a declared length is refused before the body is read; before AUTH_OK the cap is 64 KiB (`preAuthMaxPayload`). | `TestWebSocketReadLimit`, `TestInboundPolicyRefusesOversizeBeforeReadingIt`, `TestOversizeFrameBeforeAuthIsRefused`. |
-| ✅ P1-6 | A block was enforced only when the target was written `@username`. Every earlier message had told the blocked user the chat id, and with it they kept writing (the blocker received it), reading history, editing, and exporting; a message scheduled before the block was still delivered after it. | `resolveChat` checks the block on the chat-id path too (cached peer lookup via `chat.Service.DirectPeer`); EDIT and CHAT_EXPORT, which take a raw id, check it explicitly; the scheduler re-checks at fire time. Groups are unaffected — a block is between two people. | `internal/gateway/block_integration_test.go`; `internal/schedule` `TestBlockRecheckedAtFireTime`. |
-| ✅ P2-2 | Deleting a message cleared its text and `media_ref` but not its `attachment`: file name, size and media/thumbnail refs stayed in history and stayed downloadable, and the blob was never collected because the row still referenced it. | Both stores clear the attachment; `message.Redacted` strips content from any tombstone at every wire conversion; migration 000019 clears rows deleted before the fix. | `storetest` `DeleteClearsAttachment` (memory and Postgres). |
-| ✅ P2-3 | Read receipts in a channel were broadcast to the whole audience: every subscriber learned who else was subscribed (channel membership is not public), at O(members) per read — O(members²) as the audience reads a post. Edits and deletions were pushed to offline members as notifications; a deletion's push announced the message its sender had just withdrawn. | Receipts stay with the reader in channels and in chats large enough to shard (`fanout.receiptsArePrivate`; chat kind from `chat.Service.ChatType`, cached). Push is sent only for new messages. `fanoutd` gets the kind from chatd (`rpc.ChatClient.ChatType`); fanout remembers each chat's kind, since it never changes, so that is one lookup per chat rather than per receipt. | `internal/fanout` `TestReadReceiptsStayPrivateInChannels`, `TestChatKindIsLookedUpOncePerChat`, `TestEditAndDeleteAreDeliveredButNotPushed`; `internal/rpc` `TestChatTypeOverRPC`. |
-| ✅ P1-7 | YooKassa notifications were "verified" by an HMAC header YooKassa does not send, so in production every genuine notification would have been rejected (no payment ever applied) — and the defence the HMAC stood for was absent. Refunds were posted to `/v3/payments/refunds` instead of `/v3/refunds`. | `YooKassa.Verify` uses the notification only for the payment id and believes `GET /v3/payments/{id}` with the shop's credentials; a forged body can at most trigger a re-read of a real payment. An unreachable API is `ErrProviderUnavailable` → HTTP 500 so the acquirer retries. The HMAC stays as an optional layer for a signing proxy. Before any of that, a notification from outside YooKassa's published address ranges is refused with 403 (`YooKassa.AllowedSources`, default `billing.YooKassaNotificationSources`, override or `off` via `SYNCAPP_YOOKASSA_ALLOWED_IPS`); the source is resolved through `SYNCAPP_TRUSTED_PROXIES` like the gateway's, so behind an ingress that variable must list it. | `internal/billing/provider_yookassa_test.go`, `internal/billing/source_test.go`. |
+| # | What was wrong | Held by |
+|---|----------------|---------|
+| ✅ P0-1 | The signed-prekey signature was checked only when present, so a hostile directory skipped it by omitting it. | `pkg/e2e` and every port: an unsigned bundle is refused. |
+| ✅ P0-2 | `Session.Decrypt` committed ratchet state before authenticating, so one forged frame destroyed a live session; skipped keys were unbounded. | `pkg/e2e` "a forged frame" tests, mirrored in every port; the forged step in `server/testdata/e2e/vectors.json`. |
+| ✅ P0-3 | `KEY_PUBLISH` did not bound prekey length, in a directory with no expiry. | `internal/keydir` tests. |
+| ✅ P0-4 | `KEY_FETCH`/`KEY_FETCH_ALL` ignored blocks, so a blocked user could enumerate a target's devices. | `internal/gateway` E2E integration tests. |
+| ✅ P0-5 | A zstd frame was decompressed before its size was checked, with the compression flag chosen by the sender even before authentication. | `pkg/wire/limits_test.go`; `internal/gateway/wirepolicy_integration_test.go`. |
+| ✅ P0-6 | `authd` ran without the second factor: in the split deployment a TOTP account signed in with the password alone. | `internal/wiring` `TestNewAuthEnforcesTheSecondFactor`. |
+| ✅ P1-1 | Session revocation and account deletion were unreachable from the protocol, so "log out" left the session valid. | `internal/gateway/session_integration_test.go`. |
+| ✅ P1-2 | `HISTORY` and the other amplifying reads were outside flood control. | `internal/gateway/readbudget_test.go`. |
+| ✅ P1-3 | `SYNCAPP_REQUIRE_TLS=1` still allowed the dev media secret, an empty origin list and no per-IP caps. | `internal/platform/prodcheck_test.go`. |
+| ✅ P1-4 | The per-IP guard ignored forwarded headers, so behind a balancer it never fired or refused everyone. | `internal/gateway/clientip_test.go`. |
+| ✅ P1-5 | Frame size was checked only after the frame was in memory; WebSocket had no read limit; 16 MiB frames were accepted before authentication. | `TestWebSocketReadLimit`, `TestInboundPolicyRefusesOversizeBeforeReadingIt`, `TestOversizeFrameBeforeAuthIsRefused`. |
+| ✅ P1-6 | A block held only for `@username` targets, not chat ids; a scheduled send ignored a later block. | `internal/gateway/block_integration_test.go`; `internal/schedule` `TestBlockRecheckedAtFireTime`. |
+| ✅ P1-7 | YooKassa notifications were checked against an HMAC YooKassa does not send; refunds went to the wrong endpoint. | `internal/billing/provider_yookassa_test.go`, `source_test.go`. |
+| ✅ P1-8 | The membership gate on media downloads was wired in neither binary. | `internal/wiring` `TestEdgeServicesAreComplete`. |
+| ✅ P1-9 | The split deployment had drifted from the monolith: no secret queue, pins, schedule, invites, billing or trusted proxies at the edge, no scheduler anywhere, and `fanoutd` without presence privacy or mute. | `internal/wiring` `TestEdgeServicesAreComplete`, `TestFleetServesEveryEdgeFeature`, `TestFromEnvRefusesMalformedValues`. |
+| ✅ P1-10 | Raw TCP behind a balancer charged every client to the balancer's address. | `internal/gateway` `TestPerIPCapBehindProxyChargesTheClient`, `TestProxyListenerHonoursOnlyTrustedPeers`, `TestProxyHeaderIsSeenThroughTLS`. |
+| ✅ P2-1 | iOS showed no safety number and never checked a pin. | `SafetyViewModelTests`, `SafetyMappingTests`; `CryptoTests/VectorsTests.swift`. |
+| ✅ P2-2 | Deleting a message kept its attachment metadata and its blob. | `storetest` `DeleteClearsAttachment` (memory and Postgres). |
+| ✅ P2-3 | Channel read receipts went to the whole audience; edits and deletions were pushed. | `internal/fanout` `TestReadReceiptsStayPrivateInChannels`, `TestChatKindIsLookedUpOncePerChat`, `TestEditAndDeleteAreDeliveredButNotPushed`; `internal/rpc` `TestChatTypeOverRPC`. |
 
 **Where the clients stand.** `constants.go` declares 116 `MsgType` values, of
 which 115 travel (`MsgReserved = 0` is "no type at all"). Each client is held to
@@ -71,8 +72,8 @@ and exactly what nothing else was going to report.
 **End-to-end encryption now ships on all three clients.** The ratchet, X3DH,
 safety numbers and trust pinning are ported to `client/src/shared/lib/e2e`,
 `android/.../crypto` and `ios/SyncAppKit/Sources/Crypto`, each pinned against
-`pkg/e2e` with fixed vectors. The one remaining gap is P2-1 above: iOS has the
-primitives and no screen.
+`pkg/e2e` with the shared vectors in `server/testdata/e2e`. All three show a
+safety number and refuse to send to a changed identity until a person accepts it.
 
 ---
 
@@ -94,10 +95,9 @@ Sections below reflect the new state:
   for service-to-service auth.
 - **E2E signed prekeys** — Ed25519 signatures on signed prekeys, verified in X3DH
   (MITM-by-directory defense); **multi-device sync** via `KEY_FETCH_ALL`.
-  ✅ *Verification is unconditional as of the 2026-09-18 fixes: a bundle with no
-  signature is rejected, in both implementations and at publish time. It used to
-  be conditional on the bundle carrying one, which made the defense opt-in for
-  the attacker.*
+  ✅ *Verification is unconditional: a bundle with no signature is rejected, in
+  every implementation and at publish time. A check conditional on the bundle
+  carrying a signature would make the defense opt-in for the attacker.*
 - **RBAC** (admin/moderator) + **append-only audit log** (`internal/audit`) for
   login/export; **media AV scan** (EICAR hook); **auth hash-concurrency semaphore**
   (argon2 OOM-flood guard); **circuit breaker** + local fallback on Redis outage.
@@ -150,10 +150,10 @@ Sections below reflect the new state:
   provider reports as dead (APNs 410 / FCM 404) is dropped rather than retried
   forever.
 - **A connection is routable before it is told it is connected.** Registration in
-  the delivery hub and the routing registry now precedes the AUTH_OK reply. The
-  window between them used to swallow anything addressed to a client that had
-  just authenticated — invisible for a chat message, which history backfills, and
-  permanent for the E2E relay, which is fire-and-forget by design (see §6).
+  the delivery hub and the routing registry precedes the AUTH_OK reply. A window
+  between them would swallow anything addressed to a client that had just
+  authenticated — invisible for a chat message, which history backfills, and a
+  loss for the E2E relay (see §6).
 - **Push-token registration is metered** like every other state-changing frame:
   it writes to the database, and an unmetered write per frame is a flood surface
   however small each one is.
@@ -164,9 +164,8 @@ Sections below reflect the new state:
   and the human chooses.
   🟡 *Ported to all three clients (`client/src/entities/secret-chat/trust.ts`,
   `android/.../crypto/Trust.kt`, `ios/SyncAppKit/Sources/Crypto/Trust.swift`). Web
-  and Android each show a safety number and refuse to send to a changed identity
-  until a human accepts it. On iOS the primitives compile and nothing calls them —
-  see P2-1 — so there it protects nobody yet.*
+  Android and iOS each show a safety number and refuse to send to a changed identity
+  until a human accepts it.*
 
 ---
 
@@ -281,14 +280,11 @@ Who we defend against, and where:
   membership (`IsMember`). Search results are permission-filtered per hit.
 - ✅ **Edit is sender-only. Delete is sender-only, or `chat.CanModerate`** —
   owner/admin in a group or channel, either party in a 1:1, where there is no
-  hierarchy to appeal to. This line claimed "or chat admin rights" for a long time
-  while the code asked `CanPost`, which in a group is true for **every member**: so
-  any member of a group could delete anyone else's messages, and the two questions
-  only ever agreed in a channel, where posting is already admin-only. That is why
-  moderation is now its own predicate rather than a reuse of the posting one —
-  "may this person add to the conversation" and "may this person remove what
-  somebody else said" are different questions with the same answer in exactly one
-  chat type. Tests cover the role matrix per chat type in both `internal/chat` and
+  hierarchy to appeal to. Moderation is its own predicate rather than a reuse of
+  `CanPost`, which in a group is true for **every member**: "may this person add
+  to the conversation" and "may this person remove what somebody else said" are
+  different questions that agree in exactly one chat type, the channel. Tests
+  cover the role matrix per chat type in both `internal/chat` and
   `internal/message`.
 - ✅ **Blocking cuts traffic in BOTH directions** (`internal/contact`): if either
   side blocked the other, the direct chat does not resolve — so a blocked sender
@@ -385,16 +381,15 @@ Uses **only standard, audited primitives** — no home-grown crypto:
   the receiving chain in two locals instead. This is what makes the relay safe to
   expose: `handleSecretSend` is the one send path with no chat membership behind
   it (only a block check), so any authenticated user can address any device, and
-  the header they write drives the ratchet. Before the fix, one frame with a
-  random DH key and `PN=N=1000` permanently broke a live session and forced 2000
-  HMAC derivations. The web client happened not to corrupt its stored state —
-  `decrypt.ts` deserializes a copy and persists only on success — but that was a
-  property of the caller, not of the ratchet.
+  the header they write drives the ratchet. Committing state before the AEAD
+  check would let one frame with a random DH key and `PN=N=1000` permanently
+  break a live session and force 2000 HMAC derivations, so every implementation
+  stages the step on a copy and adopts it only on success.
 
 - ✅ **The prekey signature check is mandatory**: X3DH rejects a bundle that
   carries no `SigningKey`/`SignedPreKeySig`, and `KEY_PUBLISH` refuses to store
-  one. It used to verify only when the fields were present, which is a complete
-  bypass by omission.
+  one. Verifying only when the fields are present would be a complete bypass by
+  omission.
 
 - ✅ **The directory is gated, bounded and budgeted**: `KEY_FETCH`/`KEY_FETCH_ALL`
   apply the same two-way block as every other way to reach a person, and answer a
@@ -433,8 +428,7 @@ Uses **only standard, audited primitives** — no home-grown crypto:
   keeps the identity in the Keychain. Everything else in this section describes
   all three plus `cmd/client`.
 
-  What is still unfinished on iOS is the *screen*, not the crypto: P2-1. And the
-  Swift `Sources/Crypto` directory was for a while not declared as a target in
+  The Swift `Sources/Crypto` directory was for a while not declared as a target in
   `Package.swift`, which means SPM silently compiled none of it — worth recording,
   because `swift build` was green throughout and the E2E implementation was dead
   code that read as shipped.
@@ -451,8 +445,7 @@ Uses **only standard, audited primitives** — no home-grown crypto:
 **TODO before prod (well-known items, not crypto flaws)**
 - ✅ **Signed prekey signature**: `SignedPreKey` is Ed25519-signed by the identity
   key and verified unconditionally in X3DH (`pkg/e2e/sign.go`), so a malicious
-  directory cannot substitute keys — nor drop the signature to skip the check,
-  which is how the earlier conditional version was defeated.
+  directory cannot substitute keys — nor drop the signature to skip the check.
 - ✅ **Multi-device**: a sender fetches every device's prekeys via `KEY_FETCH_ALL`
   (peer's devices + its own other devices), establishes a session with each, and
   the server routes per-device ciphertext — Signal-style sender-side fanout, server
@@ -460,7 +453,8 @@ Uses **only standard, audited primitives** — no home-grown crypto:
 - ✅ **Identity verification (safety numbers)**: `e2e.SafetyNumber` produces a
   symmetric 60-digit fingerprint of both identities (X25519 + Ed25519 keys) via
   Signal-style iterated hashing; comparing it out of band detects a directory
-  MITM. TOFU pinning of identity keys is the remaining client-side follow-up.
+  MITM. Every client also pins identity keys on first use and refuses to send to
+  a changed one until a person accepts it.
 - ⬜ Persist ratchet state securely on device (OS keystore).
 
 ---
@@ -505,8 +499,12 @@ Uses **only standard, audited primitives** — no home-grown crypto:
   returning true for every origin (P1-3). A warning does not stop a deploy;
   refusing to boot does.
   ⬜ Move to **Vault/KMS** in prod; the default media secret must never ship.
-- ✅ **RBAC** (admin/moderator roles gate privileged ops like chat export) and an
-  **append-only audit log** (`internal/audit`) record login + export events; an
+- ✅ **RBAC** (admin/moderator roles gate privileged ops like chat export). Roles
+  come from `SYNCAPP_ADMIN_USERS`/`SYNCAPP_MODERATOR_USERS` (always held) and from
+  the `platform_roles` table, granted and revoked with `cmd/roles`; a gateway
+  caches a stored role for 30 s and treats a failed lookup as no role. The
+  **append-only audit log** (`internal/audit`) records login, export and every
+  role change; an
   **mTLS helper** (`pkg/mtls`) is ready for service-to-service auth when the
   monolith splits.
 - ⬜ Encrypted backups; wire mTLS into the actual service mesh once split out.
@@ -531,8 +529,8 @@ Uses **only standard, audited primitives** — no home-grown crypto:
 | E2E key authentication (prekey signature enforcement) | ✅ mandatory, enforced at publish and at use |
 | E2E ratchet state handling (commit-after-authenticate, bounded skipped keys) | ✅ staged and bounded |
 | E2E directory hygiene (block check, key-length validation, entry TTL) | ✅ good |
-| E2E coverage across clients | ✅ web, Android, iOS and `cmd/client`; iOS lacks the safety-number screen (P2-1) |
-| E2E cross-language interop proof | ❌ scripts exist; the `e2epeer` binary they need does not, and CI never runs them |
+| E2E coverage across clients | ✅ web, Android, iOS and `cmd/client`, each with a safety-number screen and pinning |
+| E2E cross-language interop proof | ✅ every port replays `server/testdata/e2e/vectors.json` byte for byte; CI runs web ↔ Go through a gateway (`server/scripts/secret-interop.sh`) |
 | Media (signed URLs, unguessable refs, size caps, AV scan, nosniff) | ✅ strong |
 | Transport encryption (TLS 1.3 on TCP/WS/QUIC) | ✅ optional, or enforced via `SYNCAPP_REQUIRE_TLS` |
 | Observability (histograms, pprof, OTLP tracing) | ✅ good |
@@ -548,26 +546,19 @@ writes, a transactional outbox, RBAC with an audit log, AV scanning, and a CI
 pipeline that CVE-scans dependencies and runs SAST, the race detector and fuzzing.
 That half of the system is genuinely good.
 
-The **end-to-end encryption was not**, and this document said otherwise until the
-2026-09-18 audit. The primitives and their composition were always right —
-X25519, X3DH, Double Ratchet, HKDF, ChaCha20-Poly1305, all from audited libraries
-— but two gates around them were open: the prekey signature was verified only
-when an attacker chose to supply one, and the ratchet rewrote session state
-before it authenticated the message that asked for the rewrite. Either one on its
-own undid what secret chats are for. Both are now closed, with tests that assert
-the bypass fails; the damage was the claim, not the code size.
-
-What remains on the crypto side is coverage rather than correctness, and it is
-now a narrower gap than this paragraph used to describe. All three clients
-implement the ratchet, X3DH, safety numbers and pinning; **iOS is missing the
-screen that shows a safety number**, so pinning there protects nobody until P2-1
-is closed. The cross-language interop scripts still cannot run, because the Go
-peer binary they drive (`e2epeer`) does not exist in the repository — so what
-holds the four ratchets compatible is shared constants and checked test vectors
-per port, not a test that runs one against another. The header is at least no
-longer part of that risk: each port authenticates the bytes the header travelled
-as rather than a re-encoding of them, so a serialisation difference between two
-implementations can no longer break decryption.
+The end-to-end encryption is built from audited primitives — X25519, X3DH, Double
+Ratchet, HKDF, ChaCha20-Poly1305 — and the two gates around them that matter most
+are closed and tested: the prekey signature is mandatory (P0-1), and the ratchet
+authenticates before it commits (P0-2). All three clients
+implement the ratchet, X3DH, safety numbers and pinning, and each shows the number
+and blocks a send to a changed key. Compatibility between the four implementations is now tested rather
+than assumed: the Go implementation generates `server/testdata/e2e/vectors.json`
+(X3DH, a whole conversation with out-of-order delivery and a forged frame, safety
+numbers, with every ratchet key recorded), and web, Android and iOS each replay
+it and must produce the same bytes. CI also runs the web client against
+`cmd/e2epeer` through a real gateway in both directions. Each port authenticates
+the bytes the header travelled as rather than a re-encoding of them, so a
+serialisation difference cannot break decryption either.
 
 Below the crypto, the lesson that produced this section was the same one twice:
 session revocation and account deletion were both fully implemented in the store

@@ -11,10 +11,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/SyncApp-chat/SyncApp/internal/envcfg"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
 	"github.com/SyncApp-chat/SyncApp/internal/search"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -22,6 +22,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	cfg, err := wiring.FromEnv()
+	if err != nil {
+		log.Error("fatal", "err", err)
+		os.Exit(1)
+	}
 	b, err := platform.Load(ctx, log)
 	if err != nil {
 		log.Error("fatal", "err", err)
@@ -29,19 +34,11 @@ func main() {
 	}
 	defer b.Close()
 
-	var backend search.Backend
-	if dsn := envcfg.Get("SYNCAPP_PG_DSN"); dsn != "" {
-		backend, err = search.NewPostgresBackend(ctx, dsn)
-		if err != nil {
-			b.Log.Error("search backend", "err", err)
-			os.Exit(1)
-		}
-		b.Log.Info("search: postgres tsvector")
-	} else {
-		backend = search.NewMemoryBackend()
-		b.Log.Info("search: in-memory")
+	backend, err := wiring.NewSearchBackend(ctx, cfg)
+	if err != nil {
+		b.Log.Error("search backend", "err", err)
+		os.Exit(1)
 	}
-
 	chatConn, err := platform.Dial(platform.Env("SYNCAPP_CHATD_ADDR", "localhost:9002"), "chatd", b.Log)
 	if err != nil {
 		b.Log.Error("dial chatd", "err", err)

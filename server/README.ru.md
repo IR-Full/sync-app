@@ -203,15 +203,22 @@ Grafana на http://localhost:3000 (Explore → Prometheus / Tempo). `/metrics` 
 | `SYNCAPP_REQUIRE_TLS`     | *(не задано)*  | `1` = не стартовать без TLS (нет тихого plaintext) |
 | `SYNCAPP_MAX_CONNS_PER_IP`| *(не задано)*  | лимит одновременных соединений с одного IP (антифлуд) |
 | `SYNCAPP_ACCEPT_RATE_PER_IP`| *(не задано)*| лимит новых соединений/сек с одного IP (антишторм) |
-| `SYNCAPP_ALLOWED_ORIGINS` | *(не задано)*  | список разрешённых origin для WebSocket  |
-| `SYNCAPP_MEDIA_SECRET`    | dev-значение   | ключ HMAC для подписи медиа-ссылок. **Dev-значение — константа в коде**; кто её знает, подделывает ссылки на загрузку и скачивание. `REQUIRE_TLS=1` его пока не требует |
-| `SYNCAPP_ADMIN_USERS` / `_MODERATOR_USERS` | *(не задано)* | id админов/модераторов (RBAC) |
+| `SYNCAPP_TRUSTED_PROXIES` | *(не задано)*  | адреса/CIDR прокси, чьему `X-Forwarded-For` (и PROXY-заголовку) верить. **Обязательно за балансировщиком**, иначе лимит по IP считает всех клиентов одним адресом |
+| `SYNCAPP_PROXY_PROTOCOL`  | *(не задано)*  | `1` = читать PROXY v2 на raw-TCP от доверенного прокси (HAProxy `send-proxy-v2`); нужен `SYNCAPP_TRUSTED_PROXIES` |
+| `SYNCAPP_ALLOWED_ORIGINS` | *(не задано)*  | список разрешённых origin для WebSocket. `REQUIRE_TLS=1` не стартует без него |
+| `SYNCAPP_MEDIA_SECRET`    | dev-значение   | ключ HMAC для подписи медиа-ссылок. **Dev-значение — константа в коде**; кто её знает, подделывает ссылки на загрузку и скачивание. `REQUIRE_TLS=1` не стартует с ним |
+| `SYNCAPP_MEDIA_DIR`       | `./data/media` | каталог блобов; общий для всех реплик шлюза |
+| `SYNCAPP_BANNED_TERMS`    | `spamword,scamlink` | термины, которые помечает модерация |
+| `SYNCAPP_ADMIN_USERS` / `_MODERATOR_USERS` | *(не задано)* | id постоянных админов/модераторов (RBAC); роли, выданные во время работы, хранятся в базе — см. `go run ./cmd/roles` |
 | `SYNCAPP_TRACE` / `SYNCAPP_OTLP_ENDPOINT` | *(не задано)* | трейсинг: stdout / OTLP-коллектор |
 | `SYNCAPP_PPROF`           | *(не задано)*  | `1` монтирует `/debug/pprof/`            |
 | `SYNCAPP_WRITE_BATCH`     | `on`           | `off` отключает групповой коммит записи  |
 | `SYNCAPP_REGION`          | `local`        | метка региона (хук мультирегиона)        |
 
 Любое подмножество можно задать; незаданные бэкенды падают обратно на режим «в памяти».
+Заданное, но нечитаемое значение останавливает запуск, а не заменяется значением по
+умолчанию. Монолит и распределённый режим читают переменные одной функцией
+(`internal/wiring.FromEnv`).
 
 ## Тесты
 

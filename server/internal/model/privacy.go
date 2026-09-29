@@ -47,17 +47,15 @@ type Privacy struct {
 	// PushPreview decides whether message TEXT may be sent to the push provider.
 	//
 	// It is a boolean rather than a Visibility because the audience is not another
-	// user: it is Apple and Google. The notification path used to put a 120-rune
-	// preview of every message into the payload it handed to FCM/APNs, so a third
-	// party saw the contents of every conversation on the system — a larger
-	// disclosure than anything end-to-end encryption was protecting against, since
-	// E2E guards against the server and this was the server volunteering the text.
+	// user: it is Apple and Google. A preview in the FCM/APNs payload hands a third
+	// party the message text — a larger disclosure than anything end-to-end
+	// encryption protects against, since E2E guards against the server and this is
+	// the server volunteering the text.
 	//
-	// It defaults to FALSE, and that is the one place these settings deliberately
-	// do NOT preserve the previous behaviour. The other three default to "everyone"
-	// because tightening an existing account's visibility reads as the app
-	// breaking; this one defaults closed because the previous behaviour was a leak
-	// rather than a preference, and nobody chose it.
+	// It defaults to FALSE. The other three default to "everyone", because
+	// tightening an existing account's visibility reads as the app breaking; this
+	// one defaults closed because sending text to a third party is a leak unless
+	// someone chose it.
 	PushPreview bool `json:"push_preview"`
 }
 

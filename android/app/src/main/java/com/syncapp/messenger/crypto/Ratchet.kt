@@ -66,7 +66,7 @@ data class RatchetHeader(
      * values nobody authenticated. `copy()` calls the primary constructor, so a
      * header derived with `copy(pn = 99)` starts with no bytes of its own and is
      * encoded from the counters it actually carries — and the AEAD rejects it.
-     * `Header.raw` in `server/pkg/e2e/ratchet.types.go` gets the same guarantee
+     * `Header.raw` in `server/pkg/e2e/ratchet.go` gets the same guarantee
      * from being unexported.
      */
     internal var wireBytes: ByteArray? = null
@@ -169,13 +169,21 @@ class RatchetSession private constructor(
     private val skipped = LinkedHashMap<String, ByteArray>()
     private val skippedOrder = ArrayDeque<String>()
 
+    /** Supplies the key pairs this session ratchets to. Tests pass recorded keys. */
+    private var keySource: () -> KeyPair = Crypto::generateKeyPair
+
     companion object {
         /**
          * Initiator's session. The peer's signed prekey is the first DHr, and one
          * DH ratchet runs immediately so the initiator can send straight away.
          */
-        fun initiator(sharedSecret: ByteArray, theirSignedPreKey: ByteArray): RatchetSession {
-            val session = RatchetSession(Crypto.generateKeyPair(), theirSignedPreKey, sharedSecret)
+        fun initiator(
+            sharedSecret: ByteArray,
+            theirSignedPreKey: ByteArray,
+            keySource: () -> KeyPair = Crypto::generateKeyPair,
+        ): RatchetSession {
+            val session = RatchetSession(keySource(), theirSignedPreKey, sharedSecret)
+            session.keySource = keySource
             val dhOut = Crypto.diffieHellman(session.dhs.privateKey, theirSignedPreKey)
             val (rk, ck) = kdfRootKey(session.rootKey, dhOut)
             session.rootKey = rk
@@ -187,8 +195,12 @@ class RatchetSession private constructor(
          * Responder's session. It has no sending chain until the first message
          * arrives and triggers a ratchet step.
          */
-        fun responder(sharedSecret: ByteArray, signedPreKey: KeyPair): RatchetSession =
-            RatchetSession(signedPreKey, null, sharedSecret)
+        fun responder(
+            sharedSecret: ByteArray,
+            signedPreKey: KeyPair,
+            keySource: () -> KeyPair = Crypto::generateKeyPair,
+        ): RatchetSession =
+            RatchetSession(signedPreKey, null, sharedSecret).also { it.keySource = keySource }
 
         fun deserialize(state: SerializedSession): RatchetSession? {
             val dhsPrivate = B64.decodeOrNull(state.dhsPrivate) ?: return null
@@ -313,6 +325,7 @@ class RatchetSession private constructor(
         // 3. Everything else — a DH ratchet step, a gap to skip, or both — runs
         //    on a COPY, adopted only if the frame authenticates.
         val trial = deserialize(serialize()) ?: throw DecryptException()
+        trial.keySource = keySource
         val plaintext = trial.advance(header, ciphertext)
         adopt(trial)
         return plaintext
@@ -366,7 +379,7 @@ class RatchetSession private constructor(
         rootKey = rk1
         receivingChainKey = ckr
 
-        dhs = Crypto.generateKeyPair()
+        dhs = keySource()
         val (rk2, cks) = kdfRootKey(rootKey, Crypto.diffieHellman(dhs.privateKey, header.dh))
         rootKey = rk2
         sendingChainKey = cks

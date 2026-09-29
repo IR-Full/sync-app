@@ -69,9 +69,11 @@ public final class AppContainer: ObservableObject {
         // ordinary ordering rather than a cycle.
         let security = AccountSecurityRepositoryImpl(client: client, sync: sync, auth: auth)
 
+        let safety = SecretSafetyRepositoryImpl(secret: secret, sync: sync)
+
         self.viewFactory = ViewFactory(
             chats: chats, messages: messages, contacts: contacts,
-            search: search, media: media, auth: auth, security: security
+            search: search, media: media, auth: auth, security: security, safety: safety
         )
         self.appModel = AppModel(auth: auth, settings: settings, push: push)
     }

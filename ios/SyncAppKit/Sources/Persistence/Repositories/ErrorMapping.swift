@@ -71,6 +71,17 @@ enum ErrorMapping {
             }
         }
 
+        if let error = error as? SecretChatError {
+            switch error {
+            case .identityChanged(let userID, let deviceID):
+                return .identityChanged(userID: userID, deviceID: deviceID)
+            case .peerHasNoDevices:
+                return .invalidInput("the recipient has no device set up for secret chats")
+            case .noIdentity, .malformedBundle, .noHandshakeMaterial, .noMatchingPreKey:
+                return .server(String(describing: error))
+            }
+        }
+
         if error is TransportError || error is WireError { return .offline }
         if (error as NSError).domain == NSURLErrorDomain { return .offline }
         return .server(String(describing: error))

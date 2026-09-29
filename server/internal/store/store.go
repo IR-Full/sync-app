@@ -8,9 +8,32 @@ package store
 
 import (
 	"context"
+	"errors"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 )
+
+// ErrNotFound is returned when a lookup misses.
+var ErrNotFound = errors.New("store: not found")
+
+// ErrConflict is returned on unique-constraint violations (e.g. username taken).
+var ErrConflict = errors.New("store: conflict")
+
+// ErrPollClosed is returned by Vote when the poll stopped accepting votes.
+//
+// The check belongs in the store, not above it: a caller that reads `closed` and
+// then writes a vote leaves a window in which a concurrent close lands between
+// the two, so the vote is accepted into a closed poll. Only the store can hold
+// the row and the insert in one transaction.
+var ErrPollClosed = errors.New("store: poll closed")
+
+// ErrUnsupported is returned when a backend does not implement an OPTIONAL
+// capability the caller needs.
+//
+// Distinct from ErrNotFound: "this store cannot answer that" is an operator's
+// configuration problem, while "no such row" is a normal outcome. A caller that
+// conflated them would report a missing feature as missing data.
+var ErrUnsupported = errors.New("store: unsupported by this backend")
 
 // UserStore owns accounts and devices (User Service data).
 type UserStore interface {
@@ -230,6 +253,21 @@ type Stores struct {
 	SecretQ   SecretQueueStore
 	TwoFactor TwoFactorStore
 	Billing   BillingStore
+	Roles     PlatformRoleStore
+}
+
+// PlatformRoleStore owns platform-wide roles. A role ends with the account:
+// deleting a user removes their grant.
+type PlatformRoleStore interface {
+	// PlatformRole returns the user's role, or "" when they hold none.
+	PlatformRole(ctx context.Context, userID string) (model.PlatformRole, error)
+	ListPlatformRoles(ctx context.Context) ([]model.PlatformRoleGrant, error)
+	// SetPlatformRole grants or replaces a role. ErrNotFound when the user does
+	// not exist.
+	SetPlatformRole(ctx context.Context, g model.PlatformRoleGrant) error
+	// RemovePlatformRole revokes a role; revoking one that is not held is not an
+	// error.
+	RemovePlatformRole(ctx context.Context, userID string) error
 }
 
 // ThreadReader is an optional MessageStore capability: fetching a reply branch

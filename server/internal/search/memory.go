@@ -4,7 +4,21 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 )
+
+// maxDocs bounds the in-memory index so it cannot grow without limit. Once full,
+// the oldest indexed message is evicted (FIFO). Production uses the Postgres
+// backend (shared across nodes) and drops this cap.
+const maxDocs = 100_000
+
+// memoryBackend is an in-process inverted index (single node / dev / tests).
+type memoryBackend struct {
+	mu       sync.RWMutex
+	docs     map[string]*Doc
+	inverted map[string]map[string]struct{}
+	order    []string
+}
 
 // NewMemoryBackend returns an in-process search backend.
 func NewMemoryBackend() Backend {

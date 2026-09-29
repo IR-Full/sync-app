@@ -45,6 +45,9 @@ public enum AppError: Error, Equatable, Sendable {
     case mediaFailed(String)
     /// The file is larger than the server will accept.
     case mediaTooLarge(limit: Int64)
+    /// A peer device's identity key no longer matches the pinned one. Nothing was
+    /// encrypted; the safety screen is where the user decides whether to trust it.
+    case identityChanged(userID: String, deviceID: String)
     case server(String)
 
     public var isRetryable: Bool {
@@ -75,6 +78,7 @@ extension AppError: LocalizedError {
         case .offline: return "offline"
         case .mediaFailed(let detail): return detail
         case .mediaTooLarge: return "file too large"
+        case .identityChanged: return "peer identity key changed"
         case .server(let detail): return detail
         }
     }

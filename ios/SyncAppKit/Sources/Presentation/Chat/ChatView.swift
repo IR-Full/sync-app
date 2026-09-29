@@ -18,6 +18,8 @@ final class ChatViewModel: ObservableObject {
     @Published var replyTo: Message?
     @Published var editing: Message?
     @Published var editedText = ""
+    /// The safety sheet: opened from the header, and by a send the pin refused.
+    @Published var isShowingSafety = false
     /// Local file URLs for attachments we have already downloaded.
     @Published private(set) var mediaURLs: [String: URL] = [:]
 
@@ -28,6 +30,7 @@ final class ChatViewModel: ObservableObject {
     private let chatRepository: any ChatRepository
     private let contacts: any ContactRepository
     private let media: any MediaRepository
+    let safety: (any SecretSafetyRepository)?
     private let sendMessage: SendMessageUseCase
     private let markRead: MarkChatReadUseCase
 
@@ -46,6 +49,7 @@ final class ChatViewModel: ObservableObject {
         self.chatRepository = factory.chats
         self.contacts = factory.contacts
         self.media = factory.media
+        self.safety = factory.safety
         self.sendMessage = SendMessageUseCase(messages: factory.messages)
         self.markRead = MarkChatReadUseCase(messages: factory.messages)
     }
@@ -128,6 +132,13 @@ final class ChatViewModel: ObservableObject {
         } catch let error as ValidationError {
             draft = text  // give the text back; losing it would be worse
             errorMessage = Self.describe(error)
+        } catch AppError.identityChanged(_, _) {
+            // Nothing was sent: the peer's key no longer matches its pin. The text
+            // goes back and the safety sheet opens, because that is the only place
+            // the send can be unblocked.
+            draft = text
+            isShowingSafety = safety != nil
+            if safety == nil { errorMessage = l("chat.secret.safety.changed") }
         } catch {
             errorMessage = Self.describe(error)
         }
@@ -453,6 +464,21 @@ struct ChatView: View {
                             .foregroundStyle(model.typingUserIDs.isEmpty ? .secondary : Color.accentColor)
                     }
                 }
+            }
+            if model.chat?.kind.isEndToEnd == true, model.safety != nil, model.chat?.peerUserID != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        model.isShowingSafety = true
+                    } label: {
+                        Image(systemName: "checkmark.shield")
+                    }
+                    .accessibilityLabel(l("chat.secret.safety.open"))
+                }
+            }
+        }
+        .sheet(isPresented: $model.isShowingSafety) {
+            if let safety = model.safety, let peer = model.chat?.peerUserID {
+                SafetyView(peerUserID: peer, repository: safety)
             }
         }
         .task { await model.start() }

@@ -25,9 +25,9 @@ func (c *conn) handleMediaInit(ctx context.Context, e wire.Envelope) error {
 		return c.replyError(e.RequestID, wire.ErrBadArg, "bad media init")
 	}
 	// The caller's ceiling comes from their entitlements. Passing it is what makes
-	// MaxUploadBytes mean anything: the media service used to cap everyone at its
-	// own constant, which happened to equal the FREE tier, so the paid tier's
-	// larger allowance was advertised and never granted.
+	// MaxUploadBytes mean anything: without it the media service's own ceiling
+	// applies to everyone, and a paid tier's larger allowance is advertised and
+	// never granted.
 	t, err := c.gw.svc.Media.InitUpload(
 		c.userID, body.Filename, body.ContentType, body.Size, c.entitlements(ctx).MaxUploadBytes)
 	if err != nil {

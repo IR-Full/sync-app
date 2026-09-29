@@ -35,11 +35,15 @@ public actor SecretChatService {
         /// Public halves the directory has CONFIRMED it stored, so each one-time prekey
         /// is offered exactly once.
         static let publishedPreKeys = "secret.published_prekeys"
+        /// Peer identity keys pinned on first use (`TrustStore`). In the Keychain rather
+        /// than the cache: a pin that can be edited as easily as the data it guards
+        /// guards nothing.
+        static let trust = "secret.trust"
 
         /// Every key this service owns, so logout can remove them all without a second
         /// list somewhere else to fall out of step with this one.
         static let all = [
-            identity, signing, signedPreKey, oneTimePreKeys, signedPreKeyMeta, publishedPreKeys,
+            identity, signing, signedPreKey, oneTimePreKeys, signedPreKeyMeta, publishedPreKeys, trust,
         ]
     }
 
@@ -146,6 +150,9 @@ public actor SecretChatService {
     /// later message undecryptable too. Repeating ~90 bytes until the peer replies is
     /// the cheaper mistake.
     private var pendingBootstrap: [String: Data] = [:]
+
+    /// Pinned peer identities, loaded from the Keychain on first use.
+    private var trust: TrustStore?
 
     public init(
         client: SyncAppClient,
@@ -502,7 +509,24 @@ public actor SecretChatService {
             sessions[sessionKey(peerUserID, stale)] = nil
         }
 
+        // Every device is checked against its pin BEFORE anything is encrypted. Once a
+        // shared secret is derived from a substituted key the message is readable by
+        // whoever substituted it, so noticing afterwards protects nothing.
+        let pins = trustStore()
+        for bundle in bundles where bundle.deviceID != deviceID {
+            if case .changed = pins.verify(
+                userID: peerUserID,
+                deviceID: bundle.deviceID,
+                identityKey: bundle.identityKey,
+                signingKey: bundle.signingKey
+            ) {
+                try await store.setMessageState(id: localMessageID, state: .failed, chatID: chatID)
+                throw SecretChatError.identityChanged(userID: peerUserID, deviceID: bundle.deviceID)
+            }
+        }
+
         var outcome = SendOutcome()
+        var pinned = false
         let plaintext = Data(text.utf8)
 
         for bundle in bundles {
@@ -538,6 +562,23 @@ public actor SecretChatService {
                     state: ratchet.serialize()
                 )
 
+                // Pinned once a session exists, not before: pinning a key this device
+                // then failed to use would record an identity it never talked to.
+                if case .firstUse = pins.verify(
+                    userID: peerUserID,
+                    deviceID: bundle.deviceID,
+                    identityKey: bundle.identityKey,
+                    signingKey: bundle.signingKey
+                ) {
+                    pins.accept(
+                        userID: peerUserID,
+                        deviceID: bundle.deviceID,
+                        identityKey: bundle.identityKey,
+                        signingKey: bundle.signingKey
+                    )
+                    pinned = true
+                }
+
                 let ack = try await client.sendSecret(
                     toUserID: peerUserID,
                     toDeviceID: bundle.deviceID,
@@ -565,10 +606,102 @@ public actor SecretChatService {
             }
         }
 
+        if pinned { persistTrust() }
         if outcome.isTotalFailure {
             try await store.setMessageState(id: localMessageID, state: .failed, chatID: chatID)
         }
         return outcome
+    }
+
+    // MARK: - Safety numbers and pins
+
+    /// One peer device's safety number and how its key compares with the pin.
+    public struct DeviceSafetyInfo: Sendable, Equatable {
+        public let userID: String
+        public let deviceID: String
+        public let number: String
+        public let verdict: TrustVerdict
+        public let identityKey: String
+        public let signingKey: String
+    }
+
+    /// Safety numbers for every device the peer has published, fetched fresh so the
+    /// screen shows the keys the next message would actually use.
+    public func safety(peerUserID: String, ourUserID: String) async throws -> [DeviceSafetyInfo] {
+        guard let local = try localIdentity(userID: ourUserID) else { throw SecretChatError.noIdentity }
+        let bundles = try await client.fetchAllKeys(userID: peerUserID).bundles
+        let pins = trustStore()
+        return bundles.compactMap { bundle in
+            guard
+                bundle.deviceID != deviceID,
+                let identityKey = B64.decode(bundle.identityKey),
+                let signingKey = B64.decode(bundle.signingKey)
+            else { return nil }
+            let remote = Safety.Identity(stableID: peerUserID, identityKey: identityKey, signingKey: signingKey)
+            return DeviceSafetyInfo(
+                userID: peerUserID,
+                deviceID: bundle.deviceID,
+                number: Safety.number(local: local, remote: remote),
+                verdict: pins.verify(
+                    userID: peerUserID,
+                    deviceID: bundle.deviceID,
+                    identityKey: bundle.identityKey,
+                    signingKey: bundle.signingKey
+                ),
+                identityKey: bundle.identityKey,
+                signingKey: bundle.signingKey
+            )
+        }
+    }
+
+    /// Pins the keys a person just looked at, replacing a changed pin. Takes the keys
+    /// rather than refetching them, so what is pinned is what was displayed.
+    ///
+    /// Accepting a CHANGED key also drops the session with that device: it was built
+    /// on the old identity, so the next message has to start a fresh handshake with the
+    /// keys that were just accepted.
+    public func acceptIdentity(
+        userID: String,
+        deviceID peerDeviceID: String,
+        identityKey: String,
+        signingKey: String
+    ) async throws {
+        let pins = trustStore()
+        if case .changed = pins.verify(
+            userID: userID, deviceID: peerDeviceID, identityKey: identityKey, signingKey: signingKey
+        ) {
+            try await store.forgetSecretSession(peerUserID: userID, peerDeviceID: peerDeviceID)
+            sessions[sessionKey(userID, peerDeviceID)] = nil
+            pendingBootstrap[sessionKey(userID, peerDeviceID)] = nil
+        }
+        pins.accept(
+            userID: userID,
+            deviceID: peerDeviceID,
+            identityKey: identityKey,
+            signingKey: signingKey
+        )
+        persistTrust()
+    }
+
+    private func trustStore() -> TrustStore {
+        if let trust { return trust }
+        // An unreadable record starts empty: every device is then pinned again on
+        // first use, the same position as a fresh install.
+        let stored = try? keychain.value([String: PinnedIdentity].self, forKey: Key.trust)
+        let loaded = TrustStore(pins: stored ?? [:])
+        trust = loaded
+        return loaded
+    }
+
+    private func persistTrust() {
+        guard let trust else { return }
+        do {
+            try keychain.set(trust.snapshot(), forKey: Key.trust)
+        } catch {
+            // Reported, not thrown: the message already went out. A lost pin means the
+            // next send pins again on first use, which is weaker but not wrong.
+            log.error("could not store identity pins: \(error)")
+        }
     }
 
     /// The session for a peer device: from memory, from disk, or newly handshaked.
@@ -902,6 +1035,7 @@ public actor SecretChatService {
         oneTimePreKeys = [:]
         sessions = [:]
         pendingBootstrap = [:]
+        trust = nil
         for key in Key.all {
             try? keychain.remove(key: key)
         }
@@ -926,6 +1060,9 @@ public enum SecretChatError: Error, Equatable, Sendable {
     /// A first message whose handshake matched none of this device's prekeys. Usually
     /// means the prekey it consumed has already been forgotten.
     case noMatchingPreKey
+    /// A peer device's identity key differs from the one pinned for it. Nothing was
+    /// sent to any device.
+    case identityChanged(userID: String, deviceID: String)
 }
 
 /// Logging seam.

@@ -8,6 +8,23 @@ import (
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 )
 
+const (
+	// gcMinAge is how long an object must exist before the sweep will consider it.
+	// It covers the gap between "bytes uploaded" and "message sent" — an upload in
+	// flight is unreferenced by definition, and collecting it would delete the
+	// user's file out from under them mid-send. One ticket lifetime is exactly the
+	// window in which that can happen.
+	gcMinAge = 15 * time.Minute
+	// gcEvery is how often the sweep runs. It bounds how long an expired
+	// message's bytes can survive its text.
+	gcEvery = 5 * time.Minute
+)
+
+// Referencer answers whether a media ref is still reachable from a live message.
+type Referencer interface {
+	MediaRefExists(ctx context.Context, ref string) (bool, error)
+}
+
 // Blobs outlive nothing on their own: an upload is stored before the message
 // that references it exists, and it stays after that message is deleted. So the
 // object store needs a collector, and the collector needs one question answered —

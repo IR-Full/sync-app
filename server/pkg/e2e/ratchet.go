@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"crypto/ecdh"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
@@ -12,18 +13,90 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+var (
+	errNoOneTimeKey = errors.New("e2e: responder missing one-time prekey")
+	// ErrDecrypt is returned when authentication/decryption fails (tampering,
+	// wrong key, or a replay of an already-consumed message key).
+	ErrDecrypt = errors.New("e2e: decryption failed")
+	// maxSkip bounds how many missing messages we will derive keys for in ONE
+	// call, to stop a malicious header from forcing unbounded work.
+	maxSkip = 1000
+	// maxSkippedKeys bounds how many skipped message keys a session RETAINS.
+	//
+	// maxSkip alone was never a bound on memory: every DH ratchet step restarts
+	// the per-call count, so a peer — or anyone who can reach the relay, which is
+	// any account — could keep adding keys to a map that never shrank. The web
+	// port persists this map to storage, so the growth outlived the process too.
+	// Two chains' worth is generous against real out-of-order delivery, which
+	// runs to a handful of messages.
+	maxSkippedKeys = 2 * maxSkip
+)
+
+// Header travels (authenticated but not encrypted) with each ciphertext.
+type Header struct {
+	DH []byte `json:"dh"` // sender's current ratchet public key
+	PN uint32 `json:"pn"` // number of messages in the previous sending chain
+	N  uint32 `json:"n"`  // message number in the current sending chain
+
+	// raw is the exact serialization this header travels as — set by
+	// UnmarshalHeader to the bytes that arrived, and by Encrypt to the bytes it
+	// authenticated. bytes() prefers it over re-marshalling.
+	//
+	// This makes the additional data the AEAD checks literally the bytes on the
+	// wire, in both directions, instead of a re-encoding that merely ought to
+	// match them. Four independent implementations produce this header — Go,
+	// TypeScript, Kotlin, Swift — and rebuilding the AD by re-serializing parsed
+	// JSON works only while all four emit byte-identical canonical JSON: same
+	// field order, no whitespace, the same base64 alphabet and padding. The day
+	// one diverges, every message between the two fails with ErrDecrypt, which is
+	// indistinguishable from a forgery and points at nothing. Carrying the bytes
+	// removes the requirement rather than documenting it.
+	//
+	// Unexported, so it is invisible to encoding/json and cannot round-trip into
+	// itself.
+	raw []byte
+}
+
+// Session is one Double Ratchet session between two devices. It is NOT safe for
+// concurrent use; callers serialize per session.
+type Session struct {
+	dhs     *KeyPair          // our current ratchet key pair (DHs)
+	dhr     *ecdh.PublicKey   // their current ratchet public key (DHr)
+	rk      []byte            // root key
+	cks     []byte            // sending chain key
+	ckr     []byte            // receiving chain key
+	ns      uint32            // messages sent in current sending chain
+	nr      uint32            // messages received in current receiving chain
+	pn      uint32            // length of previous sending chain
+	skipped map[string][]byte // (dhPub|N) -> message key, for out-of-order delivery
+	// skippedOrder is the insertion order of skipped, used to evict the oldest
+	// once maxSkippedKeys is reached. A Go map has no order of its own, and
+	// "drop an arbitrary one" would sometimes drop the key that was about to be
+	// used. Entries may name a key already consumed; storeSkipped tolerates that.
+	skippedOrder []string
+
+	// keys supplies new ratchet key pairs; nil means GenerateKeyPair.
+	keys func() (*KeyPair, error)
+}
+
 // NewInitiatorSession starts Alice's session after X3DH. sk is the shared secret;
 // theirSignedPreKey is Bob's signed prekey public (Alice's initial DHr).
 func NewInitiatorSession(sk, theirSignedPreKey []byte) (*Session, error) {
+	return newInitiatorSession(sk, theirSignedPreKey, GenerateKeyPair)
+}
+
+// newInitiatorSession takes the source of ratchet keys, so the cross-language
+// vectors (testdata/e2e) can replay a conversation with recorded keys.
+func newInitiatorSession(sk, theirSignedPreKey []byte, keys func() (*KeyPair, error)) (*Session, error) {
 	dhr, err := PublicKeyFromBytes(theirSignedPreKey)
 	if err != nil {
 		return nil, err
 	}
-	dhs, err := GenerateKeyPair()
+	dhs, err := keys()
 	if err != nil {
 		return nil, err
 	}
-	s := &Session{dhs: dhs, dhr: dhr, rk: sk, skipped: map[string][]byte{}}
+	s := &Session{dhs: dhs, dhr: dhr, rk: sk, skipped: map[string][]byte{}, keys: keys}
 	// Perform the initial DH ratchet so Alice has a sending chain.
 	dhOut, err := dh(s.dhs.Priv, s.dhr)
 	if err != nil {
@@ -37,7 +110,11 @@ func NewInitiatorSession(sk, theirSignedPreKey []byte) (*Session, error) {
 // is Bob's signed prekey key pair (his initial DHs). Bob has no sending chain
 // until he receives Alice's first message and ratchets.
 func NewResponderSession(sk []byte, signedPreKey *KeyPair) (*Session, error) {
-	return &Session{dhs: signedPreKey, rk: sk, skipped: map[string][]byte{}}, nil
+	return newResponderSession(sk, signedPreKey, GenerateKeyPair), nil
+}
+
+func newResponderSession(sk []byte, signedPreKey *KeyPair, keys func() (*KeyPair, error)) *Session {
+	return &Session{dhs: signedPreKey, rk: sk, skipped: map[string][]byte{}, keys: keys}
 }
 
 // Encrypt ratchet-encrypts plaintext, returning the header and ciphertext.
@@ -156,6 +233,15 @@ func (s *Session) clone() *Session {
 	return &c
 }
 
+// newKey draws the next ratchet key pair. A session restored without a source
+// (the zero value) uses fresh random keys.
+func (s *Session) newKey() (*KeyPair, error) {
+	if s.keys == nil {
+		return GenerateKeyPair()
+	}
+	return s.keys()
+}
+
 func (s *Session) sameDHr(dhPub []byte) bool {
 	return s.dhr != nil && string(s.dhr.Bytes()) == string(dhPub)
 }
@@ -179,7 +265,7 @@ func (s *Session) dhRatchet(hdr Header) error {
 	s.rk, s.ckr = kdfRK(s.rk, dhOut)
 
 	// Generate a new local ratchet key pair and derive the new sending chain.
-	s.dhs, err = GenerateKeyPair()
+	s.dhs, err = s.newKey()
 	if err != nil {
 		return err
 	}

@@ -9,15 +9,14 @@ import (
 /*
 The push half of the privacy settings.
 
-Every notification used to carry up to 120 runes of the message. The endpoint that
-receives it is Apple's or Google's, so a third party saw the contents of every
-conversation on the system — a wider disclosure than anything the end-to-end
-encryption was protecting against, since E2E guards against the server and this was
-the server volunteering the plaintext.
+A notification's endpoint is Apple's or Google's, so a message preview in it hands
+a third party the text — for every conversation on the system, a wider disclosure
+than anything end-to-end encryption protects against, since E2E guards against the
+server and this is the server volunteering the plaintext.
 
-The fix is not to remove previews: people want them, and on a locked screen a
-notification with no content is nearly useless. The fix is to make them a choice,
-default off, made by the person whose device and provider account are involved.
+Previews are not removed: people want them, and on a locked screen a notification
+with no content is nearly useless. They are a choice, default off, made by the
+person whose device and provider account are involved.
 
 This type is the same shape as presenceAudience and mediaAuthorizer, for the same
 reason: fanout routes, and it has no business knowing that accounts have settings.

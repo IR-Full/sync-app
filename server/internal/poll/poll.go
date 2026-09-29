@@ -22,6 +22,50 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
+// Limits keep a poll a poll — not a free-text broadcast channel.
+const (
+	MaxQuestionLen = 300
+	MaxOptionLen   = 100
+	MinOptions     = 2
+	MaxOptions     = 10
+)
+
+var (
+	// ErrForbidden means the actor may not act on this poll/chat.
+	ErrForbidden = errors.New("poll: forbidden")
+	// ErrClosed means the poll no longer accepts votes.
+	ErrClosed = errors.New("poll: closed")
+	// ErrBadPoll means the question/options failed validation.
+	ErrBadPoll = errors.New("poll: invalid question or options")
+	// ErrBadOption means the option index is out of range.
+	ErrBadOption = errors.New("poll: option out of range")
+)
+
+// Chats supplies the membership check.
+type Chats interface {
+	IsMember(ctx context.Context, chatID, userID string) (bool, error)
+}
+
+// Service creates polls, records votes, and broadcasts tallies.
+type Service struct {
+	store store.PollStore
+	chats Chats
+	bus   eventbus.Bus
+	ids   *id.Generator
+}
+
+// CreateInput describes a new poll. MessageID is the message that carries the
+// question (created by the caller through the normal write path).
+type CreateInput struct {
+	ChatID      string
+	MessageID   string
+	CreatorID   string
+	Question    string
+	Options     []string
+	MultiChoice bool
+	Anonymous   bool
+}
+
 // New builds the poll service.
 func New(st store.PollStore, chats Chats, bus eventbus.Bus, ids *id.Generator) *Service {
 	return &Service{store: st, chats: chats, bus: bus, ids: ids}

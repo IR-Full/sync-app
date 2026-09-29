@@ -2,16 +2,35 @@ package wire
 
 import (
 	"fmt"
+	"reflect"
+
+	"google.golang.org/protobuf/proto"
 
 	pb "github.com/SyncApp-chat/SyncApp/internal/wirepb"
-	"google.golang.org/protobuf/proto"
 )
+
+// protoCodec is the default BodyCodec: it encodes envelope bodies as protobuf.
+// The public API stays the hand-written wire.*Body structs (so call sites are
+// unchanged); this codec converts each struct to its generated protobuf twin and
+// back. Framing and envelope are untouched — only body BYTES change from JSON to
+// protobuf. Switch back to JSON with SetBodyCodec(JSONCodec{}) if ever needed.
+type protoCodec struct{}
+
+// JSONCodec exposes the legacy JSON body encoding (useful for debugging / tools).
+type JSONCodec = jsonCodec
 
 func init() { bodyCodec = protoCodec{} }
 
 // Marshal converts a wire.*Body value to protobuf bytes.
 func (protoCodec) Marshal(v any) ([]byte, error) {
 	m := toProto(v)
+	if m == nil {
+		// toProto switches on values; a pointer to a mapped body encodes the same
+		// bytes instead of silently encoding nothing.
+		if rv := reflect.ValueOf(v); rv.Kind() == reflect.Pointer && !rv.IsNil() {
+			m = toProto(rv.Elem().Interface())
+		}
+	}
 	if m == nil {
 		return nil, fmt.Errorf("wire: no protobuf mapping for %T", v)
 	}

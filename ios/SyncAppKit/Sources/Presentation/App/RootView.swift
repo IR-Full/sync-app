@@ -12,6 +12,8 @@ public struct ViewFactory {
     public let media: any MediaRepository
     public let auth: any AuthRepository
     public let security: any AccountSecurityRepository
+    /// Safety numbers for secret chats; nil in builds without the E2E module.
+    public let safety: (any SecretSafetyRepository)?
 
     public init(
         chats: any ChatRepository,
@@ -20,7 +22,8 @@ public struct ViewFactory {
         search: any SearchRepository,
         media: any MediaRepository,
         auth: any AuthRepository,
-        security: any AccountSecurityRepository
+        security: any AccountSecurityRepository,
+        safety: (any SecretSafetyRepository)? = nil
     ) {
         self.chats = chats
         self.messages = messages
@@ -29,6 +32,7 @@ public struct ViewFactory {
         self.media = media
         self.auth = auth
         self.security = security
+        self.safety = safety
     }
 }
 

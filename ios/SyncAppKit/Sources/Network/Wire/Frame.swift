@@ -16,7 +16,7 @@ public enum WireError: Error, Equatable, Sendable {
     case malformedBody(String)
 }
 
-/// Frame flag bits (`server/pkg/wire/frame.constants.go`).
+/// Frame flag bits (`server/pkg/wire/frame.go`).
 public enum FrameFlag {
     public static let compressed: UInt8 = 1 << 0  // gzip
     public static let zstd: UInt8 = 1 << 1        // zstd + shared dictionary

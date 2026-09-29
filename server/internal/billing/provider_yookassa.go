@@ -40,9 +40,7 @@ and an Idempotence-Key, notifications as {"event", "object": <payment>}.
     A forged notification can at most make us re-read a real payment's real state.
     Before that, a notification from outside YooKassa's published address ranges
     is refused outright (AllowedSources), so a stranger cannot even trigger the
-    re-read.
-    (This used to check an HMAC header that YooKassa never sends, which would have
-    rejected every genuine notification in production.)
+    re-read. There is no HMAC to check: YooKassa does not sign its notifications.
   - A notification for an unpaid or cancelled payment is a normal outcome and maps
     to a status rather than to an error.
 */

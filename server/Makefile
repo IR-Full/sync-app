@@ -3,7 +3,7 @@
 
 GO ?= go
 
-.PHONY: build test test-race vet tidy fuzz ci vulncheck sec run-server run-server-infra client-alice client-bob infra-up infra-down test-integration test-integration-up
+.PHONY: build test test-race vet tidy fuzz perf interop ci vulncheck sec run-server run-server-infra client-alice client-bob infra-up infra-down test-integration test-integration-up
 
 build:
 	$(GO) build ./...
@@ -32,6 +32,14 @@ vulncheck:
 sec:
 	$(GO) run github.com/securego/gosec/v2/cmd/gosec@latest -severity medium -exclude-generated -exclude=G115 ./...
 
+# Performance regression check with thresholds (scripts/perf.sh; nightly in CI).
+perf:
+	bash scripts/perf.sh
+
+# Secret-chat interop, web client ↔ pkg/e2e through a gateway (needs Node).
+interop:
+	bash scripts/secret-interop.sh
+
 # Fuzz the binary protocol parser (Section 16). Ctrl-C to stop.
 fuzz:
 	$(GO) test ./pkg/wire -run=xxx -fuzz=FuzzParser -fuzztime=30s
@@ -45,29 +53,13 @@ fuzz:
 #   go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 #
 # body.proto -> envelope bodies (internal/wirepb); services.proto -> gRPC service
-# stubs for the microservice split (internal/rpc/pb).
-#
-# BOTH generated files are then SPLIT by declaration kind (scripts/split-pb.py),
-# because that is the layout these packages are checked in as. Skipping the split
-# leaves the same declarations in two files and the package stops compiling with a
-# wall of "redeclared in this block" - which is what happened the last time someone
-# tried, and why this target sat broken for long enough that its paths and module
-# name were still pre-rename. services.proto needs it as much as body.proto does:
-# the split for it was missing here, so `make proto` broke internal/rpc/pb.
-
-PROTO_TMP := $(shell mktemp -d 2>/dev/null || echo .proto-tmp)
-
+# stubs for the microservice split (internal/rpc/pb). The output is checked in as
+# protoc writes it, one file per .proto.
 proto:
-	@mkdir -p $(PROTO_TMP)
-	protoc --go_out=$(PROTO_TMP) --go_opt=module=github.com/SyncApp-chat/SyncApp proto/syncapp/v1/body.proto
-	python scripts/split-pb.py $(PROTO_TMP)/internal/wirepb/body.pb.go internal/wirepb body.pb
+	protoc --go_out=. --go_opt=module=github.com/SyncApp-chat/SyncApp proto/syncapp/v1/body.proto
 	protoc --go_out=. --go_opt=module=github.com/SyncApp-chat/SyncApp \
 	       --go-grpc_out=. --go-grpc_opt=module=github.com/SyncApp-chat/SyncApp \
 	       proto/syncapp/v1/services.proto
-	python scripts/split-pb.py internal/rpc/pb/services.pb.go internal/rpc/pb services.pb
-	python scripts/split-pb.py internal/rpc/pb/services_grpc.pb.go internal/rpc/pb services_grpc.pb
-	gofmt -w internal/wirepb internal/rpc/pb
-	@rm -rf $(PROTO_TMP)
 	$(GO) build ./...
 
 # Run the server fully in-memory (no infra needed).

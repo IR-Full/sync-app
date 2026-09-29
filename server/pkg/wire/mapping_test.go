@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -113,28 +114,17 @@ func TestEveryBodyTypeHasAProtobufMapping(t *testing.T) {
 	}
 }
 
-func TestMarshalTakesValuesNotPointers(t *testing.T) {
-	/*
-	 * The encode side maps VALUES only — `toProto` is a type switch over
-	 * `HelloBody`, not `*HelloBody`. Every call site in this repository passes a
-	 * value, so this is a latent trap rather than a live bug, and it is pinned
-	 * here because of how it would present: `wire.Marshal(&body)` compiles, runs,
-	 * returns zero bytes and reports nothing. That is precisely the shape of the
-	 * push-notification outage this file was written after.
-	 *
-	 * Unmarshal is the mirror image and necessarily takes a pointer; it has its
-	 * own `protoTarget` switch, covered by TestUnmarshalAcceptsAPointerToEveryBody
-	 * below.
-	 */
-	pointer := &HelloBody{ClientVersion: "web/1"}
-
-	if got := Marshal(pointer); len(got) != 0 {
-		t.Skip("Marshal now handles pointers; delete this test and the warning above it")
+func TestMarshalAcceptsAPointerToABody(t *testing.T) {
+	// toProto switches on values, so `wire.Marshal(&body)` used to compile, run
+	// and return zero bytes. A pointer now encodes exactly what the value does.
+	body := HelloBody{ClientVersion: "web/1", DeviceID: "d1"}
+	byValue, byPointer := Marshal(body), Marshal(&body)
+	if len(byValue) == 0 || !bytes.Equal(byValue, byPointer) {
+		t.Fatalf("pointer encoded %x, value encoded %x", byPointer, byValue)
 	}
-	// Documented, not endorsed: if a call site ever needs the pointer form, the
-	// fix is a case in toProto, not a cast at the call site.
-	if got := Marshal(*pointer); len(got) == 0 {
-		t.Error("the value form stopped working, which is the form everything uses")
+	var nilBody *HelloBody
+	if got := Marshal(nilBody); len(got) != 0 {
+		t.Fatalf("a nil pointer produced %d bytes", len(got))
 	}
 }
 

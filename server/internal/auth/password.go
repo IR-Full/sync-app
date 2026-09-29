@@ -11,14 +11,10 @@ import (
 /*
 Changing a password.
 
-This could not be done. Not "was awkward" — there was no code path, no protocol
-message, and no store method, so a leaked password meant a permanently lost
-account: RevokeAll kills every session, and whoever knows the password signs in
-again a minute later. The account had no owner any more, only two claimants with
-identical credentials.
-
-Everything here is the shape that fixes it, plus the two things that have to
-happen alongside the write and are easy to leave out.
+Without it a leaked password is a permanently lost account: RevokeAll kills
+every session, and whoever knows the password signs in again a minute later —
+two claimants with identical credentials. What follows is the change itself plus
+the two things that have to happen alongside the write and are easy to leave out.
 */
 
 // ChangePassword replaces the caller's password after re-confirming the old one,

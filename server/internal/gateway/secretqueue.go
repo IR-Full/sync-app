@@ -14,15 +14,13 @@ import (
 /*
 The durable half of secret chats.
 
-SECRET_SEND used to be pure relay. The gateway asked the router which nodes held
-the recipient, published a delivery to each, and DISCARDED the count. Zero nodes
-— the recipient simply offline — meant the ciphertext went nowhere: it was not
-stored, no push was queued, and the sender got no reply at all, so every client
-drew "sent" and moved on. A secret chat between two people who are not online at
-the same moment delivered nothing, which is the one mode the entire
-X3DH/ratchet/pinning stack exists to serve.
+A pure relay delivers nothing when the recipient's device is offline: the
+ciphertext goes nowhere, no push is queued, and the sender cannot tell. A secret
+chat between two people who are not online at the same moment is the mode the
+whole X3DH/ratchet/pinning stack exists to serve, so the relay is backed by a
+queue.
 
-Three things had to change together, and none of them works alone:
+Three things work together, and none of them works alone:
 
   - The relay has to know whether the addressed DEVICE is reachable, not whether
     its owner is online somewhere. That is router.NodesForDevice; before it,

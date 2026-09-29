@@ -8,7 +8,8 @@ COPY . .
 # CGO off → fully static binaries that run on the distroless base.
 RUN CGO_ENABLED=0 go build -o /out/ \
     ./cmd/authd ./cmd/chatd ./cmd/messaged ./cmd/presenced ./cmd/keydird \
-    ./cmd/fanoutd ./cmd/notifyd ./cmd/moderationd ./cmd/searchd ./cmd/gatewayd
+    ./cmd/fanoutd ./cmd/notifyd ./cmd/moderationd ./cmd/searchd ./cmd/gatewayd \
+    ./cmd/roles
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /out/ /usr/local/bin/

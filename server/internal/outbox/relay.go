@@ -19,6 +19,36 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/eventbus"
 )
 
+// Retention. The outbox is a HANDOFF table, not an archive: each row carries a
+// full copy of the message it announces, so a table that is only ever appended to
+// ends up bigger than the message log itself. Published rows are kept briefly —
+// long enough to inspect a delivery that just happened, not long enough to become
+// a second copy of the system's data.
+const (
+	defaultRetain     = 10 * time.Minute
+	defaultPurgeEvery = time.Minute
+	defaultPurgeBatch = 1000
+)
+
+// Listener is an optional capability: a store that signals when new outbox rows
+// are committed (Postgres LISTEN/NOTIFY), so the relay wakes immediately instead
+// of tight polling.
+type Listener interface {
+	Listen(ctx context.Context) (<-chan struct{}, error)
+}
+
+// Relay publishes staged outbox events to the bus and collects them afterwards.
+type Relay struct {
+	store      store.OutboxStore
+	bus        eventbus.Bus
+	log        *slog.Logger
+	interval   time.Duration
+	batch      int
+	retain     time.Duration
+	purgeEvery time.Duration
+	purgeBatch int
+}
+
 // New builds a relay.
 func New(s store.OutboxStore, bus eventbus.Bus, log *slog.Logger) *Relay {
 	return &Relay{

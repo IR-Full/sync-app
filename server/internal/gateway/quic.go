@@ -4,11 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 
+	"github.com/quic-go/quic-go"
+
 	"github.com/SyncApp-chat/SyncApp/internal/metrics"
 	"github.com/SyncApp-chat/SyncApp/internal/safego"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
-	"github.com/quic-go/quic-go"
 )
+
+// QUICALPN is the ALPN token negotiated for the SyncApp QUIC transport
+// (re-exported from wire for gateway callers).
+const QUICALPN = wire.QUICALPN
 
 // QUIC is a better fit for mobile than TCP: the connection survives an IP change
 // (WiFi↔LTE) via connection migration, so a phone changing networks does not

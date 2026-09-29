@@ -108,7 +108,18 @@ services:
   gatewayd:
     <<: *fleet-image
     command: ["/usr/local/bin/gatewayd"]
-    environment: *backends
+    environment:
+      <<: *backends
+      # Client addresses come from the balancer: X-Forwarded-For on WebSocket, a
+      # PROXY v2 header on raw TCP. Both are believed only from the balancer's
+      # fixed address below.
+      SYNCAPP_TRUSTED_PROXIES: 172.28.0.250
+      SYNCAPP_PROXY_PROTOCOL: "1"
+      # One blob store for every replica: an upload through one must download
+      # through another.
+      SYNCAPP_MEDIA_DIR: /data/media
+    volumes:
+      - media:/data/media
     deploy:
       replicas: 2
     depends_on:
@@ -128,5 +139,17 @@ services:
     ports:
       - "7000:7000" # raw-TCP binary protocol
       - "8080:8080" # WebSocket + /healthz + /metrics
+    networks:
+      default:
+        ipv4_address: 172.28.0.250 # SYNCAPP_TRUSTED_PROXIES on gatewayd
     depends_on:
       gatewayd: {condition: service_started}
+
+volumes:
+  media:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24

@@ -58,7 +58,7 @@ public struct RatchetHeader: Equatable, Sendable {
     /// header rebuilt as `RatchetHeader(dh: h.dh, pn: 99, n: h.n)` therefore
     /// starts with no bytes of its own and is encoded from the counters it
     /// actually carries — and the AEAD rejects it. `Header.raw` in
-    /// `server/pkg/e2e/ratchet.types.go` gets the same guarantee from being
+    /// `server/pkg/e2e/ratchet.go` gets the same guarantee from being
     /// unexported.
     public fileprivate(set) var wireBytes: Data?
 
@@ -178,6 +178,9 @@ public enum RatchetHeaderCodec {
     }
 }
 
+/// Supplies the key pairs a session ratchets to. Tests pass recorded keys.
+public typealias RatchetKeySource = () -> SecretKeyPair
+
 /// One Double Ratchet session with one peer device.
 ///
 /// A reference type, and not safe for concurrent use — callers serialise per
@@ -193,6 +196,7 @@ public final class RatchetSession {
     private var previousSent = 0
     private var skipped: [String: Data] = [:]
     private var skippedOrder: [String] = []
+    private var keySource: RatchetKeySource = { Crypto.generateKeyPair() }
 
     private init(dhs: SecretKeyPair, dhr: Data?, rootKey: Data) {
         self.dhs = dhs
@@ -204,13 +208,15 @@ public final class RatchetSession {
     /// DH ratchet runs immediately so the initiator can send straight away.
     public static func initiator(
         sharedSecret: Data,
-        theirSignedPreKey: Data
+        theirSignedPreKey: Data,
+        keySource: @escaping RatchetKeySource = { Crypto.generateKeyPair() }
     ) -> RatchetSession? {
         let session = RatchetSession(
-            dhs: Crypto.generateKeyPair(),
+            dhs: keySource(),
             dhr: theirSignedPreKey,
             rootKey: sharedSecret
         )
+        session.keySource = keySource
         guard let dhOut = Crypto.diffieHellman(
             privateKey: session.dhs.privateKey, publicKey: theirSignedPreKey)
         else { return nil }
@@ -225,9 +231,12 @@ public final class RatchetSession {
     /// arrives and triggers a ratchet step.
     public static func responder(
         sharedSecret: Data,
-        signedPreKey: SecretKeyPair
+        signedPreKey: SecretKeyPair,
+        keySource: @escaping RatchetKeySource = { Crypto.generateKeyPair() }
     ) -> RatchetSession {
-        RatchetSession(dhs: signedPreKey, dhr: nil, rootKey: sharedSecret)
+        let session = RatchetSession(dhs: signedPreKey, dhr: nil, rootKey: sharedSecret)
+        session.keySource = keySource
+        return session
     }
 
     public static func deserialize(_ state: SerializedSession) -> RatchetSession? {
@@ -383,6 +392,7 @@ public final class RatchetSession {
         guard let trial = Self.deserialize(serialize()) else {
             throw RatchetError.decryptionFailed
         }
+        trial.keySource = keySource
         let plaintext = try trial.advance(header: header, ciphertext: ciphertext)
         adopt(trial)
         return plaintext
@@ -442,7 +452,7 @@ public final class RatchetSession {
         rootKey = rk1
         receivingChainKey = ckr
 
-        dhs = Crypto.generateKeyPair()
+        dhs = keySource()
         guard let dhOut = Crypto.diffieHellman(
             privateKey: dhs.privateKey, publicKey: header.dh)
         else { throw RatchetError.decryptionFailed }

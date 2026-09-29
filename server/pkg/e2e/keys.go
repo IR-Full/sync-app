@@ -18,6 +18,12 @@ import (
 	"crypto/rand"
 )
 
+// KeyPair is an X25519 key pair.
+type KeyPair struct {
+	Priv *ecdh.PrivateKey
+	Pub  *ecdh.PublicKey
+}
+
 // GenerateKeyPair creates a fresh X25519 key pair.
 func GenerateKeyPair() (*KeyPair, error) {
 	priv, err := ecdh.X25519().GenerateKey(rand.Reader)
@@ -38,4 +44,13 @@ func PublicKeyFromBytes(b []byte) (*ecdh.PublicKey, error) {
 // dh performs X25519 and returns the shared secret.
 func dh(priv *ecdh.PrivateKey, pub *ecdh.PublicKey) ([]byte, error) {
 	return priv.ECDH(pub)
+}
+
+// keyPairFromPrivate rebuilds an X25519 key pair from its 32 private bytes.
+func keyPairFromPrivate(b []byte) (*KeyPair, error) {
+	priv, err := ecdh.X25519().NewPrivateKey(b)
+	if err != nil {
+		return nil, err
+	}
+	return &KeyPair{Priv: priv, Pub: priv.PublicKey()}, nil
 }

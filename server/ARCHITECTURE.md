@@ -28,10 +28,10 @@ default and the reason. Deviations are called out as tradeoffs.
 > authenticated the message — and **both are now fixed**, with tests asserting
 > the bypass fails. What remains is coverage, not correctness: **Android and iOS
 > now implement E2E** — the ratchet, X3DH, safety numbers and TOFU pinning are
-> ported to web, Android and iOS — but **iOS has no screen that shows a safety
-> number**, so pinning protects nobody there yet. The cross-language interop
-> scripts still cannot run, because the `e2epeer` binary they drive is not in the
-> repository. See [`SECURITY.md`](SECURITY.md) §6.
+> ported to web, Android and iOS, and each shows a safety number and blocks a send
+> to a changed key. Every port replays the Go
+> implementation's vectors (`server/testdata/e2e`) byte for byte, and CI runs the
+> web client against `cmd/e2epeer` through a gateway. See [`SECURITY.md`](SECURITY.md) §6.
 
 **Explicitly NOT in the first version** (dangerous complexity to defer):
 E2E encryption, multi-region replication, a bespoke wide-column store, exactly-once
@@ -264,12 +264,7 @@ naming rather than quietly closing):
 
 **Still open in this mode:**
 
-- The client half is web-only. Android and iOS carry the capability bit (
-  correctly un-advertised) and nothing behind it.
-- No shipped client pins identity keys (`pkg/e2e/trust.go` is server-side Go) or
-  surfaces a safety number.
-- The cross-language interop scripts in `client/scripts/` need a Go `e2epeer`
-  binary that does not exist, and CI does not run them.
+- Media cannot be sent in a secret chat yet (NEXT.md).
 
 **Ratcheting vs cloud-sync tradeoff:** cloud sync gives multi-device history,
 server search, and instant new-device onboarding, at the cost of server-readable
@@ -621,8 +616,8 @@ the production config now fails closed (`platform.EnforceProduction`, in the
 monolith and in `gatewayd`); the per-IP guard resolves a forwarded address from
 configured trusted proxies only; session revocation and account deletion are
 reachable from every client. What remains is listed in
-[`SECURITY.md`](SECURITY.md) — as of 2026-09-27 that is the missing iOS
-safety-number screen, plus deployment-layer work.
+[`SECURITY.md`](SECURITY.md) — as of 2026-09-29 no open defect, and
+deployment-layer work.
 
 **Designed:** hard brute-force lockout, device fingerprint / IP reputation
 signals, upstream L4 DDoS scrubber, secret management (Vault/KMS), TOFU

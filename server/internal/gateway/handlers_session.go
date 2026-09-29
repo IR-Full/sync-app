@@ -1,11 +1,6 @@
-// Handlers for session management and account deletion — the half of the
-// identity story that existed only in the store until now.
-//
-// `auth.Service` could always revoke a session and list a user's sessions, and
-// `store.UserStore` could always erase an account. Nothing could ask any of them
-// to: there was no message type and no handler, so "log out" was a purely local
-// gesture (the device forgot its token; the session stayed valid on the server
-// until it expired) and an account could be created in-app but never destroyed.
+// Handlers for session management and account deletion. They make "log out" end
+// the session on the server rather than only on the device, and let an account
+// created in-app also be destroyed in-app.
 package gateway
 
 import (

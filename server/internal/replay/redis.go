@@ -9,6 +9,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// redisBuffer stores each session's recent frames in a capped Redis stream
+// (resume:<session>), so a client can resume on ANY node. XADD with MAXLEN
+// bounds memory; the key TTL reaps sessions that never resume.
+type redisBuffer struct {
+	rdb *redis.Client
+	ttl time.Duration
+}
+
 // NewRedis returns a Redis-backed replay buffer.
 func NewRedis(rdb *redis.Client, ttl time.Duration) Buffer {
 	if ttl == 0 {
@@ -27,10 +35,10 @@ a per-session outbound seq already is — so using `<seq>-1` as the id turns
 "give me everything after seq N" into a range query the server performs, instead
 of a full-stream read the client filters.
 
-That is the whole fix. `Since` used to call `XRANGE key - +`, pulling every
-buffered frame (up to maxFrames = 1024) over the wire on every resume and then
-discarding the ones at or below the cursor in Go. A client that had acknowledged
-all but the last frame still paid for a thousand.
+`Since` is therefore one `XRANGE` from the cursor, not `XRANGE key - +` filtered
+in Go — which would pull every buffered frame (up to maxFrames = 1024) on every
+resume, so a client that acknowledged all but the last frame still paid for a
+thousand.
 
 The `-1` suffix rather than `-0` is deliberate: seq starts at 1 in practice, but
 `0-0` is not a legal Redis stream id, so anchoring the sequence part at 1 keeps

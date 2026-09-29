@@ -11,10 +11,108 @@ package keydir
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+// opTimeout bounds one directory round trip when the caller's context carries no
+// deadline of its own. A backend can be a remote Redis or another process, so a
+// client waiting on a prekey fetch must not be able to wait forever because a
+// dependency wedged.
+const opTimeout = 3 * time.Second
+
+// MaxOneTimePreKeys caps the one-time prekeys the directory holds per device.
+//
+// Prekeys are ACCUMULATED across publishes — that is the point, since each is
+// consumed by one fetch — so without a ceiling a device can grow its own bucket
+// without bound by publishing repeatedly, and the store is remembered per device
+// in memory or in Redis with no expiry. The cap is generous next to real client
+// behaviour (clients top up a small reserve, ~100), so the only thing it stops is
+// the unbounded case. Over the cap the OLDEST are dropped: a fresh key is the one
+// worth keeping, and the sender's X3DH works with no one-time prekey at all.
+const MaxOneTimePreKeys = 256
+
+// MaxPreKeysPerPublish bounds a single KEY_PUBLISH frame, so one request cannot
+// cost an unbounded write even though the total is capped.
+const MaxPreKeysPerPublish = 128
+
+// EntryTTL is how long a device's directory entry survives without a republish.
+//
+// Without one the directory only ever grew: every device that ever connected
+// kept a bundle, a prekey list and a set membership forever, including devices
+// wiped, reinstalled or logged out years ago. That is both unbounded storage and
+// a needless metadata trail — the entry names a device that no longer exists.
+//
+// The value is generous on purpose. Clients republish whenever they start (they
+// have to: one-time prekeys are consumed by fetches and need topping up), so a
+// device in real use refreshes this many times over. A device that has not
+// published in three months is not one a peer should be opening a session with.
+const EntryTTL = 90 * 24 * time.Hour
+
+// Directory stores and serves public prekey bundles.
+//
+// Every method takes a context: a directory call can cross a network (Redis, or
+// gRPC to keydird), and the rest of the system is ctx-first for exactly that
+// reason — a request that goes away should not leave work running behind it, and
+// a trace should not stop at this boundary.
+type Directory interface {
+	// Publish stores/refreshes a device's identity + signed prekey and appends new
+	// one-time prekeys, returning what the directory now holds.
+	//
+	// It RETURNS something now, and that is the point of the change. Publishing used
+	// to be write-only, so a device could not learn its own one-time prekey balance —
+	// and it cannot learn it any other way, because those keys are consumed by PEERS
+	// fetching bundles. A device that runs dry silently drops to the weaker three-DH
+	// handshake, and nobody involved finds out: the peer cannot see the difference and
+	// the owner never hears.
+	Publish(ctx context.Context, userID, deviceID string, b wire.KeyPublishBody) State
+	// Fetch returns a consumable bundle for a peer device (pops one one-time
+	// prekey), or ok=false if the device published nothing.
+	Fetch(ctx context.Context, userID, deviceID string) (wire.KeyBundleBody, bool)
+	// FetchAll returns a bundle for every device of a user (multi-device sync).
+	FetchAll(ctx context.Context, userID string) []wire.KeyBundleBody
+}
+
+// State is what the directory holds for one device after a publish.
+type State struct {
+	// OneTimePreKeysLeft is the count AFTER the publish was applied and trimmed.
+	OneTimePreKeysLeft int
+	// Accepted is how many prekeys from THIS frame survived the per-publish cap and
+	// the per-device ceiling. A client that keeps the private halves needs it: without
+	// it, it holds private keys for public ones the directory dropped, and cannot tell
+	// which.
+	Accepted int
+	// SignedPreKeyFirstSeen is when the CURRENT signed prekey first appeared. Zero when
+	// this publish introduced it. The client decides when to rotate; it cannot know how
+	// old the stored one is, because it cannot know whether its own last publish landed.
+	SignedPreKeyFirstSeen time.Time
+}
+
+type deviceKeys struct {
+	identityKey     string
+	signingKey      string
+	signedPreKey    string
+	signedPreKeySig string
+	// spkFirstSeen is when signedPreKey was first stored, so a rotating client can be
+	// told the age of what the directory actually has rather than what it believes it
+	// sent.
+	spkFirstSeen time.Time
+	oneTime      []string
+	// expires mirrors the Redis backend's EntryTTL so the two behave alike. It is
+	// enforced lazily, on read: a directory with no readers has no stale answers
+	// to give, and a sweeper goroutine per process for a map that only a dev or
+	// single-node run ever holds is not worth its own failure mode.
+	expires time.Time
+}
+
+// memoryDir is the in-process backend (single node / dev / tests).
+type memoryDir struct {
+	mu      sync.Mutex
+	bundles map[string]*deviceKeys
+	devices map[string][]string
+}
 
 // opCtx returns the caller's context when it already has a deadline, else one
 // bounded by opTimeout. Cancellation and trace context propagate either way.

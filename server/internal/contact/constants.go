@@ -19,8 +19,7 @@ var (
 const MaxNameLen = 100
 
 // SyncPageSize bounds one sync response. An address book is unbounded in
-// principle, and a full sync used to be a single frame — a large one lands on
-// the protocol's 16 MiB ceiling and fails as a whole instead of degrading. The
-// client repeats the request with the cursor it gets back until a page comes
-// back empty.
+// principle, and a whole-book frame lands on the protocol's 16 MiB ceiling and
+// fails as a whole instead of degrading. The client repeats the request with the
+// cursor it gets back until a page comes back empty.
 const SyncPageSize = 500

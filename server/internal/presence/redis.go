@@ -6,9 +6,18 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/SyncApp-chat/SyncApp/internal/model"
 )
+
+// redisBackend stores presence in Redis. "online" is a key with a TTL: if the
+// gateway stops heartbeating (crash, network drop) the key expires and the user
+// is implicitly offline — no cleanup job needed. last-seen is a separate durable
+// key updated on graceful offline.
+type redisBackend struct {
+	rdb *redis.Client
+}
 
 // NewRedisBackend connects to Redis (e.g. "localhost:6379").
 func NewRedisBackend(addr, password string, db int) (Backend, error) {

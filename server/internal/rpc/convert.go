@@ -5,10 +5,23 @@
 package rpc
 
 import (
+	"github.com/SyncApp-chat/SyncApp/internal/message"
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	pb "github.com/SyncApp-chat/SyncApp/internal/rpc/pb"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+var opToPB = map[message.Op]pb.Op{
+	message.OpCreate: pb.Op_OP_CREATE,
+	message.OpEdit:   pb.Op_OP_EDIT,
+	message.OpDelete: pb.Op_OP_DELETE,
+}
+
+var opFromPB = map[pb.Op]message.Op{
+	pb.Op_OP_CREATE: message.OpCreate,
+	pb.Op_OP_EDIT:   message.OpEdit,
+	pb.Op_OP_DELETE: message.OpDelete,
+}
 
 func pbUser(u *model.User) *pb.User {
 	if u == nil {

@@ -12,11 +12,9 @@ import (
 /*
 A secret chat as a CHAT, not as a side channel.
 
-End-to-end chats used to exist only as a relay with no chat row behind them. That
-had a consequence in every client: with no row there was no entry in the chat
-list, no title, no unread count, no mute setting and no history — so each client
-put secret chats in a modal window beside the product, which is exactly what the
-data model said they were.
+Without a chat row there is no entry in the chat list, no title, no unread count,
+no mute setting and no history, and every client ends up putting secret chats in a
+modal window beside the product.
 
 Making it a chat type means the ordinary screens work unchanged and only the
 GUARANTEES differ. The row holds what a chat needs: membership, ordering, flags,

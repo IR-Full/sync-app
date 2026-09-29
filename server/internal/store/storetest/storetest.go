@@ -84,6 +84,7 @@ func Run(t *testing.T, newStores NewStores) {
 		{"ChatUsername", testChatUsername},
 		{"Polls", testPolls},
 		{"Calls", testCalls},
+		{"PlatformRoles", testPlatformRoles},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.fn(t, newStores(t))
@@ -1544,7 +1545,7 @@ func testChatList(t *testing.T, s store.Stores) {
 		t.Fatalf("top row is %s at %d, want %s at 3000",
 			page[0].Chat.ID, page[0].LastActivityAt, seeds[0].chatID)
 	}
-	// The row carries what a list draws, which it previously did not.
+	// The row carries what a list draws.
 	if page[0].LastMessage == nil {
 		t.Fatal("no last-message preview")
 	}
@@ -1673,5 +1674,69 @@ func testChatList(t *testing.T, s store.Stores) {
 	}
 	if mine != 0 {
 		t.Fatalf("a user with no memberships has %d pinned chats", mine)
+	}
+}
+
+func testPlatformRoles(t *testing.T, s store.Stores) {
+	if s.Roles == nil {
+		t.Skip("this backend has no platform roles")
+	}
+	alice, bob := mkUser(t, s), mkUser(t, s)
+
+	if role, err := s.Roles.PlatformRole(ctx(), alice); err != nil || role != "" {
+		t.Fatalf("a user with no grant: role %q, err %v", role, err)
+	}
+	grant := model.PlatformRoleGrant{UserID: alice, Role: model.PlatformModerator, GrantedBy: "env", GrantedAt: 1000}
+	if err := s.Roles.SetPlatformRole(ctx(), grant); err != nil {
+		t.Fatal(err)
+	}
+	// A second grant replaces the first rather than adding a row.
+	grant.Role, grant.GrantedBy, grant.GrantedAt = model.PlatformAdmin, bob, 2000
+	if err := s.Roles.SetPlatformRole(ctx(), grant); err != nil {
+		t.Fatal(err)
+	}
+	if role, _ := s.Roles.PlatformRole(ctx(), alice); role != model.PlatformAdmin {
+		t.Fatalf("role after replacement: %q", role)
+	}
+	if err := s.Roles.SetPlatformRole(ctx(), model.PlatformRoleGrant{UserID: bob, Role: model.PlatformModerator, GrantedBy: alice, GrantedAt: 3000}); err != nil {
+		t.Fatal(err)
+	}
+
+	mine := map[string]model.PlatformRoleGrant{}
+	all, err := s.Roles.ListPlatformRoles(ctx())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range all {
+		if g.UserID == alice || g.UserID == bob {
+			mine[g.UserID] = g
+		}
+	}
+	if got := mine[alice]; got.Role != model.PlatformAdmin || got.GrantedBy != bob || got.GrantedAt != 2000 {
+		t.Fatalf("alice's grant as listed: %+v", got)
+	}
+	if mine[bob].Role != model.PlatformModerator {
+		t.Fatalf("bob's grant as listed: %+v", mine[bob])
+	}
+
+	if err := s.Roles.RemovePlatformRole(ctx(), bob); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Roles.RemovePlatformRole(ctx(), bob); err != nil {
+		t.Fatalf("revoking a role that is not held: %v", err)
+	}
+	if role, _ := s.Roles.PlatformRole(ctx(), bob); role != "" {
+		t.Fatalf("role after revoke: %q", role)
+	}
+
+	// A grant for nobody is refused, and a role ends with its account.
+	if err := s.Roles.SetPlatformRole(ctx(), model.PlatformRoleGrant{UserID: nextID(), Role: model.PlatformAdmin, GrantedBy: "env", GrantedAt: 1}); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("grant for a missing user: %v", err)
+	}
+	if err := s.Users.DeleteAccount(ctx(), alice); err != nil {
+		t.Fatal(err)
+	}
+	if role, _ := s.Roles.PlatformRole(ctx(), alice); role != "" {
+		t.Fatalf("a deleted account kept its role %q", role)
 	}
 }

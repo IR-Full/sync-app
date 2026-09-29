@@ -24,6 +24,100 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/id"
 )
 
+// ErrExists means the object already exists. Uploads are CREATE-ONLY: a signed
+// upload URL stays valid for its whole TTL, so without this a holder could keep
+// replacing the bytes behind a media_ref that recipients have already been told
+// about — swapping content under a message after the fact.
+var ErrExists = errors.New("media: object already exists")
+
+// eicar is the EICAR test signature (industry-standard benign AV test file).
+var eicar = []byte(`X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`)
+
+// defaultMaxSize is the deployment ceiling when an operator sets none.
+//
+// It matches the largest tier rather than the smallest, because per-account
+// limits now come from entitlements and this value only has to be big enough not
+// to contradict them. It was 100 MiB, which silently overrode every tier above
+// the free one.
+const defaultMaxSize int64 = 4 << 30 // 4 GiB
+
+// ErrTooLargeForTier means the caller's PLAN refused the upload, not the
+// deployment. Its own error so the gateway can offer an upgrade rather than
+// report a flat refusal for something that is purchasable.
+var ErrTooLargeForTier = errors.New("media: file is larger than your plan allows")
+
+// FetchAuthorizer decides whether a user may download a blob.
+//
+// Injected rather than built in, because the answer lives in the message log and
+// the user directory — neither of which the media service knows about, and
+// neither of which it should have to import to hand out a signed URL.
+//
+// A nil authorizer means "any authenticated holder of the ref may fetch", which
+// is the behaviour this service shipped with: sound against guessing (the ref
+// carries 128 bits of entropy and the URL is signed), and nothing at all against
+// a ref that leaked.
+type FetchAuthorizer interface {
+	// MayFetch reports whether userID may download ref. An error is treated as a
+	// denial by the caller: failing open here would make a database blip into an
+	// access-control bypass.
+	MayFetch(ctx context.Context, userID, ref string) (bool, error)
+}
+
+// ObjectStore is the blob backend. fsStore (this package) is the local default;
+// an S3 implementation slots in unchanged.
+type ObjectStore interface {
+	// Put stores the object. It MUST fail with ErrExists if ref is already
+	// present, and must do so atomically (fs: link into place; S3: If-None-Match).
+	// It must also publish atomically: a concurrent Get either misses the ref or
+	// reads the object whole, never a partial write.
+	Put(ref string, data []byte) error
+	Get(ref string) ([]byte, error)
+	Exists(ref string) bool
+	// Delete removes an object. A missing object is not an error: deletion is
+	// idempotent, and the collector may race with itself across nodes.
+	Delete(ref string) error
+}
+
+// Lister is an optional ObjectStore capability: enumerating stored objects by
+// age, which the orphan sweep needs. A backend that cannot enumerate cheaply
+// (or at all) simply does not implement it and is never swept.
+type Lister interface {
+	ListOlderThan(t time.Time) ([]string, error)
+}
+
+// Scanner is the anti-malware hook run on upload. The default HeuristicScanner
+// rejects the EICAR test signature (a stand-in proving the hook works); a real
+// deployment plugs in a ClamAV/ICAP scanner implementing this interface.
+type Scanner interface {
+	// Scan returns a non-nil error to reject (quarantine) the upload.
+	Scan(data []byte) error
+}
+
+// HeuristicScanner is the default: it rejects the standard EICAR antivirus test
+// string so the scan path is exercised without real AV infrastructure.
+type HeuristicScanner struct{}
+
+// Service issues upload/download tickets and validates their signatures.
+type Service struct {
+	store   ObjectStore
+	ids     *id.Generator
+	secret  []byte        // HMAC key for signing URLs
+	baseURL string        // public base, e.g. http://localhost:8080
+	ttl     time.Duration // ticket lifetime
+	maxSize int64
+	scanner Scanner
+	auth    FetchAuthorizer // anti-malware hook run on upload
+	refs    Referencer      // "is this blob still referenced?" (nil = never collect)
+	log     *slog.Logger
+}
+
+// Ticket is a signed upload authorization.
+type Ticket struct {
+	MediaRef  string
+	UploadURL string
+	ExpiresAt int64
+}
+
 // randSuffix returns 128 bits of URL-safe crypto-random for capability refs.
 //
 // The error is returned rather than discarded. The suffix is what makes a media

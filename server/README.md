@@ -225,10 +225,14 @@ WiFi↔LTE) and no head-of-line blocking.
 | `SYNCAPP_REQUIRE_TLS`     | *(unset)*      | `1` = refuse to start without TLS (no silent plaintext) |
 | `SYNCAPP_MAX_CONNS_PER_IP`| *(unset)*      | cap concurrent connections per source IP (flood guard) |
 | `SYNCAPP_ACCEPT_RATE_PER_IP`| *(unset)*    | cap new connections/sec per source IP (storm guard) |
-| `SYNCAPP_ALLOWED_ORIGINS` | *(unset)*      | comma list of allowed WebSocket origins. **Unset = every origin is accepted** (CSWSH); `REQUIRE_TLS=1` does not currently demand it |
-| `SYNCAPP_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs. **The dev default is a hardcoded constant**; anyone who knows it forges upload/download URLs. `REQUIRE_TLS=1` does not currently demand it |
-| `SYNCAPP_ADMIN_USERS`     | *(unset)*      | comma list of platform-admin user ids (RBAC) |
-| `SYNCAPP_MODERATOR_USERS` | *(unset)*      | comma list of moderator user ids (RBAC)  |
+| `SYNCAPP_TRUSTED_PROXIES` | *(unset)*      | comma list of proxy addresses/CIDRs whose `X-Forwarded-For` (and PROXY header) is believed. **Required behind a load balancer**, or the per-IP guard charges every client to the balancer |
+| `SYNCAPP_PROXY_PROTOCOL`  | *(unset)*      | `1` = read a PROXY v2 header on raw-TCP connections from a trusted proxy (HAProxy `send-proxy-v2`); needs `SYNCAPP_TRUSTED_PROXIES` |
+| `SYNCAPP_ALLOWED_ORIGINS` | *(unset)*      | comma list of allowed WebSocket origins. **Unset = every origin is accepted** (CSWSH); `REQUIRE_TLS=1` refuses to start without it |
+| `SYNCAPP_MEDIA_SECRET`    | dev default    | HMAC key for signing media URLs. **The dev default is a hardcoded constant**; anyone who knows it forges upload/download URLs. `REQUIRE_TLS=1` refuses to start with it |
+| `SYNCAPP_MEDIA_DIR`       | `./data/media` | blob directory; must be shared by every gateway replica |
+| `SYNCAPP_BANNED_TERMS`    | `spamword,scamlink` | comma list of terms the moderation filter flags |
+| `SYNCAPP_ADMIN_USERS`     | *(unset)*      | comma list of user ids that are always platform admins (RBAC); roles granted at runtime live in the database — see `go run ./cmd/roles` |
+| `SYNCAPP_MODERATOR_USERS` | *(unset)*      | comma list of user ids that are always moderators (RBAC)  |
 | `SYNCAPP_TRACE`           | *(unset)*      | `stdout` prints OpenTelemetry spans      |
 | `SYNCAPP_OTLP_ENDPOINT`   | *(unset)*      | OTLP/HTTP collector (e.g. `localhost:4318`) |
 | `SYNCAPP_PPROF`           | *(unset)*      | `1` mounts `/debug/pprof/`               |
@@ -237,7 +241,10 @@ WiFi↔LTE) and no head-of-line blocking.
 | `SYNCAPP_SEND_RATE`       | `20`           | per-connection msgs/sec flood limit (raise for load tests) |
 | `SYNCAPP_REGION`          | `local`        | region label (multi-region hook)         |
 
-Any subset can be set; unset backends fall back to in-memory.
+Any subset can be set; unset backends fall back to in-memory. A variable that is
+set but cannot be parsed stops startup, rather than falling back to its default.
+The monolith and the split deployment read these through one function
+(`internal/wiring.FromEnv`), so they honour the same set.
 
 ## Tests & CI
 

@@ -11,9 +11,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/SyncApp-chat/SyncApp/internal/fanout"
+	"github.com/SyncApp-chat/SyncApp/internal/chat"
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -36,9 +37,15 @@ func main() {
 	defer func() { _ = chatConn.Close() }()
 
 	chats := rpc.NewChatClient(chatConn)
-	// Chat kinds keep read receipts in a channel with the reader, as in the
-	// monolith; without them only the size rule applies (fanout.receiptsArePrivate).
-	fan := fanout.New(b.Bus, chats, b.Router, b.Log).WithChatKinds(chats)
+	fan := wiring.NewFanout(b, wiring.FanoutDeps{
+		Chats: chats,
+		Kinds: chats,
+		// Per-member flags are not on chatd's contract; they are read from the
+		// shared store, as the edge reads them.
+		Mute:     chat.New(b.Stores.Chats, b.IDs),
+		Users:    b.Stores.Users,
+		Contacts: wiring.NewContacts(b.Stores),
+	})
 	if err := fan.Start(); err != nil {
 		b.Log.Error("start", "err", err)
 		os.Exit(1)

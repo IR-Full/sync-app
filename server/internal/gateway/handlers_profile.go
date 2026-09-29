@@ -17,6 +17,33 @@ import (
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
 
+// Chat-list page bounds. They mirror the ones the chat service enforces: the
+// gateway clamps BEFORE calling so it knows the effective page size, which is
+// what tells a short page (the last one) from a full one. The service keeps its
+// own bound as a floor for any other caller.
+const (
+	defaultChatListLimit = 100
+	maxChatListLimit     = 200
+)
+
+// Profile bounds. The display name is a label, not content: it is rendered in
+// lists where a long one crowds out everything else, so it is capped in BYTES
+// (like message text) rather than runes. The avatar cap is generous enough for
+// any media_ref the media service mints and short enough that the field cannot
+// be used as free storage.
+const (
+	maxDisplayName = 64
+	maxAvatarRef   = 128
+)
+
+// maxMuteUntil bounds a mute deadline.
+//
+// 2100-01-01. The value doubles as the "forever" the migration writes when it
+// carries the old boolean `muted` column forward, so it has to be a date a client
+// can render without apology — and a bound at all, because an unbounded deadline
+// is harmless to store and confusing to display.
+const maxMuteUntil int64 = 4102444800000
+
 // --- Chat list ---
 
 // handleChatList returns one page of the caller's chats, ordered by chat id.
@@ -228,11 +255,8 @@ func validMediaRef(s string) bool {
 /*
 handleChatFlags writes the caller's own mute/pin/archive for a chat.
 
-The `muted` column has existed since the first migration and nothing ever read
-it: there was no message a client could send to set it, and the notification path
-never consulted it. So muting a chat was impossible while the schema, the model and
-the gRPC converters all implied it was supported — the worst kind of missing
-feature, because it looks present from every angle except the one that matters.
+The flags take effect elsewhere: fanout reads `muted` before sending a push
+(fanout.MuteChecker), and the chat list reads pinned and archived.
 
 Authorization is membership, and it is enforced by the store's own predicate
 rather than by a check here: the update names (chat_id, user_id), so a non-member's

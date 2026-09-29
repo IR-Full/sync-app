@@ -2,11 +2,39 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/SyncApp-chat/SyncApp/internal/model"
 	"github.com/SyncApp-chat/SyncApp/pkg/wire"
 )
+
+// errLoginThrottled signals too many auth attempts for a username.
+var errLoginThrottled = errors.New("login throttled")
+
+// errBadDisplayName rejects a registration whose display name is not a name.
+var errBadDisplayName = errors.New("invalid display name")
+
+// maxIdempotencyKeyLen bounds a checkout idempotency key.
+//
+// It is stored, indexed and compared, so an unbounded one is a way to put arbitrary
+// bytes in a unique index. 128 is far more than any client needs for a UUID.
+const maxIdempotencyKeyLen = 128
+
+// authIdentity is the gateway's flattened view of a resolved principal.
+type authIdentity struct {
+	userID      string
+	deviceID    string
+	sessionID   string
+	token       string
+	resumeToken string
+	// The account behind the session, echoed in AUTH_OK. A client that logs in
+	// with a stored token never sent a username and has no other way to learn
+	// its own.
+	username    string
+	displayName string
+	avatarRef   string
+}
 
 func (c *conn) authByToken(ctx context.Context, token string) (*authIdentity, error) {
 	id, err := c.gw.svc.Auth.Authenticate(ctx, token)
@@ -117,8 +145,7 @@ func stateChanging(t wire.MsgType) bool {
 // amplifying reports whether a message type is a READ that costs the server more
 // to answer than it costs the client to ask.
 //
-// These used to be outside flood control entirely, on the reasoning that a read
-// changes nothing. That confuses "harmless" with "free". HISTORY is the clearest
+// A read changes nothing, but "harmless" is not "free". HISTORY is the clearest
 // case: one small frame draws a database page and streams up to a hundred full
 // message frames back, and a client can ask again immediately. CHAT_LIST, the
 // *_SYNC pair and the *_LIST family are the same shape in miniature — a query

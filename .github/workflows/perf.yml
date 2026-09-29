@@ -1,0 +1,45 @@
+name: Performance
+
+# Not on every push: shared runners vary by tens of percent, so the thresholds in
+# server/scripts/perf.sh are wide regression guards, and running them nightly and
+# on demand catches a regression without making every PR pay for the noise.
+# Label a pull request `perf` to run it there.
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  loadtest:
+    name: loadtest (throughput · idle scale)
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'perf')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Run the load and check the thresholds
+        env:
+          PERF_OUT: ${{ runner.temp }}/perf-results
+        run: bash server/scripts/perf.sh
+
+      - name: Upload the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-results
+          path: ${{ runner.temp }}/perf-results
+          if-no-files-found: ignore

@@ -253,10 +253,10 @@ func (s *Service) refresh(ctx context.Context, sess *model.Session) {
 
 // Resume validates a resume token and ROTATES it.
 //
-// The rotation is the security property, and its absence was the bug: a resume
-// token used to survive unchanged for the session whole 14-day life, so a token
-// captured once granted access for a fortnight — and its use was undetectable,
-// because the legitimate client kept working right alongside whoever had it.
+// The rotation is the security property. A token that lived unchanged for the
+// session's 14-day life would let one capture grant access for a fortnight, and
+// undetectably, because the legitimate client keeps working alongside whoever
+// has it.
 //
 // Two things fall out of rotating:
 //

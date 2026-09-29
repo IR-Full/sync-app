@@ -23,7 +23,7 @@ repository, which is the point of it.
 | If you want to | Read |
 |---|---|
 | Understand the design and why it is shaped this way | [`server/ARCHITECTURE.md`](server/ARCHITECTURE.md) ([ru](server/ARCHITECTURE.ru.md)) |
-| Know what is defended, what is not, and what was once claimed and false | [`server/SECURITY.md`](server/SECURITY.md) ([ru](server/SECURITY.ru.md)) |
+| Know what is defended and what is not | [`server/SECURITY.md`](server/SECURITY.md) ([ru](server/SECURITY.ru.md)) |
 | Follow a message from a keypress to a peer's screen | [`server/GUIDE.md`](server/GUIDE.md) ([ru](server/GUIDE.ru.md)) |
 | Run the server | [`server/README.md`](server/README.md) ([ru](server/README.ru.md)) |
 | Run a client | [`client/README.md`](client/README.md), [`android/README.md`](android/README.md), [`ios/README.md`](ios/README.md) ([ru](ios/README.ru.md)) |
@@ -69,11 +69,12 @@ The same protocol rides TCP, WebSocket (one frame per binary message) and QUIC.
 
 `cmd/server` runs everything in one process. `cmd/gatewayd` plus nine service
 daemons (`authd`, `chatd`, `messaged`, `presenced`, `keydird`, `fanoutd`,
-`searchd`, `notifyd`, `moderationd`) run the same code split behind gRPC. The
-gateway builds the identical `gateway.Services` interfaces, satisfied either by
-local service structs or by RPC clients. The split is a wiring choice, not a fork,
-which is what keeps it honest: both paths compile against the same domain packages
-and run the same tests.
+`searchd`, `notifyd`, `moderationd`) run the same code split behind gRPC. Both are
+assembled by one package, `server/internal/wiring`: `Monolith` and `Fleet` build
+the same `gateway.Services` and differ only in whether the domain half is local
+structs or gRPC clients. A test holds every field of it set in both topologies,
+and another boots the split in-process and exercises the features the edge
+serves.
 
 With no infrastructure configured, everything falls back to in-memory stores, so
 `go run ./cmd/server` works with nothing installed. Postgres, Redis and NATS are

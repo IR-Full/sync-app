@@ -15,8 +15,30 @@ package id
 import (
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 )
+
+// Epoch is the custom epoch: 2024-01-01T00:00:00Z in unix millis.
+const Epoch int64 = 1704067200000
+
+const (
+	nodeBits = 10
+	seqBits  = 12
+
+	maxNode   = -1 ^ (-1 << nodeBits) // 1023
+	maxSeq    = -1 ^ (-1 << seqBits)  // 4095
+	timeShift = nodeBits + seqBits
+	nodeShift = seqBits
+)
+
+// Generator is a thread-safe Snowflake source bound to one node id.
+type Generator struct {
+	mu       sync.Mutex
+	node     int64
+	lastMs   int64
+	sequence int64
+}
 
 // NewGenerator returns a generator for the given node id (0..1023).
 func NewGenerator(node int64) (*Generator, error) {

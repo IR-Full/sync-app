@@ -8,13 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"google.golang.org/grpc"
 
 	"github.com/SyncApp-chat/SyncApp/internal/platform"
-	"github.com/SyncApp-chat/SyncApp/internal/presence"
 	"github.com/SyncApp-chat/SyncApp/internal/rpc"
+	"github.com/SyncApp-chat/SyncApp/internal/wiring"
 )
 
 func main() {
@@ -29,7 +28,7 @@ func main() {
 	}
 	defer b.Close()
 
-	svc := presence.New(b.Presence, b.Bus, 60*time.Second)
+	svc := wiring.NewPresence(b)
 	addr := platform.Env("SYNCAPP_PRESENCED_ADDR", ":9004")
 	if err := platform.ServeGRPC(ctx, addr, platform.Env("SYNCAPP_PRESENCED_METRICS", ":9104"), b.Log,
 		func(s *grpc.Server) { rpc.RegisterPresence(s, svc) }); err != nil {
