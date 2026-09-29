@@ -1,0 +1,8 @@
+# Mechanical refactors with no behaviour change. git blame skips them with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub applies this file automatically.)
+
+# *.types.go / *.constants.go merged into their main files
+11cc2ac7448af1fcefacc0a388ff30a757ccedc1
+# store/memory/memory.go split by store
+c98c7408ffe9f28da7945176f841f43413a55e9b
